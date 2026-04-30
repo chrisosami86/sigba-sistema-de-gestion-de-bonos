@@ -1,14 +1,30 @@
-<fieldset class="fieldset bg-base-200 border-base-300 rounded-box w-xs border p-4">
+<fieldset class="fieldset bg-base-200 border-base-300 rounded-box w-md border p-4 text-lg">
   <legend class="fieldset-legend">Login:</legend>
 
-  <label class="label">Coódigo de estudiante completo:</label>
-  <input type="number" class="input" placeholder="Código con el 20 y sin el programa" />
+  <label class="label">Código de estudiante completo:</label>
+  <input type="number"
+  class="input w-full"
+  autofocus placeholder="Código con el 20 y sin el programa"
+  (input)="user.set(+txtUser.value)"
+  #txtUser
+  />
+
 
   <label class="label">Contraseña:</label>
-  <input type="password" class="input" placeholder="Contraseña 8 digitos" />
 
-  <button
-  class="btn bg-red-600 hover:bg-red-700 text-white mt-4"
-  routerLink="details"
-  >Login</button>
+  <input type="password"
+  class="input w-full"
+  placeholder="Contraseña 8 digitos"
+  (input)="password.set(txtPassword.value)"
+  #txtPassword
+  />
+
+  <button class="btn bg-red-600 hover:bg-red-700 text-white mt-4"
+   (click)="login()">Login</button>
+  <div class="divider">o</div>
+  <label class="label mx-auto">Recuperar contraseña</label>
+  <button class="text-red-600 font-bold btn text-xl" onclick="my_modal_2.showModal()">aquí</button>
+
+
+  <modal />
 </fieldset>

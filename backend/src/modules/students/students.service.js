@@ -302,6 +302,8 @@ const deleteStudent = async (id) => {
   return result.rows[0];
 };
 
+
+
 module.exports = {
   createStudent,
   getStudents,

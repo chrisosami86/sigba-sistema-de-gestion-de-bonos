@@ -75,10 +75,12 @@ const deleteStudent = async (req, res) => {
   }
 };
 
+
+
 module.exports = {
   getStudents,
   createStudent,
   getStudentById,
   updateStudent,
-  deleteStudent
+  deleteStudent,
 };

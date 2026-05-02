@@ -4,15 +4,19 @@ import { DetailsStudentsPage } from './students/pages/details-students-page/deta
 
 export const routes: Routes = [
   {
-    path:'',
-    component: LoginStudentsPage
-  },
-   {
-    path:'details',
-    component: DetailsStudentsPage
+    path: '',
+    component: LoginStudentsPage,
   },
   {
-  path: 'students/:id',
-  component: DetailsStudentsPage
-}
+    path: 'details',
+    component: DetailsStudentsPage,
+  },
+  {
+    path: 'students/:id',
+    component: DetailsStudentsPage,
+  },
+  {
+    path: '**',
+    redirectTo: ''
+  }
 ];

@@ -12,8 +12,10 @@ app.use(express.json());
 //------------Rutas-------------
 
 const studentRoutes = require('./modules/students/students.routes');
+const systemRoutes = require('./modules/system/system.routes');
 
 app.use('/api/students', studentRoutes);
+app.use('/api/time', systemRoutes);
 
 
 

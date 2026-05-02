@@ -1,79 +1,80 @@
 <countdown-bonos />
 <h1 class="font-bold text-4xl xl:ml-20 mt-5 text-center xl:text-left">Bienvenido</h1>
+<div class="xl:h-134">
 
-<div class="card card-side bg-base-100 shadow-md flex-col xl:flex-row max-w-4xl mx-auto my-5">
-  <figure class="mx-auto p-4">
-    <logo-sigba />
-  </figure>
-  <div class="card-body bg-gray-200">
-    <h2 class="card-title">{{newStudent()?.nombre}}</h2>
+  <div class="card card-side bg-base-100 shadow-md flex-col xl:flex-row max-w-4xl mx-auto my-5">
+    <figure class="m-auto p-4">
+      <logo-sigba />
+    </figure>
+    <div class="card-body bg-gray-200">
+      <h2 class="card-title">{{newStudent()?.nombre}}</h2>
 
 
-    <div class="flex flex-col gap-4">
-      <div>
-        <p><span class="font-bold">Codigo:</span></p>
-        <p>{{newStudent()?.codigo}}</p>
-      </div>
+      <div class="flex flex-col gap-4">
+        <div>
+          <p><span class="font-bold">Codigo:</span></p>
+          <p>{{newStudent()?.codigo}}</p>
+        </div>
 
-      <div>
-        <p><span class="font-bold">Documento de identidad:</span></p>
-        <p>{{newStudent()?.tipo_documento}} - {{newStudent()?.numero_documento}}</p>
-      </div>
+        <div>
+          <p><span class="font-bold">Documento de identidad:</span></p>
+          <p>{{newStudent()?.tipo_documento}} - {{newStudent()?.numero_documento}}</p>
+        </div>
 
-      <div>
-        <p><span class="font-bold">Correo institucional:</span></p>
-        <p>{{newStudent()?.correo}}</p>
-      </div>
-      <div>
-        <p><span class="font-bold">Programa academico:</span></p>
-        <p>{{newStudent()?.programa_codigo}} - {{newStudent()?.programa_nombre}}</p>
-      </div>
-      <div>
-        <p><span class="font-bold">Tipo de estudiante:</span></p>
-        @if (newStudent()?.tipo_estudiante === 'subsidiado') {
+        <div>
+          <p><span class="font-bold">Correo institucional:</span></p>
+          <p>{{newStudent()?.correo}}</p>
+        </div>
+        <div>
+          <p><span class="font-bold">Programa academico:</span></p>
+          <p>{{newStudent()?.programa_codigo}} - {{newStudent()?.programa_nombre}}</p>
+        </div>
+        <div>
+          <p><span class="font-bold">Tipo de estudiante:</span></p>
+          @if (newStudent()?.tipo_estudiante === 'subsidiado') {
           <p>Subsidiado</p>
-        }@else {
+          }@else {
           <p>No subsidiado</p>
+          }
+        </div>
+
+        @if (newStudent()?.tipo_estudiante === 'subsidiado') {
+        <div>
+          <p><span class="font-bold">Beca: </span> @if (newStudent()?.tiene_beca === true) {Si}@else {No}</p>
+        </div>
+        <div>
+          <p><span class="font-bold">Días de subsidio: </span></p>
+          <ul class="flex gap-4">
+            @for (dia of newStudent()?.dias; track dia) {
+            <li>{{dia}}</li>
+            }
+          </ul>
+        </div>
         }
       </div>
+    </div>
 
-      @if (newStudent()?.tipo_estudiante === 'subsidiado') {
-      <div>
-        <p><span class="font-bold">Beca: </span> @if (newStudent()?.tiene_beca === true) {Si}@else {No}</p>
+    <div class="flex flex-col gap-4 items-center justify-center xl:px-10 py-5">
+      <h1 class="text-2xl font-bold text-center">Historial Redimidos</h1>
+      <div class="text-center">
+        <p><span class="font-bold">Bonos subsidiado:</span></p>
+        <p class="text-4xl">0</p>
       </div>
-      <div>
-        <p><span class="font-bold">Días de subsidio: </span></p>
-        <ul class="flex gap-4">
-          @for (dia of newStudent()?.dias; track dia) {
-            <li>{{dia}}</li>
-          }
-        </ul>
+      <div class="text-center">
+        <p><span class="font-bold">Bonos Venta libre:</span></p>
+        <p class="text-4xl">0</p>
       </div>
-      }
-    </div>
-  </div>
 
-  <div class="flex flex-col gap-4 items-center justify-center xl:px-10 py-5">
-    <h1 class="text-2xl font-bold text-center">Historial Redimidos</h1>
-    <div class="text-center">
-      <p><span class="font-bold">Bonos subsidiado:</span></p>
-      <p class="text-4xl">0</p>
-    </div>
-    <div class="text-center">
-      <p><span class="font-bold">Bonos Venta libre:</span></p>
-      <p class="text-4xl">0</p>
-    </div>
+      <div class="text-center">
+        <p><span class="font-bold">Total:</span></p>
+        <p class="text-4xl">0</p>
+      </div>
 
-    <div class="text-center">
-      <p><span class="font-bold">Total:</span></p>
-      <p class="text-4xl">0</p>
-    </div>
-
-    <div class="card-actions justify-end">
-      <button (click)="searchStudent(1)" class="btn bg-red-600 text-white hover:bg-red-800">Solicitar bono</button>
-      <button class="btn bg-gray-400 hover:bg-gray-500 hover:text-white">Salir</button>
+      <div class="card-actions justify-end">
+        <button class="btn bg-red-600 text-white hover:bg-red-800">Solicitar bono</button>
+        <button class="btn bg-gray-400 hover:bg-gray-500 hover:text-white">Salir</button>
+      </div>
     </div>
   </div>
 </div>
-
 <footer-component />

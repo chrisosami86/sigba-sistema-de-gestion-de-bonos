@@ -1,4 +1,4 @@
-<countdown-bonos/>
+<countdown-bonos />
 <h1 class="font-bold text-4xl xl:ml-20 mt-5 text-center xl:text-left">Bienvenido</h1>
 
 <div class="card card-side bg-base-100 shadow-md flex-col xl:flex-row max-w-4xl mx-auto my-5">
@@ -6,35 +6,50 @@
     <logo-sigba />
   </figure>
   <div class="card-body bg-gray-200">
-    <h2 class="card-title">Christian Odine Saavedra Mina</h2>
+    <h2 class="card-title">{{newStudent()?.nombre}}</h2>
 
 
     <div class="flex flex-col gap-4">
       <div>
         <p><span class="font-bold">Codigo:</span></p>
-        <p>201969113</p>
+        <p>{{newStudent()?.codigo}}</p>
       </div>
 
       <div>
         <p><span class="font-bold">Documento de identidad:</span></p>
-        <p>C.C 11223344</p>
+        <p>{{newStudent()?.tipo_documento}} - {{newStudent()?.numero_documento}}</p>
       </div>
 
       <div>
         <p><span class="font-bold">Correo institucional:</span></p>
-        <p>christian.saavedra@correounivalle.edu.co</p>
+        <p>{{newStudent()?.correo}}</p>
       </div>
       <div>
         <p><span class="font-bold">Programa academico:</span></p>
-        <p>2711 - Tecnología en Sistemas de Información</p>
+        <p>{{newStudent()?.programa_codigo}} - {{newStudent()?.programa_nombre}}</p>
       </div>
       <div>
         <p><span class="font-bold">Tipo de estudiante:</span></p>
-        <p>Subsidiado</p>
+        @if (newStudent()?.tipo_estudiante === 'subsidiado') {
+          <p>Subsidiado</p>
+        }@else {
+          <p>No subsidiado</p>
+        }
+      </div>
+
+      @if (newStudent()?.tipo_estudiante === 'subsidiado') {
+      <div>
+        <p><span class="font-bold">Beca: </span> @if (newStudent()?.tiene_beca === true) {Si}@else {No}</p>
       </div>
       <div>
-        <p><span class="font-bold">Beca: </span>Si</p>
+        <p><span class="font-bold">Días de subsidio: </span></p>
+        <ul class="flex gap-4">
+          @for (dia of newStudent()?.dias; track dia) {
+            <li>{{dia}}</li>
+          }
+        </ul>
       </div>
+      }
     </div>
   </div>
 
@@ -55,7 +70,7 @@
     </div>
 
     <div class="card-actions justify-end">
-      <button class="btn bg-red-600 text-white hover:bg-red-800">Solicitar bono</button>
+      <button (click)="searchStudent(1)" class="btn bg-red-600 text-white hover:bg-red-800">Solicitar bono</button>
       <button class="btn bg-gray-400 hover:bg-gray-500 hover:text-white">Salir</button>
     </div>
   </div>

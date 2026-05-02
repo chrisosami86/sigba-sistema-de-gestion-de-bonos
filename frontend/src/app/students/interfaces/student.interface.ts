@@ -1,17 +1,12 @@
-
-
-export interface Student{
-  code_u: number;
-  password: string;
+export interface Student {
+  codigo:           string;
+  tipo_documento:   string;
+  numero_documento: string;
+  nombre:           string;
+  correo:           string;
+  programa_codigo:  string;
+  programa_nombre:  string;
+  tipo_estudiante:  string;
+  tiene_beca:       boolean;
+  dias:             string[];
 }
-
-
-// export interface Student{
-//   code_u: number;
-//   name: string;
-//   id_student: string;
-//   email: string;
-//   academic_program: string;
-//   type: string;
-//   is_beca: false;
-// }

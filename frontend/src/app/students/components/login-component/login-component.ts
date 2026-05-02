@@ -16,15 +16,5 @@ export class LoginComponent {
   user = signal(0);
   password = signal('');
 
-  login (){
 
-    const student: Student = {
-      code_u: this.user(),
-      password: this.password(),
-    }
-
-    this.studentService.login(student)?.subscribe((resp)=>{
-      //console.log(resp);
-    });
-  }
 }

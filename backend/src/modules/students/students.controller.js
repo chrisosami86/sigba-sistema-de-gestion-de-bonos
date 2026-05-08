@@ -1,4 +1,3 @@
-
 const studentService = require('./students.service');
 
 const createStudent = async (req, res) => {

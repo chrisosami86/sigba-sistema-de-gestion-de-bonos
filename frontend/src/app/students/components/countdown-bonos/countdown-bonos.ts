@@ -1,5 +1,7 @@
-import { Component, computed, inject, input, signal } from '@angular/core';
-import { Student } from '../../interfaces/student.interface';
+import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
+import { forkJoin } from 'rxjs';
+import { BonoTipo, EstadoSistemaBono } from '../../interfaces/bono.interface';
+import { BonosService } from '../../services/bonos.service';
 import { TimeService } from '../../services/time.service';
 
 @Component({
@@ -7,119 +9,95 @@ import { TimeService } from '../../services/time.service';
   imports: [],
   templateUrl: './countdown-bonos.html',
 })
-export class CountdownBonos {
-
-
-  systemService = inject(TimeService);
+export class CountdownBonos implements OnDestroy {
+  private timeService = inject(TimeService);
+  private bonosService = inject(BonosService);
+  private clockIntervalId: ReturnType<typeof setInterval>;
+  private refreshIntervalId: ReturnType<typeof setInterval>;
 
   currentTime = signal(new Date());
-
   offset = signal(0);
+  loading = signal(true);
+  errorMessage = signal('');
 
+  estados = signal<Record<BonoTipo, EstadoSistemaBono>>({
+    almuerzo: { estado: 'cerrado', mensaje: 'Consultando estado de almuerzo' },
+    refrigerio: { estado: 'cerrado', mensaje: 'Consultando estado de refrigerio' },
+  });
 
-estadoSistema = computed(() => {
-  const now = this.currentTime();
-  const totalMin = now.getHours() * 60 + now.getMinutes();
+  horaActual = computed(() => {
+    return this.currentTime().toLocaleTimeString('es-CO', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true,
+    });
+  });
 
-  // 🟢 ALMUERZO SUBSIDIADO
-  if (totalMin >= 8 * 60 && totalMin <= (10 * 60 + 15)) {
-    return { tipo: 'almuerzo', estado: 'subsidiado' };
+  mensajePrincipal = computed(() => {
+    const estados = this.estados();
+    const almuerzo = estados.almuerzo;
+    const refrigerio = estados.refrigerio;
+
+    if (almuerzo.estado === 'subsidiado') return 'Bono almuerzo subsidiado activo';
+    if (almuerzo.estado === 'venta_libre') return 'Bono almuerzo en venta libre';
+    if (almuerzo.estado === 'bloqueado') return 'Almuerzo en pausa antes de venta libre';
+    if (refrigerio.estado === 'subsidiado') return 'Bono refrigerio subsidiado activo';
+    if (refrigerio.estado === 'venta_libre') return 'Bono refrigerio en venta libre';
+    if (refrigerio.estado === 'bloqueado') return 'Refrigerio en pausa antes de venta libre';
+
+    return 'Sistema fuera de horario de bonos';
+  });
+
+  constructor() {
+    this.syncWithServer();
+    this.refreshBonos();
+
+    this.clockIntervalId = setInterval(() => {
+      const now = new Date().getTime() + this.offset();
+      this.currentTime.set(new Date(now));
+    }, 1000);
+
+    this.refreshIntervalId = setInterval(() => {
+      this.refreshBonos();
+    }, 30000);
   }
 
-  // 🟡 ESPERA ALMUERZO (entre subsidiado y venta libre)
-  if (totalMin > (10 * 60 + 15) && totalMin < (11 * 60 + 30)) {
-    return { tipo: 'almuerzo', estado: 'espera' };
+  ngOnDestroy() {
+    clearInterval(this.clockIntervalId);
+    clearInterval(this.refreshIntervalId);
   }
 
-  // 🔵 ALMUERZO VENTA LIBRE
-  if (totalMin >= (11 * 60 + 30) && totalMin <= (12 * 60 + 30)) {
-    return { tipo: 'almuerzo', estado: 'venta_libre' };
-  }
-
-  // 🟢 REFRIGERIO SUBSIDIADO
-  if (totalMin >= 17 * 60 && totalMin <= (18 * 60 + 30)) {
-    return { tipo: 'refrigerio', estado: 'subsidiado' };
-  }
-
-  // 🟡 ESPERA REFRIGERIO
-  if (totalMin > (18 * 60 + 30) && totalMin < (18 * 60 + 30)) {
-    return { tipo: 'refrigerio', estado: 'espera' };
-  }
-
-  // 🔵 REFRIGERIO VENTA LIBRE
-  if (totalMin >= (18 * 60 + 30) && totalMin <= (22 * 60)) {
-    return { tipo: 'refrigerio', estado: 'venta_libre' };
-  }
-
-  // 🔴 FUERA DE TODO
-  return { tipo: 'ninguno', estado: 'bloqueado' };
-});
-
-
-tiempoRestante = computed(() => {
-  const now = this.currentTime();
-  const estado = this.estadoSistema();
-
-  let objetivo = new Date(now);
-
-  if (estado.tipo === 'almuerzo' && estado.estado === 'subsidiado') {
-    objetivo.setHours(10, 15, 0, 0);
-  }
-
-  else if (estado.tipo === 'almuerzo' && estado.estado === 'espera') {
-    objetivo.setHours(11, 30, 0, 0);
-  }
-
-  else if (estado.tipo === 'almuerzo' && estado.estado === 'venta_libre') {
-    objetivo.setHours(12, 30, 0, 0);
-  }
-
-  else if (estado.tipo === 'refrigerio' && estado.estado === 'subsidiado') {
-    objetivo.setHours(18, 30, 0, 0);
-  }
-
-  else if (estado.tipo === 'refrigerio' && estado.estado === 'venta_libre') {
-    objetivo.setHours(22, 0, 0, 0);
-  }
-
-  else {
-    return 'Fuera de horario';
-  }
-
-  const diff = objetivo.getTime() - now.getTime();
-
-  if (diff <= 0) return '00:00:00';
-
-  const horas = Math.floor(diff / (1000 * 60 * 60));
-  const minutos = Math.floor((diff / (1000 * 60)) % 60);
-  const segundos = Math.floor((diff / 1000) % 60);
-
-  return `${horas.toString().padStart(2, '0')}:${minutos
-    .toString()
-    .padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`;
-});
-
-  syncWithServer() {
-    this.systemService.getServerTime().subscribe({
+  private syncWithServer() {
+    this.timeService.getServerTime().subscribe({
       next: ({ serverTime }) => {
         const server = new Date(serverTime).getTime();
         const client = new Date().getTime();
 
         this.offset.set(server - client);
-      }
+      },
     });
   }
 
-  constructor() {
-    this.syncWithServer();
+  private refreshBonos() {
+    this.loading.set(true);
 
-    setInterval(() => {
-       const now = new Date().getTime() + this.offset();
-      this.currentTime.set(new Date(now));
-    }, 1000);
+    forkJoin({
+      estadoAlmuerzo: this.bonosService.getEstado('almuerzo'),
+      estadoRefrigerio: this.bonosService.getEstado('refrigerio'),
+    }).subscribe({
+      next: (data) => {
+        this.estados.set({
+          almuerzo: data.estadoAlmuerzo,
+          refrigerio: data.estadoRefrigerio,
+        });
+        this.errorMessage.set('');
+        this.loading.set(false);
+      },
+      error: () => {
+        this.errorMessage.set('No se pudo consultar el estado de bonos');
+        this.loading.set(false);
+      },
+    });
   }
-
-
-
-
 }

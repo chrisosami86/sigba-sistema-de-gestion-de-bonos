@@ -1,10 +1,36 @@
-<!-- Open the modal using ID.showModal() method -->
 <dialog id="my_modal_2" class="modal">
-  <div class="modal-box flex flex-col items-center gap-5">
-    <h3 class="text-lg font-bold">Recuperar Contraseña</h3>
-    <p class="py-4">Digita el código de estudiante con el 20 y sin el programa</p>
-    <input type="number" class="input">
-    <button class="btn bg-red-600 hover:bg-red-800 text-white">Enviar</button>
+  <div class="modal-box flex flex-col gap-4">
+    <h3 class="text-lg font-bold">Recuperar contrasena</h3>
+    <p class="text-sm text-gray-600">Digita el correo registrado en la base de datos.</p>
+
+    <input
+      type="email"
+      class="input w-full"
+      placeholder="correo@ejemplo.com"
+      [value]="correo()"
+      (input)="correo.set(txtCorreo.value)"
+      #txtCorreo
+    />
+
+    @if (message()) {
+      <div class="alert alert-success text-sm">
+        <span>{{ message() }}</span>
+      </div>
+    }
+
+    @if (errorMessage()) {
+      <div class="alert alert-error text-sm">
+        <span>{{ errorMessage() }}</span>
+      </div>
+    }
+
+    <button class="btn bg-red-600 text-white hover:bg-red-800" [disabled]="loading()" (click)="recoverPassword()">
+      @if (loading()) {
+        Enviando...
+      } @else {
+        Enviar recuperacion
+      }
+    </button>
   </div>
   <form method="dialog" class="modal-backdrop">
     <button>close</button>

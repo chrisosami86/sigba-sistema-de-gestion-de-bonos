@@ -1,4 +1,5 @@
 export interface Student {
+  id:               number;
   codigo:           string;
   tipo_documento:   string;
   numero_documento: string;

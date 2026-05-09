@@ -1,4 +1,5 @@
 const pool = require("../../config/db");
+const XLSX = require("xlsx");
 
 const createStudent = async (data) => {
   const client = await pool.connect();
@@ -302,6 +303,251 @@ const deleteStudent = async (id) => {
   return result.rows[0];
 };
 
+const importStudentsFromExcel = async (buffer) => {
+  const rows = readExcelRows(buffer);
+  const client = await pool.connect();
+  const result = {
+    total: rows.length,
+    created: 0,
+    updated: 0,
+    errors: [],
+  };
+
+  try {
+    await client.query("BEGIN");
+
+    for (const [index, row] of rows.entries()) {
+      try {
+        const data = normalizeStudentRow(row);
+
+        if (!data.codigo || !data.numero_documento || !data.nombre || !data.correo) {
+          throw new Error("Faltan campos obligatorios");
+        }
+
+        const existing = await client.query("SELECT id FROM students WHERE codigo = $1", [
+          data.codigo,
+        ]);
+
+        const upsertQuery = `
+          INSERT INTO students (
+            codigo,
+            tipo_documento,
+            numero_documento,
+            nombre,
+            correo,
+            programa_codigo,
+            programa_nombre,
+            tipo_estudiante
+          )
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+          ON CONFLICT (codigo)
+          DO UPDATE SET
+            tipo_documento = EXCLUDED.tipo_documento,
+            numero_documento = EXCLUDED.numero_documento,
+            nombre = EXCLUDED.nombre,
+            correo = EXCLUDED.correo,
+            programa_codigo = EXCLUDED.programa_codigo,
+            programa_nombre = EXCLUDED.programa_nombre
+          RETURNING id
+        `;
+
+        await client.query(upsertQuery, [
+          data.codigo,
+          data.tipo_documento,
+          data.numero_documento,
+          data.nombre,
+          data.correo,
+          data.programa_codigo,
+          data.programa_nombre,
+          "no_subsidiado",
+        ]);
+
+        if (existing.rows.length > 0) {
+          result.updated += 1;
+        } else {
+          result.created += 1;
+        }
+      } catch (error) {
+        result.errors.push({
+          row: index + 2,
+          message: error.message,
+        });
+      }
+    }
+
+    await client.query("COMMIT");
+
+    return result;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+const importSubsidiesFromExcel = async (buffer) => {
+  const rows = readExcelRows(buffer);
+  const client = await pool.connect();
+  const result = {
+    total: rows.length,
+    updated: 0,
+    notFound: 0,
+    errors: [],
+  };
+
+  try {
+    await client.query("BEGIN");
+
+    for (const [index, row] of rows.entries()) {
+      try {
+        const data = normalizeSubsidyRow(row);
+
+        if (!data.codigo) {
+          throw new Error("El codigo es obligatorio");
+        }
+
+        if (data.dias.length === 0) {
+          throw new Error("Debe indicar al menos un dia de subsidio");
+        }
+
+        const studentResult = await client.query(
+          "UPDATE students SET tipo_estudiante = 'subsidiado' WHERE codigo = $1 RETURNING id",
+          [data.codigo],
+        );
+
+        if (studentResult.rows.length === 0) {
+          result.notFound += 1;
+          result.errors.push({
+            row: index + 2,
+            message: "Estudiante no encontrado en la base general",
+          });
+          continue;
+        }
+
+        const studentId = studentResult.rows[0].id;
+        const subsidyResult = await getOrCreateSubsidy(client, studentId, data.tiene_beca);
+        const subsidy = subsidyResult.rows[0];
+
+        await client.query("DELETE FROM subsidy_days WHERE subsidy_id = $1", [subsidy.id]);
+
+        for (const dia of data.dias) {
+          await client.query("INSERT INTO subsidy_days (subsidy_id, dia) VALUES ($1, $2)", [
+            subsidy.id,
+            dia,
+          ]);
+        }
+
+        result.updated += 1;
+      } catch (error) {
+        result.errors.push({
+          row: index + 2,
+          message: error.message,
+        });
+      }
+    }
+
+    await client.query("COMMIT");
+
+    return result;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+const getOrCreateSubsidy = async (client, studentId, tieneBeca) => {
+  const existing = await client.query("SELECT * FROM subsidies WHERE student_id = $1 LIMIT 1", [
+    studentId,
+  ]);
+
+  if (existing.rows.length > 0) {
+    return client.query(
+      "UPDATE subsidies SET tiene_beca = $1 WHERE id = $2 RETURNING *",
+      [tieneBeca, existing.rows[0].id],
+    );
+  }
+
+  return client.query("INSERT INTO subsidies (student_id, tiene_beca) VALUES ($1, $2) RETURNING *", [
+    studentId,
+    tieneBeca,
+  ]);
+};
+
+const readExcelRows = (buffer) => {
+  const workbook = XLSX.read(buffer, { type: "buffer" });
+  const firstSheet = workbook.SheetNames[0];
+
+  if (!firstSheet) {
+    return [];
+  }
+
+  return XLSX.utils.sheet_to_json(workbook.Sheets[firstSheet], {
+    defval: "",
+    raw: false,
+  });
+};
+
+const normalizeStudentRow = (row) => {
+  return {
+    codigo: getCell(row, "codigo"),
+    tipo_documento: getCell(row, "tipo_documento") || "CC",
+    numero_documento: getCell(row, "numero_documento"),
+    nombre: getCell(row, "nombre"),
+    correo: getCell(row, "correo"),
+    programa_codigo: getCell(row, "programa_codigo"),
+    programa_nombre: getCell(row, "programa_nombre"),
+  };
+};
+
+const normalizeSubsidyRow = (row) => {
+  return {
+    codigo: getCell(row, "codigo"),
+    tiene_beca: parseBoolean(getCell(row, "tiene_beca")),
+    dias: parseDias(getCell(row, "dias")),
+  };
+};
+
+const getCell = (row, key) => {
+  const normalizedKey = Object.keys(row).find((header) => normalizeHeader(header) === key);
+  const value = normalizedKey ? row[normalizedKey] : "";
+
+  return String(value ?? "").trim();
+};
+
+const normalizeHeader = (header) => {
+  return String(header)
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, "_");
+};
+
+const parseBoolean = (value) => {
+  const normalized = String(value).trim().toLowerCase();
+
+  return ["si", "sí", "true", "1", "x"].includes(normalized);
+};
+
+const parseDias = (value) => {
+  return String(value)
+    .split(/[,;|]/)
+    .map((dia) =>
+      dia
+        .trim()
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, ""),
+    )
+    .filter(Boolean)
+    .filter((dia) =>
+      ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"].includes(dia),
+    );
+};
+
 
 
 module.exports = {
@@ -310,4 +556,6 @@ module.exports = {
   getStudentById,
   updateStudent,
   deleteStudent,
+  importStudentsFromExcel,
+  importSubsidiesFromExcel,
 };

@@ -1,80 +1,187 @@
 <countdown-bonos />
-<h1 class="font-bold text-4xl xl:ml-20 mt-5 text-center xl:text-left">Bienvenido</h1>
-<div class="xl:h-134">
 
-  <div class="card card-side bg-base-100 shadow-md flex-col xl:flex-row max-w-4xl mx-auto my-5">
+<main class="mx-auto flex max-w-5xl flex-col gap-5 p-4">
+  <section class="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
+    <div class="border-base-300 rounded-box border p-4">
+      <h2 class="font-bold">Almuerzo</h2>
+      <p>Subsidiado: 8:00 a.m. a 10:15 a.m.</p>
+      <p>Venta libre: 11:30 a.m. a 12:05 p.m.</p>
+      <p>Expira: 11:00 a.m. subsidiado / 12:05 p.m. venta libre</p>
+    </div>
+
+    <div class="border-base-300 rounded-box border p-4">
+      <h2 class="font-bold">Refrigerio</h2>
+      <p>Subsidiado: 5:00 p.m. a 6:29 p.m.</p>
+      <p>Venta libre: 6:30 p.m. a 10:00 p.m.</p>
+      <p>Expira: 9:30 p.m. subsidiado / 10:00 p.m. venta libre</p>
+    </div>
+  </section>
+
+  <section class="grid grid-cols-1 gap-3 md:grid-cols-2">
+    <div class="border-base-300 rounded-box border bg-base-100 p-4">
+      <div class="flex items-center justify-between gap-3">
+        <h2 class="font-bold">Disponibilidad almuerzo</h2>
+        <span class="text-sm text-gray-500">Hoy</span>
+      </div>
+      <p class="mt-3 text-4xl font-bold">{{ disponibilidades().almuerzo?.disponibles ?? 0 }}</p>
+      <p class="text-sm text-gray-500">
+        de {{ disponibilidades().almuerzo?.totalOperativo ?? 0 }} bonos operativos
+      </p>
+    </div>
+
+    <div class="border-base-300 rounded-box border bg-base-100 p-4">
+      <div class="flex items-center justify-between gap-3">
+        <h2 class="font-bold">Disponibilidad refrigerio</h2>
+        <span class="text-sm text-gray-500">Hoy</span>
+      </div>
+      <p class="mt-3 text-4xl font-bold">{{ disponibilidades().refrigerio?.disponibles ?? 0 }}</p>
+      <p class="text-sm text-gray-500">
+        de {{ disponibilidades().refrigerio?.totalOperativo ?? 0 }} bonos operativos
+      </p>
+    </div>
+  </section>
+
+  <section class="card card-side bg-base-100 shadow-md flex-col xl:flex-row">
     <figure class="m-auto p-4">
       <logo-sigba />
     </figure>
-    <div class="card-body bg-gray-200">
-      <h2 class="card-title">{{newStudent()?.nombre}}</h2>
 
+    <div class="card-body bg-gray-100">
+      <div class="flex flex-col gap-1">
+        <p class="text-sm font-semibold text-gray-500">Estudiante</p>
+        <h1 class="card-title text-2xl">{{ student()?.nombre || 'Cargando estudiante' }}</h1>
+      </div>
 
-      <div class="flex flex-col gap-4">
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
         <div>
-          <p><span class="font-bold">Codigo:</span></p>
-          <p>{{newStudent()?.codigo}}</p>
+          <p class="font-bold">Codigo</p>
+          <p>{{ student()?.codigo || '-' }}</p>
         </div>
 
         <div>
-          <p><span class="font-bold">Documento de identidad:</span></p>
-          <p>{{newStudent()?.tipo_documento}} - {{newStudent()?.numero_documento}}</p>
+          <p class="font-bold">Programa</p>
+          <p>{{ student()?.programa_codigo || '-' }} - {{ student()?.programa_nombre || '-' }}</p>
         </div>
 
         <div>
-          <p><span class="font-bold">Correo institucional:</span></p>
-          <p>{{newStudent()?.correo}}</p>
-        </div>
-        <div>
-          <p><span class="font-bold">Programa academico:</span></p>
-          <p>{{newStudent()?.programa_codigo}} - {{newStudent()?.programa_nombre}}</p>
-        </div>
-        <div>
-          <p><span class="font-bold">Tipo de estudiante:</span></p>
-          @if (newStudent()?.tipo_estudiante === 'subsidiado') {
-          <p>Subsidiado</p>
-          }@else {
-          <p>No subsidiado</p>
+          <p class="font-bold">Tipo</p>
+          @if (student()?.tipo_estudiante === 'subsidiado') {
+            <p>Subsidiado</p>
+          } @else if (student()?.tipo_estudiante) {
+            <p>No subsidiado</p>
+          } @else {
+            <p>-</p>
           }
         </div>
 
-        @if (newStudent()?.tipo_estudiante === 'subsidiado') {
-        <div>
-          <p><span class="font-bold">Beca: </span> @if (newStudent()?.tiene_beca === true) {Si}@else {No}</p>
-        </div>
-        <div>
-          <p><span class="font-bold">Días de subsidio: </span></p>
-          <ul class="flex gap-4">
-            @for (dia of newStudent()?.dias; track dia) {
-            <li>{{dia}}</li>
-            }
-          </ul>
-        </div>
+        @if (student()?.tipo_estudiante === 'subsidiado') {
+          <div>
+            <p class="font-bold">Dias de subsidio</p>
+            <p>{{ student()?.dias?.join(', ') || '-' }}</p>
+          </div>
+
+          <div>
+            <p class="font-bold">Beca restaurante</p>
+            <p>{{ student()?.tiene_beca ? 'Si' : 'No' }}</p>
+          </div>
         }
       </div>
-    </div>
 
-    <div class="flex flex-col gap-4 items-center justify-center xl:px-10 py-5">
-      <h1 class="text-2xl font-bold text-center">Historial Redimidos</h1>
-      <div class="text-center">
-        <p><span class="font-bold">Bonos subsidiado:</span></p>
-        <p class="text-4xl">0</p>
-      </div>
-      <div class="text-center">
-        <p><span class="font-bold">Bonos Venta libre:</span></p>
-        <p class="text-4xl">0</p>
-      </div>
+      @if (solicitudMessage()) {
+        <div class="alert alert-success">
+          <span>{{ solicitudMessage() }}</span>
+        </div>
+      }
 
-      <div class="text-center">
-        <p><span class="font-bold">Total:</span></p>
-        <p class="text-4xl">0</p>
-      </div>
+      @if (solicitudError()) {
+        <div class="alert alert-error">
+          <span>{{ solicitudError() }}</span>
+        </div>
+      }
+
+      <section class="flex flex-col gap-4 py-3">
+        <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <h2 class="text-2xl font-bold">Historial de bonos</h2>
+
+          <button
+            class="btn bg-red-600 text-white hover:bg-red-800 disabled:bg-gray-400"
+            [disabled]="!tipoDisponible() || loadingSolicitud()"
+            (click)="solicitarBono()"
+          >
+            @if (loadingSolicitud()) {
+              Solicitando...
+            } @else {
+              {{ solicitudLabel() }}
+            }
+          </button>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="table table-sm md:table-md">
+            <thead>
+              <tr>
+                <th>Tipo</th>
+                <th>Reservados</th>
+                <th>Reclamados</th>
+                <th>Expirados</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Almuerzo</td>
+                <td>{{ historialResumen().almuerzo.reservados }}</td>
+                <td>{{ historialResumen().almuerzo.reclamados }}</td>
+                <td>{{ historialResumen().almuerzo.expirados }}</td>
+              </tr>
+              <tr>
+                <td>Refrigerio</td>
+                <td>{{ historialResumen().refrigerio.reservados }}</td>
+                <td>{{ historialResumen().refrigerio.reclamados }}</td>
+                <td>{{ historialResumen().refrigerio.expirados }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- <div class="overflow-x-auto">
+          <table class="table table-sm">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Tipo</th>
+                <th>Estado</th>
+                <th>Solicitud</th>
+                <th>Reclamo</th>
+                <th>Expira</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (bono of historial(); track bono.id) {
+                <tr>
+                  <td>{{ formatDate(bono.fecha) }}</td>
+                  <td>{{ bono.tipo }}</td>
+                  <td>{{ estadoText(bono.estado) }}</td>
+                  <td>{{ formatTime(bono.hora_solicitud) }}</td>
+                  <td>{{ formatTime(bono.hora_reclamo) }}</td>
+                  <td>{{ formatTime(bono.expiracion_at) }}</td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="6" class="text-center text-gray-500">Sin historial de bonos</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div> -->
+      </section>
 
       <div class="card-actions justify-end">
-        <button class="btn bg-red-600 text-white hover:bg-red-800">Solicitar bono</button>
-        <button class="btn bg-gray-400 hover:bg-gray-500 hover:text-white">Salir</button>
+        <button class="btn bg-gray-400 hover:bg-gray-500 hover:text-white" type="button" (click)="logout()">
+          Salir
+        </button>
       </div>
     </div>
-  </div>
-</div>
+  </section>
+</main>
+
 <footer-component />

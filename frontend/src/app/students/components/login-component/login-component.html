@@ -1,30 +1,70 @@
-<fieldset class="fieldset bg-base-200 border-base-300 rounded-box w-md border p-4 text-lg">
-  <legend class="fieldset-legend">Login:</legend>
+<form
+  class="fieldset bg-base-200 border-base-300 rounded-box w-full max-w-md border p-4 text-lg"
+  (submit)="$event.preventDefault(); login()"
+>
+  <legend class="fieldset-legend">Login</legend>
 
-  <label class="label">Código de estudiante completo:</label>
-  <input type="number"
-  class="input w-full"
-  autofocus placeholder="Código con el 20 y sin el programa"
-  (input)="user.set(+txtUser.value)"
-  #txtUser
+  <label class="label">Codigo de estudiante</label>
+  <input
+    type="text"
+    inputmode="numeric"
+    class="input w-full"
+    autofocus
+    placeholder="Codigo institucional"
+    autocomplete="username"
+    [value]="codigo()"
+    (input)="codigo.set(txtUser.value)"
+    #txtUser
   />
 
+  <label class="label">Contrasena</label>
+  <div class="join w-full">
+    <input
+      [type]="showPassword() ? 'text' : 'password'"
+      class="input join-item w-full"
+      placeholder="Documento registrado"
+      autocomplete="current-password"
+      [value]="password()"
+      (input)="password.set(txtPassword.value)"
+      #txtPassword
+    />
+    <button
+      type="button"
+      class="btn join-item"
+      [attr.aria-label]="showPassword() ? 'Ocultar contrasena' : 'Mostrar contrasena'"
+      (click)="showPassword.set(!showPassword())"
+    >
+      @if (showPassword()) {
+        Ocultar
+      } @else {
+        Ver
+      }
+    </button>
+  </div>
 
-  <label class="label">Contraseña:</label>
+  @if (errorMessage()) {
+    <div class="alert alert-error mt-4 text-sm">
+      <span>{{ errorMessage() }}</span>
+    </div>
+  }
 
-  <input type="password"
-  class="input w-full"
-  placeholder="Contraseña 8 digitos"
-  (input)="password.set(txtPassword.value)"
-  #txtPassword
-  />
+  <button
+    type="submit"
+    class="btn mt-4 bg-red-600 text-white hover:bg-red-700"
+    [disabled]="loading()"
+  >
+    @if (loading()) {
+      Ingresando...
+    } @else {
+      Ingresar
+    }
+  </button>
 
-  <button class="btn bg-red-600 hover:bg-red-700 text-white mt-4"
-   routerLink="details">Login</button>
   <div class="divider">o</div>
-  <label class="label mx-auto">Recuperar contraseña</label>
-  <button class="text-red-600 font-bold btn text-xl" onclick="my_modal_2.showModal()">aquí</button>
-
+  <label class="label mx-auto">Recuperar contrasena</label>
+  <button type="button" class="btn text-xl font-bold text-red-600" onclick="my_modal_2.showModal()">
+    aqui
+  </button>
 
   <modal />
-</fieldset>
+</form>

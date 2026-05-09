@@ -1,4 +1,6 @@
 require('dotenv').config();
+process.env.TZ = 'America/Bogota';
+
 const app = require('./src/app');
 
 const PORT = 3000;

@@ -1,0 +1,495 @@
+<div class="min-h-screen bg-gray-100">
+  <aside class="fixed inset-y-0 left-0 hidden w-64 border-r border-gray-200 bg-white p-4 md:block">
+    <div class="mb-8">
+      <p class="text-sm font-semibold text-gray-500">SIGBA</p>
+      <h1 class="text-2xl font-bold">Administrador</h1>
+    </div>
+
+    <nav class="flex flex-col gap-2">
+      <button
+        class="btn justify-start"
+        [class.btn-error]="selectedModule() === 'dashboard'"
+        [class.text-white]="selectedModule() === 'dashboard'"
+        (click)="selectedModule.set('dashboard')"
+      >
+        Dashboard
+      </button>
+      <button
+        class="btn justify-start"
+        [class.btn-error]="selectedModule() === 'bonos'"
+        [class.text-white]="selectedModule() === 'bonos'"
+        (click)="selectedModule.set('bonos')"
+      >
+        Bonos del dia
+      </button>
+      <button
+        class="btn justify-start"
+        [class.btn-error]="selectedModule() === 'resumen'"
+        [class.text-white]="selectedModule() === 'resumen'"
+        (click)="selectedModule.set('resumen')"
+      >
+        Resumen diario
+      </button>
+      <button class="btn justify-start" disabled>Reportes</button>
+      <button
+        class="btn justify-start"
+        [class.btn-error]="selectedModule() === 'estudiantes'"
+        [class.text-white]="selectedModule() === 'estudiantes'"
+        (click)="selectedModule.set('estudiantes')"
+      >
+        Estudiantes
+      </button>
+      <button class="btn justify-start" disabled>Configuracion</button>
+    </nav>
+  </aside>
+
+  <main class="md:ml-64">
+    <header class="flex flex-col gap-3 border-b border-gray-200 bg-white p-4 md:flex-row md:items-center md:justify-between">
+      <div>
+        <p class="text-sm font-semibold text-gray-500">Bienestar universitario</p>
+        <h2 class="text-2xl font-bold">{{ admin()?.nombre }}</h2>
+        <p class="text-sm text-gray-600">{{ admin()?.correo }} · {{ admin()?.telefono }}</p>
+      </div>
+
+      <button class="btn bg-gray-800 text-white hover:bg-gray-900" (click)="logout()">Salir</button>
+    </header>
+
+    <section class="p-4">
+      <div class="mb-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+        <div class="border-base-300 rounded-box border bg-white p-4">
+          <p class="text-sm font-semibold text-gray-500">Disponibles totales</p>
+          <p class="text-3xl font-bold">{{ totalDisponible() }}</p>
+        </div>
+
+        <div class="border-base-300 rounded-box border bg-white p-4">
+          <p class="text-sm font-semibold text-gray-500">Almuerzo disponibles</p>
+          <p class="text-3xl font-bold">{{ disponibilidades().almuerzo?.disponibles ?? 0 }}</p>
+        </div>
+
+        <div class="border-base-300 rounded-box border bg-white p-4">
+          <p class="text-sm font-semibold text-gray-500">Refrigerio disponibles</p>
+          <p class="text-3xl font-bold">{{ disponibilidades().refrigerio?.disponibles ?? 0 }}</p>
+        </div>
+      </div>
+
+      @if (message()) {
+        <div class="alert alert-success mb-4">
+          <span>{{ message() }}</span>
+        </div>
+      }
+
+      @if (errorMessage()) {
+        <div class="alert alert-error mb-4">
+          <span>{{ errorMessage() }}</span>
+        </div>
+      }
+
+      @if (selectedModule() === 'dashboard') {
+        <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 class="text-2xl font-bold">Frecuencia de uso</h2>
+            <p class="text-sm text-gray-600">Lectura diaria de solicitudes, reclamos y expiraciones.</p>
+          </div>
+          <button class="btn" (click)="refreshStats()">Actualizar</button>
+        </div>
+
+        <section class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-4">
+          <div class="border-base-300 rounded-box border bg-white p-4">
+            <p class="text-sm font-semibold text-gray-500">Uso efectivo</p>
+            <p class="text-4xl font-bold">{{ stats()?.frecuenciaUso ?? 0 }}%</p>
+          </div>
+          <div class="border-base-300 rounded-box border bg-white p-4">
+            <p class="text-sm font-semibold text-gray-500">Solicitudes</p>
+            <p class="text-4xl font-bold">{{ stats()?.totalSolicitudes ?? 0 }}</p>
+          </div>
+          <div class="border-base-300 rounded-box border bg-white p-4">
+            <p class="text-sm font-semibold text-gray-500">Reclamados</p>
+            <p class="text-4xl font-bold">{{ stats()?.reclamados ?? 0 }}</p>
+          </div>
+          <div class="border-base-300 rounded-box border bg-white p-4">
+            <p class="text-sm font-semibold text-gray-500">Expirados</p>
+            <p class="text-4xl font-bold">{{ stats()?.expirados ?? 0 }}</p>
+          </div>
+        </section>
+
+        <section class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <div class="border-base-300 rounded-box border bg-white p-4">
+            <h3 class="text-xl font-bold">Uso por tipo</h3>
+            <div class="mt-4 flex flex-col gap-3">
+              <div>
+                <div class="flex justify-between text-sm">
+                  <span>Almuerzo</span>
+                  <span>{{ stats()?.porTipo?.almuerzo ?? 0 }}</span>
+                </div>
+                <progress class="progress progress-error w-full" [value]="stats()?.porTipo?.almuerzo ?? 0" [max]="stats()?.totalSolicitudes || 1"></progress>
+              </div>
+              <div>
+                <div class="flex justify-between text-sm">
+                  <span>Refrigerio</span>
+                  <span>{{ stats()?.porTipo?.refrigerio ?? 0 }}</span>
+                </div>
+                <progress class="progress progress-error w-full" [value]="stats()?.porTipo?.refrigerio ?? 0" [max]="stats()?.totalSolicitudes || 1"></progress>
+              </div>
+            </div>
+          </div>
+
+          <div class="border-base-300 rounded-box border bg-white p-4">
+            <h3 class="text-xl font-bold">Uso por franja</h3>
+            <div class="mt-4 flex flex-col gap-3">
+              <div>
+                <div class="flex justify-between text-sm">
+                  <span>Subsidiado</span>
+                  <span>{{ stats()?.porModalidad?.subsidiado ?? 0 }}</span>
+                </div>
+                <progress class="progress progress-error w-full" [value]="stats()?.porModalidad?.subsidiado ?? 0" [max]="stats()?.totalSolicitudes || 1"></progress>
+              </div>
+              <div>
+                <div class="flex justify-between text-sm">
+                  <span>Venta libre</span>
+                  <span>{{ stats()?.porModalidad?.venta_libre ?? 0 }}</span>
+                </div>
+                <progress class="progress progress-error w-full" [value]="stats()?.porModalidad?.venta_libre ?? 0" [max]="stats()?.totalSolicitudes || 1"></progress>
+              </div>
+            </div>
+          </div>
+        </section>
+      }
+
+      @if (selectedModule() === 'bonos') {
+        <div class="flex items-center justify-between gap-3">
+          <h2 class="text-2xl font-bold">Bonos del dia</h2>
+          <button class="btn" (click)="refreshDisponibilidad()" [disabled]="loading()">Actualizar</button>
+        </div>
+
+        <div class="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
+          @for (tipo of tipos; track tipo) {
+            <section class="border-base-300 rounded-box border bg-white p-4">
+              <div class="mb-4 flex items-center justify-between gap-3">
+                <h3 class="text-xl font-bold capitalize">{{ tipo }}</h3>
+                <span class="text-sm font-semibold text-gray-500">
+                  Total operativo: {{ disponibilidades()[tipo]?.totalOperativo ?? 0 }}
+                </span>
+              </div>
+
+              <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
+                <div>
+                  <p class="text-sm text-gray-500">Base</p>
+                  <p class="text-2xl font-bold">{{ disponibilidades()[tipo]?.cantidadBase ?? 0 }}</p>
+                </div>
+                <div>
+                  <p class="text-sm text-gray-500">Extra</p>
+                  <p class="text-2xl font-bold">{{ disponibilidades()[tipo]?.cantidadExtra ?? 0 }}</p>
+                </div>
+                <div>
+                  <p class="text-sm text-gray-500">Reservados</p>
+                  <p class="text-2xl font-bold">{{ disponibilidades()[tipo]?.reservados ?? 0 }}</p>
+                </div>
+                <div>
+                  <p class="text-sm text-gray-500">Reclamados</p>
+                  <p class="text-2xl font-bold">{{ disponibilidades()[tipo]?.reclamados ?? 0 }}</p>
+                </div>
+                <div>
+                  <p class="text-sm text-gray-500">Expirados</p>
+                  <p class="text-2xl font-bold">{{ disponibilidades()[tipo]?.expirados ?? 0 }}</p>
+                </div>
+                <div>
+                  <p class="text-sm text-gray-500">Liberados</p>
+                  <p class="text-2xl font-bold">{{ disponibilidades()[tipo]?.expiradosLiberados ?? 0 }}</p>
+                </div>
+                <div>
+                  <p class="text-sm text-gray-500">Pendientes</p>
+                  <p class="text-2xl font-bold">{{ disponibilidades()[tipo]?.expiradosPendientes ?? 0 }}</p>
+                </div>
+                <div>
+                  <p class="text-sm text-gray-500">Disponibles</p>
+                  <p class="text-2xl font-bold">{{ disponibilidades()[tipo]?.disponibles ?? 0 }}</p>
+                </div>
+              </div>
+
+              <div class="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-3">
+                <div class="rounded-box bg-gray-100 p-3">
+                  <h4 class="font-bold">Cantidad base del dia</h4>
+                  <p class="text-sm text-gray-600">Define el cupo oficial diario para este tipo de bono.</p>
+                  <div class="mt-3 flex gap-2">
+                    <input
+                      type="number"
+                      min="1"
+                      class="input w-full"
+                      placeholder="Cantidad"
+                      [value]="disponibilidades()[tipo]?.cantidadBase ?? ''"
+                      (input)="setBaseCantidad(tipo, baseInput.value)"
+                      #baseInput
+                    />
+                    <button class="btn bg-red-600 text-white hover:bg-red-700" (click)="establecerBase(tipo)">
+                      Guardar
+                    </button>
+                  </div>
+                </div>
+
+                <div class="rounded-box bg-gray-100 p-3">
+                  <h4 class="font-bold">Carga extra</h4>
+                  <p class="text-sm text-gray-600">Aumenta el total autorizado del dia.</p>
+                  <div class="mt-3 flex gap-2">
+                    <input
+                      type="number"
+                      min="1"
+                      class="input w-full"
+                      placeholder="Cantidad"
+                      (input)="setExtraCantidad(tipo, extraInput.value)"
+                      #extraInput
+                    />
+                    <button class="btn bg-red-600 text-white hover:bg-red-700" (click)="cargarExtra(tipo)">
+                      Cargar
+                    </button>
+                  </div>
+                </div>
+
+                <div class="rounded-box bg-gray-100 p-3">
+                  <h4 class="font-bold">Liberar expirados</h4>
+                  <p class="text-sm text-gray-600">Recupera cupos vencidos sin aumentar el total.</p>
+                  <div class="mt-3 flex gap-2">
+                    <input
+                      type="number"
+                      min="1"
+                      class="input w-full"
+                      placeholder="Cantidad"
+                      (input)="setLiberarCantidad(tipo, liberarInput.value)"
+                      #liberarInput
+                    />
+                    <button class="btn bg-gray-800 text-white hover:bg-gray-900" (click)="liberarExpirados(tipo)">
+                      Liberar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </section>
+          }
+        </div>
+      }
+
+      @if (selectedModule() === 'resumen') {
+        <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 class="text-2xl font-bold">Resumen diario</h2>
+            <p class="text-sm text-gray-600">Reservas, expiraciones y reclamos registrados hoy.</p>
+          </div>
+          <div class="flex gap-2">
+            <button class="btn" (click)="descargarResumen()" [disabled]="loading()">Descargar Excel</button>
+            <button class="btn" (click)="refreshResumen()" [disabled]="loading()">Actualizar</button>
+          </div>
+        </div>
+
+        <section class="border-base-300 rounded-box mt-4 border bg-white p-4">
+          <div class="grid grid-cols-1 gap-3 md:grid-cols-5">
+            <select class="select w-full" (change)="setFiltroTipo(tipoSelect.value)" #tipoSelect>
+              <option value="">Todos los bonos</option>
+              <option value="almuerzo">Almuerzo</option>
+              <option value="refrigerio">Refrigerio</option>
+            </select>
+
+            <select class="select w-full" (change)="setFiltroModalidad(modalidadSelect.value)" #modalidadSelect>
+              <option value="">Todas las franjas</option>
+              <option value="subsidiado">Subsidiado</option>
+              <option value="venta_libre">Venta libre</option>
+            </select>
+
+            <select class="select w-full" (change)="setFiltroEstado(estadoSelect.value)" #estadoSelect>
+              <option value="">Todos los estados</option>
+              <option value="reservado">Reservado</option>
+              <option value="reclamado">Reclamado</option>
+              <option value="expirado">Expirado</option>
+            </select>
+
+            <input
+              type="text"
+              class="input w-full"
+              placeholder="Buscar codigo"
+              (input)="buscarCodigo(codigoInput.value)"
+              #codigoInput
+            />
+
+            <button class="btn" (click)="limpiarFiltros()">Limpiar</button>
+          </div>
+
+          <div class="mt-4 overflow-x-auto">
+            <table class="table table-sm">
+              <thead>
+                <tr>
+                  <th>Codigo</th>
+                  <th>Nombre</th>
+                  <th>Tipo</th>
+                  <th>Franja</th>
+                  <th>Estado</th>
+                  <th>Solicitud</th>
+                  <th>Reclamo</th>
+                  <th>Accion</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of resumenRows(); track row.id) {
+                  <tr>
+                    <td>{{ row.codigo }}</td>
+                    <td>{{ row.nombre }}</td>
+                    <td>{{ row.tipo }}</td>
+                    <td>{{ row.modalidad === 'venta_libre' ? 'Venta libre' : row.modalidad }}</td>
+                    <td>
+                      <span
+                        class="badge"
+                        [class.badge-warning]="row.estado === 'reservado'"
+                        [class.badge-success]="row.estado === 'reclamado'"
+                        [class.badge-error]="row.estado === 'expirado'"
+                      >
+                        {{ row.estado }}
+                      </span>
+                    </td>
+                    <td>{{ formatTime(row.hora_solicitud) }}</td>
+                    <td>{{ formatTime(row.hora_reclamo) }}</td>
+                    <td>
+                      <button
+                        class="btn btn-sm bg-red-600 text-white hover:bg-red-700"
+                        [disabled]="row.estado !== 'reservado' || loading()"
+                        (click)="marcarReclamado(row.id)"
+                      >
+                        Reclamar
+                      </button>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="8" class="text-center text-gray-500">No hay registros para los filtros actuales</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          <div class="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <p class="text-sm text-gray-600">
+              Total: {{ resumenTotal() }} registros · Pagina {{ resumenPage() }} de {{ resumenTotalPages() }}
+            </p>
+            <div class="join">
+              <button
+                class="btn join-item"
+                [disabled]="resumenPage() <= 1 || loading()"
+                (click)="refreshResumen(resumenPage() - 1)"
+              >
+                Anterior
+              </button>
+              <button
+                class="btn join-item"
+                [disabled]="resumenPage() >= resumenTotalPages() || loading()"
+                (click)="refreshResumen(resumenPage() + 1)"
+              >
+                Siguiente
+              </button>
+            </div>
+          </div>
+        </section>
+      }
+
+      @if (selectedModule() === 'estudiantes') {
+        <div>
+          <h2 class="text-2xl font-bold">Carga de estudiantes</h2>
+          <p class="text-sm text-gray-600">
+            Usa las plantillas para normalizar la base enviada por secretaria academica antes de cargarla.
+          </p>
+        </div>
+
+        <section class="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
+          <div class="border-base-300 rounded-box border bg-white p-4">
+            <h3 class="text-xl font-bold">Base general de estudiantes</h3>
+            <p class="mt-2 text-sm text-gray-600">
+              Crea estudiantes nuevos o actualiza datos existentes por codigo. Los estudiantes quedan como no
+              subsidiados hasta cargar la base de subsidios.
+            </p>
+
+            <div class="mt-4 flex flex-col gap-3">
+              <button class="btn" (click)="descargarPlantillaEstudiantes()">
+                Descargar plantilla estudiantes
+              </button>
+              <input
+                type="file"
+                class="file-input w-full"
+                accept=".xlsx,.xls"
+                (change)="setStudentsFile(studentsFileInput.files)"
+                #studentsFileInput
+              />
+              <button class="btn bg-red-600 text-white hover:bg-red-700" (click)="cargarEstudiantes()">
+                Cargar estudiantes
+              </button>
+            </div>
+          </div>
+
+          <div class="border-base-300 rounded-box border bg-white p-4">
+            <h3 class="text-xl font-bold">Estudiantes subsidiados</h3>
+            <p class="mt-2 text-sm text-gray-600">
+              Busca estudiantes existentes por codigo, los marca como subsidiados, asigna beca restaurante y reemplaza
+              sus dias de subsidio.
+            </p>
+
+            <div class="mt-4 flex flex-col gap-3">
+              <button class="btn" (click)="descargarPlantillaSubsidiados()">
+                Descargar plantilla subsidiados
+              </button>
+              <input
+                type="file"
+                class="file-input w-full"
+                accept=".xlsx,.xls"
+                (change)="setSubsidiesFile(subsidiesFileInput.files)"
+                #subsidiesFileInput
+              />
+              <button class="btn bg-gray-800 text-white hover:bg-gray-900" (click)="cargarSubsidiados()">
+                Cargar subsidiados
+              </button>
+            </div>
+          </div>
+        </section>
+
+        @if (importResult()) {
+          <section class="border-base-300 rounded-box mt-4 border bg-white p-4">
+            <h3 class="text-xl font-bold">Resultado de carga</h3>
+            <div class="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
+              <div>
+                <p class="text-sm text-gray-500">Procesados</p>
+                <p class="text-2xl font-bold">{{ importResult()?.result?.total ?? 0 }}</p>
+              </div>
+              <div>
+                <p class="text-sm text-gray-500">Creados</p>
+                <p class="text-2xl font-bold">{{ importResult()?.result?.created ?? 0 }}</p>
+              </div>
+              <div>
+                <p class="text-sm text-gray-500">Actualizados</p>
+                <p class="text-2xl font-bold">{{ importResult()?.result?.updated ?? 0 }}</p>
+              </div>
+              <div>
+                <p class="text-sm text-gray-500">No encontrados</p>
+                <p class="text-2xl font-bold">{{ importResult()?.result?.notFound ?? 0 }}</p>
+              </div>
+            </div>
+
+            @if ((importResult()?.result?.errors?.length ?? 0) > 0) {
+              <div class="mt-4 overflow-x-auto">
+                <table class="table table-sm">
+                  <thead>
+                    <tr>
+                      <th>Fila</th>
+                      <th>Error</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (error of importResult()?.result?.errors; track error.row) {
+                      <tr>
+                        <td>{{ error.row }}</td>
+                        <td>{{ error.message }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+          </section>
+        }
+      }
+    </section>
+  </main>
+</div>

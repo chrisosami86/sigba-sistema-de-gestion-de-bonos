@@ -1,0 +1,104 @@
+<main class="flex min-h-screen flex-col">
+  <section class="mx-auto flex w-full max-w-5xl flex-1 flex-col items-center justify-center gap-8 p-4 md:flex-row">
+    <div class="flex flex-col items-center gap-4 md:w-1/2">
+      <logo-sigba />
+      <div class="text-center">
+        <h1 class="text-3xl font-bold">Administrador SIGBA</h1>
+        <p class="mt-2 text-gray-600">Gestion de bonos del dia, cargas extra y liberacion de expirados.</p>
+      </div>
+    </div>
+
+    <form
+      class="fieldset bg-base-200 border-base-300 rounded-box w-full max-w-md border p-4 text-lg"
+      (submit)="$event.preventDefault(); login()"
+    >
+      <legend class="fieldset-legend">Ingreso administrador</legend>
+
+      <label class="label">Correo electronico</label>
+      <input
+        type="text"
+        inputmode="email"
+        class="input w-full"
+        placeholder="bienestar@gmail.com"
+        autocomplete="username"
+        [value]="correo()"
+        (input)="correo.set(txtCorreo.value)"
+        #txtCorreo
+      />
+
+      <label class="label">Contrasena</label>
+      <div class="join w-full">
+        <input
+          [type]="showPassword() ? 'text' : 'password'"
+          class="input join-item w-full"
+          placeholder="Contrasena"
+          autocomplete="current-password"
+          [value]="password()"
+          (input)="password.set(txtPassword.value)"
+          #txtPassword
+        />
+        <button type="button" class="btn join-item" (click)="showPassword.set(!showPassword())">
+          @if (showPassword()) {
+            Ocultar
+          } @else {
+            Ver
+          }
+        </button>
+      </div>
+
+      @if (errorMessage()) {
+        <div class="alert alert-error mt-4 text-sm">
+          <span>{{ errorMessage() }}</span>
+        </div>
+      }
+
+      <button
+        type="submit"
+        class="btn mt-4 bg-red-600 text-white hover:bg-red-700"
+        [disabled]="loading()"
+      >
+        @if (loading()) {
+          Ingresando...
+        } @else {
+          Ingresar
+        }
+      </button>
+
+      <div class="divider">o</div>
+
+      <label class="label">Recuperar contrasena</label>
+      <input
+        type="email"
+        class="input w-full"
+        placeholder="Correo del administrador"
+        [value]="recoveryCorreo()"
+        (input)="recoveryCorreo.set(txtRecoveryCorreo.value)"
+        #txtRecoveryCorreo
+      />
+
+      @if (recoveryMessage()) {
+        <div class="alert alert-success mt-3 text-sm">
+          <span>{{ recoveryMessage() }}</span>
+        </div>
+      }
+
+      @if (recoveryError()) {
+        <div class="alert alert-error mt-3 text-sm">
+          <span>{{ recoveryError() }}</span>
+        </div>
+      }
+
+      <button type="button" class="btn mt-2" [disabled]="recoveryLoading()" (click)="recoverPassword()">
+        @if (recoveryLoading()) {
+          Enviando...
+        } @else {
+          Enviar recuperacion
+        }
+      </button>
+
+      <a class="btn mt-2" href="/">Volver a estudiantes</a>
+    </form>
+  </section>
+
+  <footer-component />
+</main>

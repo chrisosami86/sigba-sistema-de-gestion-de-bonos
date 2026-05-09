@@ -1,53 +1,17 @@
-<div class="flex flex-col gap-1 bg-base-100 drop-shadow-md p-4 justify-center items-center">
-
-  <div class="flex gap-5 items-center flex-wrap justify-center">
-    @if (estadoSistema().tipo === 'almuerzo' && estadoSistema().estado == 'subsidiado') {
-    <p class="text-green-600 font-bold">Bono almuerzo subsidiado activo: </p>
-    <p>Tiempo restante:</p>
-    <h2 class="text-3xl">{{ tiempoRestante() }}</h2>
-    }
-
-    @else if (estadoSistema().tipo === 'almuerzo' && estadoSistema().estado == 'venta_libre') {
-    <p class="text-green-600 font-bold">Bono almuerzo venta libre activo: </p>
-    <h2 class="text-3xl">{{ tiempoRestante() }}</h2>
-    <div class="flex items-center gap-2">
-      <p class="font-bold">Candida de bonos: </p>
-      <p class="text-2xl">0</p>
+<section class="sticky top-0 z-20 bg-base-100 p-4 shadow-md">
+  <div class="mx-auto flex max-w-5xl flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+    <div>
+      <p class="text-sm font-semibold text-gray-500">Hora actual</p>
+      <h2 class="text-3xl font-bold">{{ horaActual() }}</h2>
     </div>
-    }
 
-    @else if (estadoSistema().tipo === 'refrigerio' && estadoSistema().estado == 'subsidiado') {
-    <p class="text-green-600 font-bold">Bono refrigerio subsidiado activo:</p>
-    <h2 class="text-3xl">{{ tiempoRestante() }}</h2>
-    }
-
-    @else if (estadoSistema().tipo === 'refrigerio' && estadoSistema().estado == 'venta_libre') {
-    <p class="text-green-600 font-bold">Bono refrigerio venta libre activo:</p>
-    <h2 class="text-3xl">{{ tiempoRestante() }}</h2>
-    <div class="flex items-center gap-2">
-      <p class="font-bold">Candida de bonos: </p>
-      <p class="text-2xl">0</p>
+    <div class="text-left sm:text-right">
+      <p class="font-bold" [class]="errorMessage() ? 'text-red-700' : 'text-green-700'">
+        {{ errorMessage() || mensajePrincipal() }}
+      </p>
+      @if (loading()) {
+        <p class="text-sm text-gray-500">Actualizando informacion...</p>
+      }
     </div>
-    }
-    @else if (estadoSistema().tipo === 'almuerzo' && estadoSistema().estado === 'espera') {
-    <p class="text-yellow-600 font-bold">Esperando venta libre de almuerzo</p>
-    <p>Disponible en:</p>
-    <h2 class="text-3xl">{{ tiempoRestante() }}</h2>
-    }
-    @else if (estadoSistema().tipo === 'refrigerio' && estadoSistema().estado === 'espera') {
-    <p class="text-yellow-600 font-bold">Esperando venta libre de refrigerio</p>
-    <p>Disponible en:</p>
-    <h2 class="text-3xl">{{ tiempoRestante() }}</h2>
-    }
-    @else {
-    <p class="text-yellow-600 font-bold">Fuera de tiempo</p>
-    }
-
-    <!-- @else {
-    <p class="text-blue-600 font-bold">Venta libre disponible</p>
-    } -->
-
   </div>
-
-
-</div>
+</section>

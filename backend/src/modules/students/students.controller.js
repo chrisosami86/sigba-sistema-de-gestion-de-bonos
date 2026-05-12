@@ -40,6 +40,23 @@ const getStudentById = async (req, res) => {
   }
 };
 
+const getStudentByCodigo = async (req, res) => {
+  try {
+    const { codigo } = req.params;
+
+    const student = await studentService.getStudentByCodigo(codigo);
+
+    if (!student) {
+      return res.status(404).json({ message: 'Estudiante no encontrado' });
+    }
+
+    res.json(student);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Error obteniendo estudiante' });
+  }
+};
+
 const updateStudent = async (req, res) => {
   try {
     const { id } = req.params;
@@ -120,4 +137,5 @@ module.exports = {
   deleteStudent,
   importStudents,
   importSubsidies,
+  getStudentByCodigo,
 };

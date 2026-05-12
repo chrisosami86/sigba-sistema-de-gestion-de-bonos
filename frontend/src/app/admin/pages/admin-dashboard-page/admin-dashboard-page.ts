@@ -1,6 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
+import * as XLSX from 'xlsx';
 import {
   BonoResumenDiarioRow,
   BonoStatsDiarias,
@@ -294,7 +295,7 @@ export class AdminDashboardPage {
       ['20231234', 'CC', '12345678', 'Nombre Apellido', 'estudiante@correo.com', '2711', 'Desarrollo de software'],
     ];
 
-    this.downloadExcelTemplate('plantilla-estudiantes-sigba.xls', 'Plantilla estudiantes', rows);
+    this.downloadExcelTemplate('plantilla-estudiantes-sigba.xlsx', 'Plantilla estudiantes', rows);
   }
 
   descargarPlantillaSubsidiados() {
@@ -303,7 +304,7 @@ export class AdminDashboardPage {
       ['20231234', 'si', 'lunes,martes,miercoles'],
     ];
 
-    this.downloadExcelTemplate('plantilla-subsidiados-sigba.xls', 'Plantilla subsidiados', rows);
+    this.downloadExcelTemplate('plantilla-subsidiados-sigba.xlsx', 'Plantilla subsidiados', rows);
   }
 
   private runAdminAction(action: () => ReturnType<BonosService['cargarExtra']>, successMessage: string) {
@@ -345,41 +346,19 @@ export class AdminDashboardPage {
     });
   }
 
-  private downloadExcelTemplate(filename: string, title: string, rows: string[][]) {
-    const tableRows = rows
-      .map((row, index) => {
-        const tag = index === 0 ? 'th' : 'td';
-        return `<tr>${row.map((cell) => `<${tag}>${cell}</${tag}>`).join('')}</tr>`;
-      })
-      .join('');
-    const html = `
-      <html>
-        <head>
-          <meta charset="UTF-8" />
-          <style>
-            body { font-family: Arial, sans-serif; }
-            h1 { color: #991b1b; }
-            table { border-collapse: collapse; width: 100%; }
-            th { background: #991b1b; color: #fff; }
-            th, td { border: 1px solid #d1d5db; padding: 8px; text-align: left; }
-            td { mso-number-format: "\\@"; }
-          </style>
-        </head>
-        <body>
-          <h1>${title}</h1>
-          <table>${tableRows}</table>
-        </body>
-      </html>
-    `;
-    const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
+  private downloadExcelTemplate(
+  filename: string,
+  sheetName: string,
+  rows: string[][]
+) {
+  const worksheet = XLSX.utils.aoa_to_sheet(rows);
 
-    link.href = url;
-    link.download = filename;
-    link.click();
-    URL.revokeObjectURL(url);
-  }
+  const workbook = XLSX.utils.book_new();
+
+  XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+
+  XLSX.writeFile(workbook, filename);
+}
 
   private buildExcelResumen(rows: BonoResumenDiarioRow[]) {
     const sections = [

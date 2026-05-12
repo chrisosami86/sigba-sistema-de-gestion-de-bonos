@@ -13,6 +13,8 @@ router.post('/import/subsidies', upload.single('file'), studentController.import
 
 router.get('/:id', studentController.getStudentById);
 
+router.get('/code/:codigo', studentController.getStudentByCodigo);
+
 router.post('/', studentController.createStudent);
 
 router.patch('/:id', studentController.updateStudent);

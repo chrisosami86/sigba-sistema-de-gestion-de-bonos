@@ -188,6 +188,55 @@ const getStudentById = async (id) => {
   return student;
 };
 
+const getStudentByCodigo = async (codigo) => {
+  const query = `
+    SELECT 
+      s.id,
+      s.codigo,
+      s.tipo_documento,
+      s.numero_documento,
+      s.nombre,
+      s.correo,
+      s.programa_codigo,
+      s.programa_nombre,
+      s.tipo_estudiante,
+      sub.tiene_beca,
+      sd.dia
+    FROM students s
+    LEFT JOIN subsidies sub ON sub.student_id = s.id
+    LEFT JOIN subsidy_days sd ON sd.subsidy_id = sub.id
+    WHERE s.codigo = $1;
+  `;
+
+  const result = await pool.query(query, [codigo]);
+
+  if (result.rows.length === 0) {
+    return null;
+  }
+
+  const student = {
+    id: result.rows[0].id,
+    codigo: result.rows[0].codigo,
+    tipo_documento: result.rows[0].tipo_documento,
+    numero_documento: result.rows[0].numero_documento,
+    nombre: result.rows[0].nombre,
+    correo: result.rows[0].correo,
+    programa_codigo: result.rows[0].programa_codigo,
+    programa_nombre: result.rows[0].programa_nombre,
+    tipo_estudiante: result.rows[0].tipo_estudiante,
+    tiene_beca: result.rows[0].tiene_beca || false,
+    dias: [],
+  };
+
+  for (const row of result.rows) {
+    if (row.dia) {
+      student.dias.push(row.dia);
+    }
+  }
+
+  return student;
+};
+
 const updateStudent = async (id, data) => {
   const client = await pool.connect();
 
@@ -305,7 +354,13 @@ const deleteStudent = async (id) => {
 
 const importStudentsFromExcel = async (buffer) => {
   const rows = readExcelRows(buffer);
+
+  if (!rows.length) {
+    throw new Error("El archivo no contiene datos válidos");
+  }
+
   const client = await pool.connect();
+
   const result = {
     total: rows.length,
     created: 0,
@@ -314,19 +369,18 @@ const importStudentsFromExcel = async (buffer) => {
   };
 
   try {
-    await client.query("BEGIN");
-
     for (const [index, row] of rows.entries()) {
       try {
         const data = normalizeStudentRow(row);
 
-        if (!data.codigo || !data.numero_documento || !data.nombre || !data.correo) {
+        if (!data.codigo || !data.numero_documento || !data.nombre) {
           throw new Error("Faltan campos obligatorios");
         }
 
-        const existing = await client.query("SELECT id FROM students WHERE codigo = $1", [
-          data.codigo,
-        ]);
+        const existing = await client.query(
+          "SELECT id FROM students WHERE codigo = $1",
+          [data.codigo]
+        );
 
         const upsertQuery = `
           INSERT INTO students (
@@ -348,7 +402,6 @@ const importStudentsFromExcel = async (buffer) => {
             correo = EXCLUDED.correo,
             programa_codigo = EXCLUDED.programa_codigo,
             programa_nombre = EXCLUDED.programa_nombre
-          RETURNING id
         `;
 
         await client.query(upsertQuery, [
@@ -356,7 +409,7 @@ const importStudentsFromExcel = async (buffer) => {
           data.tipo_documento,
           data.numero_documento,
           data.nombre,
-          data.correo,
+          data.correo || null,
           data.programa_codigo,
           data.programa_nombre,
           "no_subsidiado",
@@ -375,12 +428,7 @@ const importStudentsFromExcel = async (buffer) => {
       }
     }
 
-    await client.query("COMMIT");
-
     return result;
-  } catch (error) {
-    await client.query("ROLLBACK");
-    throw error;
   } finally {
     client.release();
   }
@@ -388,7 +436,13 @@ const importStudentsFromExcel = async (buffer) => {
 
 const importSubsidiesFromExcel = async (buffer) => {
   const rows = readExcelRows(buffer);
+
+  if (!rows.length) {
+    throw new Error("El archivo no contiene datos válidos");
+  }
+
   const client = await pool.connect();
+
   const result = {
     total: rows.length,
     updated: 0,
@@ -397,8 +451,6 @@ const importSubsidiesFromExcel = async (buffer) => {
   };
 
   try {
-    await client.query("BEGIN");
-
     for (const [index, row] of rows.entries()) {
       try {
         const data = normalizeSubsidyRow(row);
@@ -413,29 +465,40 @@ const importSubsidiesFromExcel = async (buffer) => {
 
         const studentResult = await client.query(
           "UPDATE students SET tipo_estudiante = 'subsidiado' WHERE codigo = $1 RETURNING id",
-          [data.codigo],
+          [data.codigo]
         );
 
         if (studentResult.rows.length === 0) {
           result.notFound += 1;
+
           result.errors.push({
             row: index + 2,
             message: "Estudiante no encontrado en la base general",
           });
+
           continue;
         }
 
         const studentId = studentResult.rows[0].id;
-        const subsidyResult = await getOrCreateSubsidy(client, studentId, data.tiene_beca);
+
+        const subsidyResult = await getOrCreateSubsidy(
+          client,
+          studentId,
+          data.tiene_beca
+        );
+
         const subsidy = subsidyResult.rows[0];
 
-        await client.query("DELETE FROM subsidy_days WHERE subsidy_id = $1", [subsidy.id]);
+        await client.query(
+          "DELETE FROM subsidy_days WHERE subsidy_id = $1",
+          [subsidy.id]
+        );
 
         for (const dia of data.dias) {
-          await client.query("INSERT INTO subsidy_days (subsidy_id, dia) VALUES ($1, $2)", [
-            subsidy.id,
-            dia,
-          ]);
+          await client.query(
+            "INSERT INTO subsidy_days (subsidy_id, dia) VALUES ($1, $2)",
+            [subsidy.id, dia]
+          );
         }
 
         result.updated += 1;
@@ -447,12 +510,7 @@ const importSubsidiesFromExcel = async (buffer) => {
       }
     }
 
-    await client.query("COMMIT");
-
     return result;
-  } catch (error) {
-    await client.query("ROLLBACK");
-    throw error;
   } finally {
     client.release();
   }
@@ -558,4 +616,5 @@ module.exports = {
   deleteStudent,
   importStudentsFromExcel,
   importSubsidiesFromExcel,
+  getStudentByCodigo,
 };

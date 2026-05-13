@@ -73,9 +73,24 @@ const recoverAdminPassword = async (req, res) => {
   }
 };
 
+const changeAdminPassword = async (req, res) => {
+  try {
+    const result = await authService.changeAdminPassword(req.body);
+
+    res.status(200).json(result);
+  } catch (error) {
+    console.error(error);
+
+    res.status(400).json({
+      message: error.message,
+    });
+  }
+};
+
 module.exports = {
   loginStudent,
   loginAdmin,
   recoverStudentPassword,
   recoverAdminPassword,
+  changeAdminPassword,
 };

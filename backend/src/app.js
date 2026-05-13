@@ -18,6 +18,7 @@ const authRoutes = require('./modules/auth/auth.routes');
 
 app.use('/api/students', studentRoutes);
 app.use('/api/time', systemRoutes);
+app.use('/api/system', systemRoutes);
 app.use('/api/bonos', bonosRoutes);
 app.use('/api/auth', authRoutes);
 

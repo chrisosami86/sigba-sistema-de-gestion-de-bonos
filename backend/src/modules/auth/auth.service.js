@@ -1,13 +1,15 @@
 
 const pool = require("../../config/db");
 const { sendMail } = require("../../config/mailer");
+const fs = require("fs");
+const path = require("path");
 
 const ADMIN_USER = {
   id: 1,
   nombre: "Carolina",
   correo: "bienestar@gmail.com",
   telefono: "3185557421",
-  password: "admin123",
+  password: process.env.ADMIN_PASSWORD || "admin123",
 };
 
 const loginStudent = async ({ codigo, password }) => {
@@ -170,10 +172,46 @@ const buildRecoveryEmail = ({ name, userLabel, userValue, password }) => {
     </div>
   `;
 };
+const changeAdminPassword = async ({ currentPassword, newPassword }) => {
+  if (!currentPassword || !newPassword) {
+    throw new Error("Contrasena actual y nueva son obligatorias");
+  }
+
+  if (currentPassword !== ADMIN_USER.password) {
+    throw new Error("Contrasena actual incorrecta");
+  }
+
+  if (newPassword.length < 6) {
+    throw new Error("La nueva contrasena debe tener al menos 6 caracteres");
+  }
+
+  ADMIN_USER.password = newPassword;
+
+  try {
+    const envPath = path.join(__dirname, "..", "..", "..", ".env");
+    let envContent = fs.readFileSync(envPath, "utf8");
+
+    if (envContent.includes("ADMIN_PASSWORD=")) {
+      envContent = envContent.replace(
+        /ADMIN_PASSWORD=.*(\r?\n|$)/g,
+        `ADMIN_PASSWORD=${newPassword}\n`,
+      );
+    } else {
+      envContent += `\nADMIN_PASSWORD=${newPassword}\n`;
+    }
+
+    fs.writeFileSync(envPath, envContent);
+  } catch (err) {
+    console.error("No se pudo persistir la contrasena en .env:", err.message);
+  }
+
+  return { message: "Contrasena actualizada correctamente" };
+};
 
 module.exports = {
   loginStudent,
   loginAdmin,
   recoverStudentPassword,
   recoverAdminPassword,
+  changeAdminPassword,
 };

@@ -76,45 +76,84 @@ const createStudent = async (data) => {
 };
 
 const getStudents = async (filters) => {
+  const { tipo, dia, beca, codigo, activo, page, limit } = filters;
+
+  const conditions = [];
+  const values = [];
+  let paramIndex = 0;
+
+  const nextParam = () => {
+    paramIndex++;
+    return `$${paramIndex}`;
+  };
+
+  // filtro por tipo
+  if (tipo) {
+    values.push(tipo);
+    conditions.push(`s.tipo_estudiante = ${nextParam()}`);
+  }
+
+  // filtro por día
+  if (dia) {
+    values.push(dia);
+    conditions.push(`sd.dia = ${nextParam()}`);
+  }
+
+  // filtro por beca
+  if (beca !== undefined && beca !== '') {
+    values.push(beca === 'true');
+    conditions.push(`sub.tiene_beca = ${nextParam()}`);
+  }
+
+  // búsqueda por código
+  if (codigo) {
+    values.push(`%${codigo}%`);
+    conditions.push(`s.codigo ILIKE ${nextParam()}`);
+  }
+
+  // filtro por activo
+  if (activo !== undefined && activo !== '') {
+    values.push(activo === 'true');
+    conditions.push(`s.activo = ${nextParam()}`);
+  }
+
+  const whereClause = conditions.length > 0 ? ` WHERE ` + conditions.join(" AND ") : '';
+
+  // contar total
+  const countQuery = `SELECT COUNT(DISTINCT s.id)::int AS total FROM students s LEFT JOIN subsidies sub ON sub.student_id = s.id LEFT JOIN subsidy_days sd ON sd.subsidy_id = sub.id${whereClause}`;
+  const countResult = await pool.query(countQuery, values);
+  const total = countResult.rows[0].total;
+
+  // paginados
+  const pPage = Math.max(1, Number(page) || 1);
+  const pLimit = Math.max(1, Math.min(100, Number(limit) || 20));
+  const offset = (pPage - 1) * pLimit;
+
   let query = `
     SELECT 
       s.id,
       s.codigo,
+      s.tipo_documento,
+      s.numero_documento,
       s.nombre,
       s.correo,
+      s.programa_codigo,
+      s.programa_nombre,
       s.tipo_estudiante,
+      s.periodo_actual,
+      s.activo,
       sub.tiene_beca,
       sd.dia
     FROM students s
     LEFT JOIN subsidies sub ON sub.student_id = s.id
     LEFT JOIN subsidy_days sd ON sd.subsidy_id = sub.id
+    ${whereClause}
+    ORDER BY s.codigo
+    LIMIT ${pLimit} OFFSET ${offset};
   `;
-
-  const conditions = [];
-  const values = [];
-
-  // filtro por tipo
-  if (filters.tipo) {
-    values.push(filters.tipo);
-    conditions.push(`s.tipo_estudiante = $${values.length}`);
-  }
-
-  // filtro por día
-  if (filters.dia) {
-    values.push(filters.dia);
-    conditions.push(`sd.dia = $${values.length}`);
-  }
-
-  // agregar condiciones si existen
-  if (conditions.length > 0) {
-    query += ` WHERE ` + conditions.join(" AND ");
-  }
-
-  query += ` ORDER BY s.id;`;
 
   const result = await pool.query(query, values);
 
-  // 🔄 misma transformación de antes
   const studentsMap = {};
 
   for (const row of result.rows) {
@@ -122,9 +161,15 @@ const getStudents = async (filters) => {
       studentsMap[row.id] = {
         id: row.id,
         codigo: row.codigo,
+        tipo_documento: row.tipo_documento,
+        numero_documento: row.numero_documento,
         nombre: row.nombre,
         correo: row.correo,
+        programa_codigo: row.programa_codigo,
+        programa_nombre: row.programa_nombre,
         tipo_estudiante: row.tipo_estudiante,
+        periodo_actual: row.periodo_actual,
+        activo: row.activo,
         tiene_beca: row.tiene_beca || false,
         dias: [],
       };
@@ -135,7 +180,13 @@ const getStudents = async (filters) => {
     }
   }
 
-  return Object.values(studentsMap);
+  return {
+    total,
+    page: pPage,
+    limit: pLimit,
+    totalPages: Math.ceil(total / pLimit),
+    rows: Object.values(studentsMap),
+  };
 };
 
 const getStudentById = async (id) => {
@@ -352,11 +403,24 @@ const deleteStudent = async (id) => {
   return result.rows[0];
 };
 
+const toggleStudentActivo = async (id) => {
+  const result = await pool.query(
+    `UPDATE students SET activo = NOT activo WHERE id = $1 RETURNING *`,
+    [id],
+  );
+
+  if (result.rows.length === 0) {
+    return null;
+  }
+
+  return result.rows[0];
+};
+
 const importStudentsFromExcel = async (buffer) => {
   const rows = readExcelRows(buffer);
 
   if (!rows.length) {
-    throw new Error("El archivo no contiene datos válidos");
+    throw new Error("El archivo no contiene datos validos");
   }
 
   const client = await pool.connect();
@@ -365,10 +429,20 @@ const importStudentsFromExcel = async (buffer) => {
     total: rows.length,
     created: 0,
     updated: 0,
+    deactivated: 0,
     errors: [],
   };
 
   try {
+    // Obtener el periodo actual del sistema
+    const settingsRes = await client.query(
+      "SELECT periodo_actual FROM system_settings WHERE id = 1",
+    );
+    const periodoActual = settingsRes.rows[0]?.periodo_actual || "2026-1";
+
+    // Lista de codigos procesados en esta carga
+    const processedCodes = [];
+
     for (const [index, row] of rows.entries()) {
       try {
         const data = normalizeStudentRow(row);
@@ -377,9 +451,11 @@ const importStudentsFromExcel = async (buffer) => {
           throw new Error("Faltan campos obligatorios");
         }
 
+        processedCodes.push(data.codigo);
+
         const existing = await client.query(
           "SELECT id FROM students WHERE codigo = $1",
-          [data.codigo]
+          [data.codigo],
         );
 
         const upsertQuery = `
@@ -391,9 +467,11 @@ const importStudentsFromExcel = async (buffer) => {
             correo,
             programa_codigo,
             programa_nombre,
-            tipo_estudiante
+            tipo_estudiante,
+            periodo_actual,
+            activo
           )
-          VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9, true)
           ON CONFLICT (codigo)
           DO UPDATE SET
             tipo_documento = EXCLUDED.tipo_documento,
@@ -401,7 +479,9 @@ const importStudentsFromExcel = async (buffer) => {
             nombre = EXCLUDED.nombre,
             correo = EXCLUDED.correo,
             programa_codigo = EXCLUDED.programa_codigo,
-            programa_nombre = EXCLUDED.programa_nombre
+            programa_nombre = EXCLUDED.programa_nombre,
+            periodo_actual = EXCLUDED.periodo_actual,
+            activo = true
         `;
 
         await client.query(upsertQuery, [
@@ -413,6 +493,7 @@ const importStudentsFromExcel = async (buffer) => {
           data.programa_codigo,
           data.programa_nombre,
           "no_subsidiado",
+          periodoActual,
         ]);
 
         if (existing.rows.length > 0) {
@@ -426,6 +507,16 @@ const importStudentsFromExcel = async (buffer) => {
           message: error.message,
         });
       }
+    }
+
+    // Desactivar estudiantes que no estan en el Excel cargado
+    if (processedCodes.length > 0) {
+      const deactivated = await client.query(
+        `UPDATE students SET activo = false
+         WHERE codigo NOT IN (SELECT unnest($1::text[]))`,
+        [processedCodes],
+      );
+      result.deactivated = deactivated.rowCount || 0;
     }
 
     return result;
@@ -614,6 +705,7 @@ module.exports = {
   getStudentById,
   updateStudent,
   deleteStudent,
+  toggleStudentActivo,
   importStudentsFromExcel,
   importSubsidiesFromExcel,
   getStudentByCodigo,

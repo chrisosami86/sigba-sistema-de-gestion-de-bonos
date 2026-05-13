@@ -12,4 +12,6 @@ router.post("/students/recover-password", authController.recoverStudentPassword)
 
 router.post("/admins/recover-password", authController.recoverAdminPassword);
 
+router.patch("/admins/change-password", authController.changeAdminPassword);
+
 module.exports = router;

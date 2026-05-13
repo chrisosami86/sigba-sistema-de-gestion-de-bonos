@@ -1,19 +1,18 @@
 # --- Dependencias de Node (Fundamentales) ---
-# Ignora las carpetas de librerías de ambos proyectos (front y back)
-node_modules/
+**/node_modules/
 dist/
 tmp/
 out-tsc/
 bazel-out/
+.pnpm-store/
+.pnpm-home/
 
 # --- Angular (Cosas específicas) ---
 .angular/
 .browserslistrc
-# Archivos de caché de compilación
 .sass-cache/
 
 # --- Backend & Variables de Entorno (CRÍTICO) ---
-# Nunca subas tus contraseñas de la base de datos a Git
 .env
 .env.local
 .env.*.local
@@ -22,11 +21,11 @@ bazel-out/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
 logs/
 *.log
 
 # --- Base de Datos & Docker ---
-# Si usas Docker para PostgreSQL, esto evita subir los datos reales
 .docker/
 docker-volumes/
 pgdata/

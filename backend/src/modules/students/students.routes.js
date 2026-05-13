@@ -19,6 +19,8 @@ router.post('/', studentController.createStudent);
 
 router.patch('/:id', studentController.updateStudent);
 
+router.patch('/:id/toggle-activo', studentController.toggleStudentActivo);
+
 router.delete('/:id', studentController.deleteStudent);
 
 

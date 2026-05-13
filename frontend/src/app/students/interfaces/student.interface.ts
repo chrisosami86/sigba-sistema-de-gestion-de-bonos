@@ -8,6 +8,8 @@ export interface Student {
   programa_codigo:  string;
   programa_nombre:  string;
   tipo_estudiante:  string;
+  periodo_actual:   string | null;
+  activo:           boolean;
   tiene_beca:       boolean;
   dias:             string[];
 }

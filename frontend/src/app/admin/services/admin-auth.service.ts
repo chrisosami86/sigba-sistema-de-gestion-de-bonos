@@ -34,6 +34,13 @@ export class AdminAuthService {
     });
   }
 
+  changePassword(currentPassword: string, newPassword: string) {
+    return this.http.patch<{ message: string }>(`${this.apiUrl}/api/auth/admins/change-password`, {
+      currentPassword,
+      newPassword,
+    });
+  }
+
   logout() {
     sessionStorage.removeItem(ADMIN_SESSION_KEY);
     this.currentAdmin.set(null);

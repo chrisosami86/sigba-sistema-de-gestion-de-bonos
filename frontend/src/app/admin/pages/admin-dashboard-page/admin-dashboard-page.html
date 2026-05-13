@@ -6,40 +6,31 @@
     </div>
 
     <nav class="flex flex-col gap-2">
-      <button
-        class="btn justify-start"
+      <button class="btn justify-start"
         [class.btn-error]="selectedModule() === 'dashboard'"
         [class.text-white]="selectedModule() === 'dashboard'"
-        (click)="selectedModule.set('dashboard')"
-      >
-        Dashboard
-      </button>
-      <button
-        class="btn justify-start"
+        (click)="selectedModule.set('dashboard')">Dashboard</button>
+      <button class="btn justify-start"
         [class.btn-error]="selectedModule() === 'bonos'"
         [class.text-white]="selectedModule() === 'bonos'"
-        (click)="selectedModule.set('bonos')"
-      >
-        Bonos del dia
-      </button>
-      <button
-        class="btn justify-start"
+        (click)="selectedModule.set('bonos')">Bonos del dia</button>
+      <button class="btn justify-start"
         [class.btn-error]="selectedModule() === 'resumen'"
         [class.text-white]="selectedModule() === 'resumen'"
-        (click)="selectedModule.set('resumen')"
-      >
-        Resumen diario
-      </button>
+        (click)="selectedModule.set('resumen')">Resumen diario</button>
+      <button class="btn justify-start"
+        [class.btn-error]="selectedModule() === 'gestion_estudiantes'"
+        [class.text-white]="selectedModule() === 'gestion_estudiantes'"
+        (click)="selectedModule.set('gestion_estudiantes'); refreshEstudiantes()">Gestion de estudiantes</button>
+      <button class="btn justify-start"
+        [class.btn-error]="selectedModule() === 'base_de_datos'"
+        [class.text-white]="selectedModule() === 'base_de_datos'"
+        (click)="selectedModule.set('base_de_datos')">Base de datos</button>
       <button class="btn justify-start" disabled>Reportes</button>
-      <button
-        class="btn justify-start"
-        [class.btn-error]="selectedModule() === 'estudiantes'"
-        [class.text-white]="selectedModule() === 'estudiantes'"
-        (click)="selectedModule.set('estudiantes')"
-      >
-        Estudiantes
-      </button>
-      <button class="btn justify-start" disabled>Configuracion</button>
+      <button class="btn justify-start"
+        [class.btn-error]="selectedModule() === 'configuracion'"
+        [class.text-white]="selectedModule() === 'configuracion'"
+        (click)="selectedModule.set('configuracion'); loadSystemConfig()">Configuracion</button>
     </nav>
   </aside>
 
@@ -50,215 +41,161 @@
         <h2 class="text-2xl font-bold">{{ admin()?.nombre }}</h2>
         <p class="text-sm text-gray-600">{{ admin()?.correo }} · {{ admin()?.telefono }}</p>
       </div>
-
       <button class="btn bg-gray-800 text-white hover:bg-gray-900" (click)="logout()">Salir</button>
     </header>
 
     <section class="p-4">
+      @if (loading()) {
+      <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+        <div class="flex flex-col items-center gap-3 rounded-box bg-white p-8 shadow-xl">
+          <span class="loading loading-spinner loading-lg text-red-600"></span>
+          <p class="text-sm font-semibold text-gray-600">Procesando...</p>
+        </div>
+      </div>
+      }
+
+      @if (showBonoCards()) {
       <div class="mb-4 grid grid-cols-1 gap-3 md:grid-cols-3">
         <div class="border-base-300 rounded-box border bg-white p-4">
           <p class="text-sm font-semibold text-gray-500">Disponibles totales</p>
           <p class="text-3xl font-bold">{{ totalDisponible() }}</p>
         </div>
-
         <div class="border-base-300 rounded-box border bg-white p-4">
           <p class="text-sm font-semibold text-gray-500">Almuerzo disponibles</p>
           <p class="text-3xl font-bold">{{ disponibilidades().almuerzo?.disponibles ?? 0 }}</p>
         </div>
-
         <div class="border-base-300 rounded-box border bg-white p-4">
           <p class="text-sm font-semibold text-gray-500">Refrigerio disponibles</p>
           <p class="text-3xl font-bold">{{ disponibilidades().refrigerio?.disponibles ?? 0 }}</p>
         </div>
       </div>
+      }
 
       @if (message()) {
-        <div class="alert alert-success mb-4">
-          <span>{{ message() }}</span>
-        </div>
+        <div class="alert alert-success mb-4"><span>{{ message() }}</span></div>
       }
-
       @if (errorMessage()) {
-        <div class="alert alert-error mb-4">
-          <span>{{ errorMessage() }}</span>
-        </div>
+        <div class="alert alert-error mb-4"><span>{{ errorMessage() }}</span></div>
       }
 
+      <!-- ==================== DASHBOARD ==================== -->
       @if (selectedModule() === 'dashboard') {
-        <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h2 class="text-2xl font-bold">Frecuencia de uso</h2>
-            <p class="text-sm text-gray-600">Lectura diaria de solicitudes, reclamos y expiraciones.</p>
+        @if (systemSettings()?.periodo_actual) {
+          <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h2 class="text-2xl font-bold">Frecuencia de uso</h2>
+              <p class="text-sm text-gray-600">Lectura diaria de solicitudes, reclamos y expiraciones. Periodo: {{ systemSettings()?.periodo_actual }}</p>
+            </div>
+            <button class="btn" (click)="refreshStats()">Actualizar</button>
           </div>
-          <button class="btn" (click)="refreshStats()">Actualizar</button>
-        </div>
-
-        <section class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-4">
-          <div class="border-base-300 rounded-box border bg-white p-4">
-            <p class="text-sm font-semibold text-gray-500">Uso efectivo</p>
-            <p class="text-4xl font-bold">{{ stats()?.frecuenciaUso ?? 0 }}%</p>
-          </div>
-          <div class="border-base-300 rounded-box border bg-white p-4">
-            <p class="text-sm font-semibold text-gray-500">Solicitudes</p>
-            <p class="text-4xl font-bold">{{ stats()?.totalSolicitudes ?? 0 }}</p>
-          </div>
-          <div class="border-base-300 rounded-box border bg-white p-4">
-            <p class="text-sm font-semibold text-gray-500">Reclamados</p>
-            <p class="text-4xl font-bold">{{ stats()?.reclamados ?? 0 }}</p>
-          </div>
-          <div class="border-base-300 rounded-box border bg-white p-4">
-            <p class="text-sm font-semibold text-gray-500">Expirados</p>
-            <p class="text-4xl font-bold">{{ stats()?.expirados ?? 0 }}</p>
-          </div>
-        </section>
-
-        <section class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <div class="border-base-300 rounded-box border bg-white p-4">
-            <h3 class="text-xl font-bold">Uso por tipo</h3>
-            <div class="mt-4 flex flex-col gap-3">
-              <div>
-                <div class="flex justify-between text-sm">
-                  <span>Almuerzo</span>
-                  <span>{{ stats()?.porTipo?.almuerzo ?? 0 }}</span>
+          <section class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-4">
+            <div class="border-base-300 rounded-box border bg-white p-4">
+              <p class="text-sm font-semibold text-gray-500">Uso efectivo</p>
+              <p class="text-4xl font-bold">{{ stats()?.frecuenciaUso ?? 0 }}%</p>
+            </div>
+            <div class="border-base-300 rounded-box border bg-white p-4">
+              <p class="text-sm font-semibold text-gray-500">Solicitudes</p>
+              <p class="text-4xl font-bold">{{ stats()?.totalSolicitudes ?? 0 }}</p>
+            </div>
+            <div class="border-base-300 rounded-box border bg-white p-4">
+              <p class="text-sm font-semibold text-gray-500">Reclamados</p>
+              <p class="text-4xl font-bold">{{ stats()?.reclamados ?? 0 }}</p>
+            </div>
+            <div class="border-base-300 rounded-box border bg-white p-4">
+              <p class="text-sm font-semibold text-gray-500">Expirados</p>
+              <p class="text-4xl font-bold">{{ stats()?.expirados ?? 0 }}</p>
+            </div>
+          </section>
+          <section class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <div class="border-base-300 rounded-box border bg-white p-4">
+              <h3 class="text-xl font-bold">Uso por tipo</h3>
+              <div class="mt-4 flex flex-col gap-3">
+                <div>
+                  <div class="flex justify-between text-sm"><span>Almuerzo</span><span>{{ stats()?.porTipo?.almuerzo ?? 0 }}</span></div>
+                  <progress class="progress progress-error w-full" [value]="stats()?.porTipo?.almuerzo ?? 0" [max]="stats()?.totalSolicitudes || 1"></progress>
                 </div>
-                <progress class="progress progress-error w-full" [value]="stats()?.porTipo?.almuerzo ?? 0" [max]="stats()?.totalSolicitudes || 1"></progress>
-              </div>
-              <div>
-                <div class="flex justify-between text-sm">
-                  <span>Refrigerio</span>
-                  <span>{{ stats()?.porTipo?.refrigerio ?? 0 }}</span>
+                <div>
+                  <div class="flex justify-between text-sm"><span>Refrigerio</span><span>{{ stats()?.porTipo?.refrigerio ?? 0 }}</span></div>
+                  <progress class="progress progress-error w-full" [value]="stats()?.porTipo?.refrigerio ?? 0" [max]="stats()?.totalSolicitudes || 1"></progress>
                 </div>
-                <progress class="progress progress-error w-full" [value]="stats()?.porTipo?.refrigerio ?? 0" [max]="stats()?.totalSolicitudes || 1"></progress>
               </div>
             </div>
-          </div>
-
-          <div class="border-base-300 rounded-box border bg-white p-4">
-            <h3 class="text-xl font-bold">Uso por franja</h3>
-            <div class="mt-4 flex flex-col gap-3">
-              <div>
-                <div class="flex justify-between text-sm">
-                  <span>Subsidiado</span>
-                  <span>{{ stats()?.porModalidad?.subsidiado ?? 0 }}</span>
+            <div class="border-base-300 rounded-box border bg-white p-4">
+              <h3 class="text-xl font-bold">Uso por franja</h3>
+              <div class="mt-4 flex flex-col gap-3">
+                <div>
+                  <div class="flex justify-between text-sm"><span>Subsidiado</span><span>{{ stats()?.porModalidad?.subsidiado ?? 0 }}</span></div>
+                  <progress class="progress progress-error w-full" [value]="stats()?.porModalidad?.subsidiado ?? 0" [max]="stats()?.totalSolicitudes || 1"></progress>
                 </div>
-                <progress class="progress progress-error w-full" [value]="stats()?.porModalidad?.subsidiado ?? 0" [max]="stats()?.totalSolicitudes || 1"></progress>
-              </div>
-              <div>
-                <div class="flex justify-between text-sm">
-                  <span>Venta libre</span>
-                  <span>{{ stats()?.porModalidad?.venta_libre ?? 0 }}</span>
+                <div>
+                  <div class="flex justify-between text-sm"><span>Venta libre</span><span>{{ stats()?.porModalidad?.venta_libre ?? 0 }}</span></div>
+                  <progress class="progress progress-error w-full" [value]="stats()?.porModalidad?.venta_libre ?? 0" [max]="stats()?.totalSolicitudes || 1"></progress>
                 </div>
-                <progress class="progress progress-error w-full" [value]="stats()?.porModalidad?.venta_libre ?? 0" [max]="stats()?.totalSolicitudes || 1"></progress>
               </div>
             </div>
+          </section>
+        } @else {
+          <div class="flex flex-col items-center justify-center gap-4 py-12">
+            <div class="border-base-300 rounded-box border bg-white p-8 text-center max-w-md">
+              <p class="text-4xl mb-3">📋</p>
+              <h3 class="text-xl font-bold">Sin periodo configurado</h3>
+              <p class="text-sm text-gray-600 mt-2">Aun no hay un periodo academico configurado. Ve a <strong>Configuracion</strong> y define el periodo activo para habilitar las estadisticas del dashboard.</p>
+              <button class="btn bg-red-600 text-white hover:bg-red-700 mt-4" (click)="selectedModule.set('configuracion'); loadSystemConfig()">Ir a Configuracion</button>
+            </div>
           </div>
-        </section>
+        }
       }
 
+      <!-- ==================== BONOS DEL DIA ==================== -->
       @if (selectedModule() === 'bonos') {
         <div class="flex items-center justify-between gap-3">
           <h2 class="text-2xl font-bold">Bonos del dia</h2>
           <button class="btn" (click)="refreshDisponibilidad()" [disabled]="loading()">Actualizar</button>
         </div>
-
         <div class="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
           @for (tipo of tipos; track tipo) {
             <section class="border-base-300 rounded-box border bg-white p-4">
               <div class="mb-4 flex items-center justify-between gap-3">
                 <h3 class="text-xl font-bold capitalize">{{ tipo }}</h3>
-                <span class="text-sm font-semibold text-gray-500">
-                  Total operativo: {{ disponibilidades()[tipo]?.totalOperativo ?? 0 }}
-                </span>
+                <span class="text-sm font-semibold text-gray-500">Total operativo: {{ disponibilidades()[tipo]?.totalOperativo ?? 0 }}</span>
               </div>
-
               <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
-                <div>
-                  <p class="text-sm text-gray-500">Base</p>
-                  <p class="text-2xl font-bold">{{ disponibilidades()[tipo]?.cantidadBase ?? 0 }}</p>
-                </div>
-                <div>
-                  <p class="text-sm text-gray-500">Extra</p>
-                  <p class="text-2xl font-bold">{{ disponibilidades()[tipo]?.cantidadExtra ?? 0 }}</p>
-                </div>
-                <div>
-                  <p class="text-sm text-gray-500">Reservados</p>
-                  <p class="text-2xl font-bold">{{ disponibilidades()[tipo]?.reservados ?? 0 }}</p>
-                </div>
-                <div>
-                  <p class="text-sm text-gray-500">Reclamados</p>
-                  <p class="text-2xl font-bold">{{ disponibilidades()[tipo]?.reclamados ?? 0 }}</p>
-                </div>
-                <div>
-                  <p class="text-sm text-gray-500">Expirados</p>
-                  <p class="text-2xl font-bold">{{ disponibilidades()[tipo]?.expirados ?? 0 }}</p>
-                </div>
-                <div>
-                  <p class="text-sm text-gray-500">Liberados</p>
-                  <p class="text-2xl font-bold">{{ disponibilidades()[tipo]?.expiradosLiberados ?? 0 }}</p>
-                </div>
-                <div>
-                  <p class="text-sm text-gray-500">Pendientes</p>
-                  <p class="text-2xl font-bold">{{ disponibilidades()[tipo]?.expiradosPendientes ?? 0 }}</p>
-                </div>
-                <div>
-                  <p class="text-sm text-gray-500">Disponibles</p>
-                  <p class="text-2xl font-bold">{{ disponibilidades()[tipo]?.disponibles ?? 0 }}</p>
-                </div>
+                <div><p class="text-sm text-gray-500">Base</p><p class="text-2xl font-bold">{{ disponibilidades()[tipo]?.cantidadBase ?? 0 }}</p></div>
+                <div><p class="text-sm text-gray-500">Extra</p><p class="text-2xl font-bold">{{ disponibilidades()[tipo]?.cantidadExtra ?? 0 }}</p></div>
+                <div><p class="text-sm text-gray-500">Reservados</p><p class="text-2xl font-bold">{{ disponibilidades()[tipo]?.reservados ?? 0 }}</p></div>
+                <div><p class="text-sm text-gray-500">Reclamados</p><p class="text-2xl font-bold">{{ disponibilidades()[tipo]?.reclamados ?? 0 }}</p></div>
+                <div><p class="text-sm text-gray-500">Expirados</p><p class="text-2xl font-bold">{{ disponibilidades()[tipo]?.expirados ?? 0 }}</p></div>
+                <div><p class="text-sm text-gray-500">Liberados</p><p class="text-2xl font-bold">{{ disponibilidades()[tipo]?.expiradosLiberados ?? 0 }}</p></div>
+                <div><p class="text-sm text-gray-500">Pendientes</p><p class="text-2xl font-bold">{{ disponibilidades()[tipo]?.expiradosPendientes ?? 0 }}</p></div>
+                <div><p class="text-sm text-gray-500">Disponibles</p><p class="text-2xl font-bold">{{ disponibilidades()[tipo]?.disponibles ?? 0 }}</p></div>
               </div>
-
               <div class="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-3">
                 <div class="rounded-box bg-gray-100 p-3">
                   <h4 class="font-bold">Cantidad base del dia</h4>
                   <p class="text-sm text-gray-600">Define el cupo oficial diario para este tipo de bono.</p>
                   <div class="mt-3 flex gap-2">
-                    <input
-                      type="number"
-                      min="1"
-                      class="input w-full"
-                      placeholder="Cantidad"
+                    <input type="number" min="1" class="input w-full" placeholder="Cantidad"
                       [value]="disponibilidades()[tipo]?.cantidadBase ?? ''"
-                      (input)="setBaseCantidad(tipo, baseInput.value)"
-                      #baseInput
-                    />
-                    <button class="btn bg-red-600 text-white hover:bg-red-700" (click)="establecerBase(tipo)">
-                      Guardar
-                    </button>
+                      (input)="setBaseCantidad(tipo, baseInput.value)" #baseInput />
+                    <button class="btn bg-red-600 text-white hover:bg-red-700" (click)="establecerBase(tipo)">Guardar</button>
                   </div>
                 </div>
-
                 <div class="rounded-box bg-gray-100 p-3">
                   <h4 class="font-bold">Carga extra</h4>
                   <p class="text-sm text-gray-600">Aumenta el total autorizado del dia.</p>
                   <div class="mt-3 flex gap-2">
-                    <input
-                      type="number"
-                      min="1"
-                      class="input w-full"
-                      placeholder="Cantidad"
-                      (input)="setExtraCantidad(tipo, extraInput.value)"
-                      #extraInput
-                    />
-                    <button class="btn bg-red-600 text-white hover:bg-red-700" (click)="cargarExtra(tipo)">
-                      Cargar
-                    </button>
+                    <input type="number" min="1" class="input w-full" placeholder="Cantidad"
+                      (input)="setExtraCantidad(tipo, extraInput.value)" #extraInput />
+                    <button class="btn bg-red-600 text-white hover:bg-red-700" (click)="cargarExtra(tipo)">Cargar</button>
                   </div>
                 </div>
-
                 <div class="rounded-box bg-gray-100 p-3">
                   <h4 class="font-bold">Liberar expirados</h4>
                   <p class="text-sm text-gray-600">Recupera cupos vencidos sin aumentar el total.</p>
                   <div class="mt-3 flex gap-2">
-                    <input
-                      type="number"
-                      min="1"
-                      class="input w-full"
-                      placeholder="Cantidad"
-                      (input)="setLiberarCantidad(tipo, liberarInput.value)"
-                      #liberarInput
-                    />
-                    <button class="btn bg-gray-800 text-white hover:bg-gray-900" (click)="liberarExpirados(tipo)">
-                      Liberar
-                    </button>
+                    <input type="number" min="1" class="input w-full" placeholder="Cantidad"
+                      (input)="setLiberarCantidad(tipo, liberarInput.value)" #liberarInput />
+                    <button class="btn bg-gray-800 text-white hover:bg-gray-900" (click)="liberarExpirados(tipo)">Liberar</button>
                   </div>
                 </div>
               </div>
@@ -267,6 +204,7 @@
         </div>
       }
 
+      <!-- ==================== RESUMEN DIARIO ==================== -->
       @if (selectedModule() === 'resumen') {
         <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
@@ -278,7 +216,6 @@
             <button class="btn" (click)="refreshResumen()" [disabled]="loading()">Actualizar</button>
           </div>
         </div>
-
         <section class="border-base-300 rounded-box mt-4 border bg-white p-4">
           <div class="grid grid-cols-1 gap-3 md:grid-cols-5">
             <select class="select w-full" (change)="setFiltroTipo(tipoSelect.value)" #tipoSelect>
@@ -286,43 +223,27 @@
               <option value="almuerzo">Almuerzo</option>
               <option value="refrigerio">Refrigerio</option>
             </select>
-
             <select class="select w-full" (change)="setFiltroModalidad(modalidadSelect.value)" #modalidadSelect>
               <option value="">Todas las franjas</option>
               <option value="subsidiado">Subsidiado</option>
               <option value="venta_libre">Venta libre</option>
             </select>
-
             <select class="select w-full" (change)="setFiltroEstado(estadoSelect.value)" #estadoSelect>
               <option value="">Todos los estados</option>
               <option value="reservado">Reservado</option>
               <option value="reclamado">Reclamado</option>
               <option value="expirado">Expirado</option>
             </select>
-
-            <input
-              type="text"
-              class="input w-full"
-              placeholder="Buscar codigo"
-              (input)="buscarCodigo(codigoInput.value)"
-              #codigoInput
-            />
-
+            <input type="text" class="input w-full" placeholder="Buscar codigo"
+              (input)="buscarCodigo(codigoInput.value)" #codigoInput />
             <button class="btn" (click)="limpiarFiltros()">Limpiar</button>
           </div>
-
           <div class="mt-4 overflow-x-auto">
             <table class="table table-sm">
               <thead>
                 <tr>
-                  <th>Codigo</th>
-                  <th>Nombre</th>
-                  <th>Tipo</th>
-                  <th>Franja</th>
-                  <th>Estado</th>
-                  <th>Solicitud</th>
-                  <th>Reclamo</th>
-                  <th>Accion</th>
+                  <th>Codigo</th><th>Nombre</th><th>Tipo</th><th>Franja</th><th>Estado</th>
+                  <th>Solicitud</th><th>Reclamo</th><th>Accion</th>
                 </tr>
               </thead>
               <tbody>
@@ -333,155 +254,80 @@
                     <td>{{ row.tipo }}</td>
                     <td>{{ row.modalidad === 'venta_libre' ? 'Venta libre' : row.modalidad }}</td>
                     <td>
-                      <span
-                        class="badge"
+                      <span class="badge"
                         [class.badge-warning]="row.estado === 'reservado'"
                         [class.badge-success]="row.estado === 'reclamado'"
-                        [class.badge-error]="row.estado === 'expirado'"
-                      >
-                        {{ row.estado }}
-                      </span>
+                        [class.badge-error]="row.estado === 'expirado'">{{ row.estado }}</span>
                     </td>
                     <td>{{ formatTime(row.hora_solicitud) }}</td>
                     <td>{{ formatTime(row.hora_reclamo) }}</td>
                     <td>
-                      <button
-                        class="btn btn-sm bg-red-600 text-white hover:bg-red-700"
+                      <button class="btn btn-sm bg-red-600 text-white hover:bg-red-700"
                         [disabled]="row.estado !== 'reservado' || loading()"
-                        (click)="marcarReclamado(row.id)"
-                      >
-                        Reclamar
-                      </button>
+                        (click)="marcarReclamado(row.id)">Reclamar</button>
                     </td>
                   </tr>
                 } @empty {
-                  <tr>
-                    <td colspan="8" class="text-center text-gray-500">No hay registros para los filtros actuales</td>
-                  </tr>
+                  <tr><td colspan="8" class="text-center text-gray-500">No hay registros para los filtros actuales</td></tr>
                 }
               </tbody>
             </table>
           </div>
-
           <div class="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <p class="text-sm text-gray-600">
-              Total: {{ resumenTotal() }} registros · Pagina {{ resumenPage() }} de {{ resumenTotalPages() }}
-            </p>
+            <p class="text-sm text-gray-600">Total: {{ resumenTotal() }} registros · Pagina {{ resumenPage() }} de {{ resumenTotalPages() }}</p>
             <div class="join">
-              <button
-                class="btn join-item"
-                [disabled]="resumenPage() <= 1 || loading()"
-                (click)="refreshResumen(resumenPage() - 1)"
-              >
-                Anterior
-              </button>
-              <button
-                class="btn join-item"
-                [disabled]="resumenPage() >= resumenTotalPages() || loading()"
-                (click)="refreshResumen(resumenPage() + 1)"
-              >
-                Siguiente
-              </button>
+              <button class="btn join-item" [disabled]="resumenPage() <= 1 || loading()" (click)="refreshResumen(resumenPage() - 1)">Anterior</button>
+              <button class="btn join-item" [disabled]="resumenPage() >= resumenTotalPages() || loading()" (click)="refreshResumen(resumenPage() + 1)">Siguiente</button>
             </div>
           </div>
         </section>
       }
 
-      @if (selectedModule() === 'estudiantes') {
+      <!-- ==================== BASE DE DATOS ==================== -->
+      @if (selectedModule() === 'base_de_datos') {
         <div>
           <h2 class="text-2xl font-bold">Carga de estudiantes</h2>
-          <p class="text-sm text-gray-600">
-            Usa las plantillas para normalizar la base enviada por secretaria academica antes de cargarla.
-          </p>
+          <p class="text-sm text-gray-600">Usa las plantillas para normalizar la base enviada por secretaria academica antes de cargarla.</p>
         </div>
-
         <section class="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
           <div class="border-base-300 rounded-box border bg-white p-4">
             <h3 class="text-xl font-bold">Base general de estudiantes</h3>
-            <p class="mt-2 text-sm text-gray-600">
-              Crea estudiantes nuevos o actualiza datos existentes por codigo. Los estudiantes quedan como no
-              subsidiados hasta cargar la base de subsidios.
-            </p>
-
+            <p class="mt-2 text-sm text-gray-600">Crea estudiantes nuevos o actualiza datos existentes por codigo. Los estudiantes quedan como no subsidiados hasta cargar la base de subsidios.</p>
             <div class="mt-4 flex flex-col gap-3">
-              <button class="btn" (click)="descargarPlantillaEstudiantes()">
-                Descargar plantilla estudiantes
-              </button>
-              <input
-                type="file"
-                class="file-input w-full"
-                accept=".xlsx,.xls"
-                (change)="setStudentsFile(studentsFileInput.files)"
-                #studentsFileInput
-              />
-              <button class="btn bg-red-600 text-white hover:bg-red-700" (click)="cargarEstudiantes()">
-                Cargar estudiantes
-              </button>
+              <button class="btn" (click)="descargarPlantillaEstudiantes()">Descargar plantilla estudiantes</button>
+              <input type="file" class="file-input w-full" accept=".xlsx,.xls"
+                (change)="setStudentsFile(studentsFileInput.files)" #studentsFileInput />
+              <button class="btn bg-red-600 text-white hover:bg-red-700" (click)="cargarEstudiantes()">Cargar estudiantes</button>
             </div>
           </div>
-
           <div class="border-base-300 rounded-box border bg-white p-4">
             <h3 class="text-xl font-bold">Estudiantes subsidiados</h3>
-            <p class="mt-2 text-sm text-gray-600">
-              Busca estudiantes existentes por codigo, los marca como subsidiados, asigna beca restaurante y reemplaza
-              sus dias de subsidio.
-            </p>
-
+            <p class="mt-2 text-sm text-gray-600">Busca estudiantes existentes por codigo, los marca como subsidiados, asigna beca restaurante y reemplaza sus dias de subsidio.</p>
             <div class="mt-4 flex flex-col gap-3">
-              <button class="btn" (click)="descargarPlantillaSubsidiados()">
-                Descargar plantilla subsidiados
-              </button>
-              <input
-                type="file"
-                class="file-input w-full"
-                accept=".xlsx,.xls"
-                (change)="setSubsidiesFile(subsidiesFileInput.files)"
-                #subsidiesFileInput
-              />
-              <button class="btn bg-gray-800 text-white hover:bg-gray-900" (click)="cargarSubsidiados()">
-                Cargar subsidiados
-              </button>
+              <button class="btn" (click)="descargarPlantillaSubsidiados()">Descargar plantilla subsidiados</button>
+              <input type="file" class="file-input w-full" accept=".xlsx,.xls"
+                (change)="setSubsidiesFile(subsidiesFileInput.files)" #subsidiesFileInput />
+              <button class="btn bg-gray-800 text-white hover:bg-gray-900" (click)="cargarSubsidiados()">Cargar subsidiados</button>
             </div>
           </div>
         </section>
-
         @if (importResult()) {
           <section class="border-base-300 rounded-box mt-4 border bg-white p-4">
             <h3 class="text-xl font-bold">Resultado de carga</h3>
-            <div class="mt-3 grid grid-cols-2 gap-3 md:grid-cols-4">
-              <div>
-                <p class="text-sm text-gray-500">Procesados</p>
-                <p class="text-2xl font-bold">{{ importResult()?.result?.total ?? 0 }}</p>
-              </div>
-              <div>
-                <p class="text-sm text-gray-500">Creados</p>
-                <p class="text-2xl font-bold">{{ importResult()?.result?.created ?? 0 }}</p>
-              </div>
-              <div>
-                <p class="text-sm text-gray-500">Actualizados</p>
-                <p class="text-2xl font-bold">{{ importResult()?.result?.updated ?? 0 }}</p>
-              </div>
-              <div>
-                <p class="text-sm text-gray-500">No encontrados</p>
-                <p class="text-2xl font-bold">{{ importResult()?.result?.notFound ?? 0 }}</p>
-              </div>
+            <div class="mt-3 grid grid-cols-2 gap-3 md:grid-cols-5">
+              <div><p class="text-sm text-gray-500">Procesados</p><p class="text-2xl font-bold">{{ importResult()?.result?.total ?? 0 }}</p></div>
+              <div><p class="text-sm text-gray-500">Creados</p><p class="text-2xl font-bold">{{ importResult()?.result?.created ?? 0 }}</p></div>
+              <div><p class="text-sm text-gray-500">Actualizados</p><p class="text-2xl font-bold">{{ importResult()?.result?.updated ?? 0 }}</p></div>
+              <div><p class="text-sm text-gray-500">Desactivados</p><p class="text-2xl font-bold">{{ importResult()?.result?.deactivated ?? 0 }}</p></div>
+              <div><p class="text-sm text-gray-500">No encontrados</p><p class="text-2xl font-bold">{{ importResult()?.result?.notFound ?? 0 }}</p></div>
             </div>
-
             @if ((importResult()?.result?.errors?.length ?? 0) > 0) {
               <div class="mt-4 overflow-x-auto">
                 <table class="table table-sm">
-                  <thead>
-                    <tr>
-                      <th>Fila</th>
-                      <th>Error</th>
-                    </tr>
-                  </thead>
+                  <thead><tr><th>Fila</th><th>Error</th></tr></thead>
                   <tbody>
                     @for (error of importResult()?.result?.errors; track error.row) {
-                      <tr>
-                        <td>{{ error.row }}</td>
-                        <td>{{ error.message }}</td>
-                      </tr>
+                      <tr><td>{{ error.row }}</td><td>{{ error.message }}</td></tr>
                     }
                   </tbody>
                 </table>
@@ -490,6 +336,393 @@
           </section>
         }
       }
+
+      <!-- ==================== GESTIÓN DE ESTUDIANTES ==================== -->
+      @if (selectedModule() === 'gestion_estudiantes') {
+        <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h2 class="text-2xl font-bold">Gestion de estudiantes</h2>
+            <p class="text-sm text-gray-600">Consulta, crea, edita y gestiona el estado de los estudiantes.</p>
+          </div>
+          <button class="btn bg-red-600 text-white hover:bg-red-700" (click)="openCreateModal()">+ Crear estudiante</button>
+        </div>
+        <section class="border-base-300 rounded-box mt-4 border bg-white p-4">
+          <div class="grid grid-cols-1 gap-3 md:grid-cols-6">
+            <select class="select w-full" (change)="setEstudiantesFiltroTipo(estFiltroTipo.value)" #estFiltroTipo>
+              <option value="">Todos los tipos</option>
+              <option value="subsidiado">Subsidiado</option>
+              <option value="no_subsidiado">No subsidiado</option>
+            </select>
+            <select class="select w-full" (change)="setEstudiantesFiltroBeca(estFiltroBeca.value)" #estFiltroBeca>
+              <option value="">Todas las becas</option>
+              <option value="true">Con beca</option>
+              <option value="false">Sin beca</option>
+            </select>
+            <select class="select w-full" (change)="setEstudiantesFiltroActivo(estFiltroActivo.value)" #estFiltroActivo>
+              <option value="">Todos los estados</option>
+              <option value="true">Activo</option>
+              <option value="false">Inactivo</option>
+            </select>
+            <input type="text" class="input w-full" placeholder="Buscar por codigo"
+              (input)="buscarEstudianteCodigo(estFiltroCodigo.value)" #estFiltroCodigo />
+            <button class="btn" (click)="limpiarFiltrosEstudiantes()">Limpiar</button>
+          </div>
+          <div class="mt-4 overflow-x-auto">
+            <table class="table table-sm">
+              <thead>
+                <tr>
+                  <th>Codigo</th><th>Nombre</th><th>Tipo</th><th>Dias</th><th>Beca</th>
+                  <th>Activo</th><th>Periodo</th><th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                @if (estudiantesLoading()) {
+                  <tr><td colspan="8" class="text-center text-gray-500">Cargando...</td></tr>
+                } @else {
+                  @for (est of estudiantesData()?.rows; track est.id) {
+                    <tr>
+                      <td>{{ est.codigo }}</td>
+                      <td>{{ est.nombre }}</td>
+                      <td>
+                        <span class="badge" [class.badge-warning]="est.tipo_estudiante === 'subsidiado'"
+                          [class.badge-ghost]="est.tipo_estudiante !== 'subsidiado'">
+                          {{ est.tipo_estudiante === 'subsidiado' ? 'Subsidiado' : 'No subsidiado' }}
+                        </span>
+                      </td>
+                      <td>{{ diasSeleccionados(est.dias) }}</td>
+                      <td>
+                        @if (est.tiene_beca) {
+                          <span class="badge badge-success">Si</span>
+                        } @else {
+                          <span class="badge badge-ghost">No</span>
+                        }
+                      </td>
+                      <td>
+                        @if (est.activo) {
+                          <span class="badge badge-success">Activo</span>
+                        } @else {
+                          <span class="badge badge-error">Inactivo</span>
+                        }
+                      </td>
+                      <td>{{ est.periodo_actual || '-' }}</td>
+                      <td>
+                        <div class="flex gap-1">
+                          <button class="btn btn-sm bg-gray-800 text-white hover:bg-gray-900" (click)="openEditModal(est)">✏️</button>
+                          <button class="btn btn-sm text-white"
+                            [class.bg-red-600]="est.activo" [class.hover:bg-red-700]="est.activo"
+                            [class.bg-green-600]="!est.activo" [class.hover:bg-green-700]="!est.activo"
+                            (click)="toggleStudentActivo(est.id)">
+                            {{ est.activo ? 'Desactivar' : 'Activar' }}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr><td colspan="8" class="text-center text-gray-500">No se encontraron estudiantes</td></tr>
+                  }
+                }
+              </tbody>
+            </table>
+          </div>
+          <div class="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <p class="text-sm text-gray-600">Total: {{ estudiantesData()?.total ?? 0 }} estudiantes · Pagina {{ estudiantesPage() }} de {{ estudiantesData()?.totalPages ?? 1 }}</p>
+            <div class="join">
+              <button class="btn join-item" [disabled]="estudiantesPage() <= 1 || estudiantesLoading()" (click)="refreshEstudiantes(estudiantesPage() - 1)">Anterior</button>
+              <button class="btn join-item" [disabled]="estudiantesPage() >= (estudiantesData()?.totalPages ?? 1) || estudiantesLoading()" (click)="refreshEstudiantes(estudiantesPage() + 1)">Siguiente</button>
+            </div>
+          </div>
+        </section>
+      }
+
+      <!-- ==================== CONFIGURACIÓN ==================== -->
+      @if (selectedModule() === 'configuracion') {
+        <div>
+          <h2 class="text-2xl font-bold">Configuracion</h2>
+          <p class="text-sm text-gray-600">Ajustes del sistema y seguridad.</p>
+        </div>
+
+        <div class="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-3">
+
+          <section class="border-base-300 rounded-box border bg-white p-4 xl:col-span-2">
+            <h3 class="text-xl font-bold">Configuracion del periodo</h3>
+            <p class="text-sm text-gray-600">Define el periodo academico activo, rango de fechas y dias habiles.</p>
+            @if (configPeriodoLoading()) {
+              <p class="text-sm text-gray-500 mt-4">Cargando configuracion...</p>
+            } @else {
+              <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+                <div>
+                  <label class="label text-sm font-semibold">Periodo academico</label>
+                  <select class="select w-full" (change)="configPeriodo.set(configPeriodoSelect.value)" #configPeriodoSelect>
+                    <option value="" [selected]="!configPeriodo()">Seleccionar periodo</option>
+                    @for (p of periodosDisponibles(); track p) {
+                      <option [value]="p" [selected]="configPeriodo() === p">{{ p }}</option>
+                    }
+                  </select>
+                </div>
+                <div>
+                  <label class="label text-sm font-semibold">Fecha de inicio</label>
+                  <input type="date" class="input w-full" [value]="configFechaInicio()"
+                    (input)="configFechaInicio.set(configFechaInicioInput.value)" #configFechaInicioInput />
+                </div>
+                <div>
+                  <label class="label text-sm font-semibold">Fecha de fin</label>
+                  <input type="date" class="input w-full" [value]="configFechaFin()"
+                    (input)="configFechaFin.set(configFechaFinInput.value)" #configFechaFinInput />
+                </div>
+              </div>
+              <div class="mt-4">
+                <h4 class="font-bold text-sm mb-2">Dias habiles</h4>
+                <div class="flex flex-wrap gap-2">
+                  @for (d of workingDays(); track d.id) {
+                    <label class="flex cursor-pointer items-center gap-1">
+                      <input type="checkbox" class="checkbox checkbox-sm" [checked]="d.activo" (change)="toggleWorkingDay(d.dia)" />
+                      <span class="text-sm capitalize">{{ d.dia }}</span>
+                    </label>
+                  }
+                </div>
+              </div>
+              <div class="mt-4 border-t border-gray-200 pt-4">
+                <h4 class="font-bold text-sm mb-2">Festivos y dias no habiles</h4>
+                <div class="flex flex-wrap gap-2 mb-2">
+                  @for (h of holidays(); track h.id) {
+                    <span class="badge badge-error gap-1">
+                      {{ h.fecha.slice(0, 10) }}
+                      @if (h.descripcion) { - {{ h.descripcion }} }
+                      <button class="ml-1 font-bold" (click)="removeHoliday(h.id)">x</button>
+                    </span>
+                  }
+                </div>
+                <div class="flex gap-2 items-end">
+                  <div>
+                    <label class="label text-xs font-semibold">Fecha</label>
+                    <input type="date" class="input input-sm w-36" [value]="newHolidayFecha()"
+                      (input)="newHolidayFecha.set(newHolidayFechaInput.value)" #newHolidayFechaInput />
+                  </div>
+                  <div>
+                    <label class="label text-xs font-semibold">Descripcion</label>
+                    <input type="text" class="input input-sm w-48" placeholder="Ej: Dia del trabajo"
+                      [value]="newHolidayDescripcion()"
+                      (input)="newHolidayDescripcion.set(newHolidayDescInput.value)" #newHolidayDescInput />
+                  </div>
+                  <button class="btn btn-sm bg-gray-800 text-white hover:bg-gray-900" (click)="addHoliday()">Agregar</button>
+                </div>
+              </div>
+              <div class="mt-4">
+                <button class="btn bg-red-600 text-white hover:bg-red-700" (click)="savePeriodConfig()" [disabled]="configPeriodoSaving()">
+                  @if (configPeriodoSaving()) { Guardando... } @else { Guardar periodo }
+                </button>
+              </div>
+            }
+          </section>
+
+          <section class="border-base-300 rounded-box border bg-white p-4">
+            <h3 class="text-xl font-bold">Cambiar contrasena</h3>
+            <p class="text-sm text-gray-600">Actualiza la contrasena de acceso del administrador.</p>
+            <div class="mt-4 flex flex-col gap-3">
+              <div>
+                <label class="label text-sm font-semibold">Contrasena actual</label>
+                <div class="join w-full">
+                  <input [type]="showConfigPasswords() ? 'text' : 'password'" class="input w-full join-item" placeholder="••••••"
+                    [value]="configCurrentPassword()"
+                    (input)="configCurrentPassword.set(configCurrentInput.value)" #configCurrentInput />
+                  <button class="btn join-item" (click)="showConfigPasswords.set(!showConfigPasswords())">
+                    {{ showConfigPasswords() ? 'Ocultar' : 'Ver' }}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label class="label text-sm font-semibold">Nueva contrasena</label>
+                <div class="join w-full">
+                  <input [type]="showConfigPasswords() ? 'text' : 'password'" class="input w-full join-item" placeholder="Minimo 6 caracteres"
+                    [value]="configNewPassword()"
+                    (input)="configNewPassword.set(configNewInput.value)" #configNewInput />
+                  <button class="btn join-item" (click)="showConfigPasswords.set(!showConfigPasswords())">
+                    {{ showConfigPasswords() ? 'Ocultar' : 'Ver' }}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label class="label text-sm font-semibold">Confirmar nueva contrasena</label>
+                <div class="join w-full">
+                  <input [type]="showConfigPasswords() ? 'text' : 'password'" class="input w-full join-item" placeholder="Repite la nueva contrasena"
+                    [value]="configConfirmPassword()" (input)="configConfirmPassword.set(configConfirmInput.value)" #configConfirmInput />
+                  <button class="btn join-item" (click)="showConfigPasswords.set(!showConfigPasswords())">
+                    {{ showConfigPasswords() ? 'Ocultar' : 'Ver' }}
+                  </button>
+                </div>
+              </div>
+              <button class="btn bg-red-600 text-white hover:bg-red-700 mt-2" (click)="changePassword()" [disabled]="configSaving()">
+                @if (configSaving()) { Guardando... } @else { Cambiar contrasena }
+              </button>
+            </div>
+          </section>
+
+        </div>
+      }
     </section>
   </main>
 </div>
+
+<!-- ==================== MODAL EDITAR ESTUDIANTE ==================== -->
+@if (showEditModal()) {
+<div class="modal modal-open">
+  <div class="modal-box max-w-2xl">
+    <h3 class="text-xl font-bold">Editar estudiante</h3>
+    <div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+      <div>
+        <label class="label text-sm font-semibold">Codigo</label>
+        <input type="text" class="input w-full" [value]="editCodigo()"
+          (input)="editCodigo.set(editCodigoInput.value)" #editCodigoInput />
+      </div>
+      <div>
+        <label class="label text-sm font-semibold">Tipo de documento</label>
+        <select class="select w-full" (change)="editTipoDocumento.set(editTipoDocSelect.value)" #editTipoDocSelect>
+          @for (td of tiposDocumento; track td) {
+            <option [value]="td" [selected]="editTipoDocumento() === td">{{ td }}</option>
+          }
+        </select>
+      </div>
+      <div>
+        <label class="label text-sm font-semibold">Numero de documento</label>
+        <input type="text" class="input w-full" [value]="editNumeroDocumento()"
+          (input)="editNumeroDocumento.set(editNumDocInput.value)" #editNumDocInput />
+      </div>
+      <div>
+        <label class="label text-sm font-semibold">Nombre completo</label>
+        <input type="text" class="input w-full" [value]="editNombre()"
+          (input)="editNombre.set(editNombreInput.value)" #editNombreInput />
+      </div>
+      <div>
+        <label class="label text-sm font-semibold">Correo electronico</label>
+        <input type="email" class="input w-full" [value]="editCorreo()"
+          (input)="editCorreo.set(editCorreoInput.value)" #editCorreoInput />
+      </div>
+      <div>
+        <label class="label text-sm font-semibold">Programa</label>
+        <select class="select w-full" (change)="setEditProgramaCodigo(editProgSelect.value)" #editProgSelect>
+          <option value="" [selected]="!editProgramaCodigo()">Seleccionar programa</option>
+          @for (cod of programasCodigos; track cod) {
+            <option [value]="cod" [selected]="editProgramaCodigo() === cod">{{ cod }} - {{ programas[cod] }}</option>
+          }
+        </select>
+      </div>
+      <div>
+        <label class="label text-sm font-semibold">Tipo de estudiante</label>
+        <select class="select w-full" (change)="editTipoEstudiante.set(editTipoEstSelect.value)" #editTipoEstSelect>
+          <option value="no_subsidiado" [selected]="editTipoEstudiante() === 'no_subsidiado'">No subsidiado</option>
+          <option value="subsidiado" [selected]="editTipoEstudiante() === 'subsidiado'">Subsidiado</option>
+        </select>
+      </div>
+    </div>
+    @if (editTipoEstudiante() === 'subsidiado') {
+      <div class="mt-4 border-t border-gray-200 pt-4">
+        <label class="flex cursor-pointer items-center gap-2">
+          <input type="checkbox" class="checkbox" [checked]="editTieneBeca()"
+            (change)="editTieneBeca.set(editBecaCheck.checked)" #editBecaCheck />
+          <span class="label-text text-sm font-semibold">Tiene beca restaurante</span>
+        </label>
+        <div class="mt-3">
+          <p class="label-text mb-2 text-sm font-semibold">Dias de subsidio</p>
+          <div class="flex flex-wrap gap-2">
+            @for (dia of ['lunes','martes','miercoles','jueves','viernes','sabado']; track dia) {
+              <label class="flex cursor-pointer items-center gap-1">
+                <input type="checkbox" class="checkbox checkbox-sm" [checked]="editDias().includes(dia)"
+                  (change)="toggleEditDia(dia)" />
+                <span class="text-sm">{{ dia === 'lunes' ? 'Lun' : dia === 'martes' ? 'Mar' : dia === 'miercoles' ? 'Mie' : dia === 'jueves' ? 'Jue' : dia === 'viernes' ? 'Vie' : 'Sab' }}</span>
+              </label>
+            }
+          </div>
+        </div>
+      </div>
+    }
+    <div class="modal-action">
+      <button class="btn" (click)="closeEditModal()" [disabled]="editSaving()">Cancelar</button>
+      <button class="btn bg-red-600 text-white hover:bg-red-700" (click)="saveEditStudent()" [disabled]="editSaving()">
+        @if (editSaving()) { Guardando... } @else { Guardar cambios }
+      </button>
+    </div>
+  </div>
+</div>
+}
+
+<!-- ==================== MODAL CREAR ESTUDIANTE ==================== -->
+@if (showCreateModal()) {
+<div class="modal modal-open">
+  <div class="modal-box max-w-2xl">
+    <h3 class="text-xl font-bold">Crear estudiante</h3>
+    <div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+      <div>
+        <label class="label text-sm font-semibold">Codigo *</label>
+        <input type="text" class="input w-full" [value]="createCodigo()"
+          (input)="createCodigo.set(createCodigoInput.value)" #createCodigoInput />
+      </div>
+      <div>
+        <label class="label text-sm font-semibold">Tipo de documento</label>
+        <select class="select w-full" (change)="createTipoDocumento.set(createTipoDocSelect.value)" #createTipoDocSelect>
+          @for (td of tiposDocumento; track td) {
+            <option [value]="td" [selected]="createTipoDocumento() === td">{{ td }}</option>
+          }
+        </select>
+      </div>
+      <div>
+        <label class="label text-sm font-semibold">Numero de documento *</label>
+        <input type="text" class="input w-full" [value]="createNumeroDocumento()"
+          (input)="createNumeroDocumento.set(createNumDocInput.value)" #createNumDocInput />
+      </div>
+      <div>
+        <label class="label text-sm font-semibold">Nombre completo *</label>
+        <input type="text" class="input w-full" [value]="createNombre()"
+          (input)="createNombre.set(createNombreInput.value)" #createNombreInput />
+      </div>
+      <div>
+        <label class="label text-sm font-semibold">Correo electronico *</label>
+        <input type="email" class="input w-full" [value]="createCorreo()"
+          (input)="createCorreo.set(createCorreoInput.value)" #createCorreoInput />
+      </div>
+      <div>
+        <label class="label text-sm font-semibold">Programa *</label>
+        <select class="select w-full" (change)="setCreateProgramaCodigo(createProgSelect.value)" #createProgSelect>
+          <option value="" [selected]="!createProgramaCodigo()">Seleccionar programa</option>
+          @for (cod of programasCodigos; track cod) {
+            <option [value]="cod" [selected]="createProgramaCodigo() === cod">{{ cod }} - {{ programas[cod] }}</option>
+          }
+        </select>
+      </div>
+      <div>
+        <label class="label text-sm font-semibold">Tipo de estudiante</label>
+        <select class="select w-full" (change)="createTipoEstudiante.set(createTipoEstSelect.value)" #createTipoEstSelect>
+          <option value="no_subsidiado" [selected]="createTipoEstudiante() === 'no_subsidiado'">No subsidiado</option>
+          <option value="subsidiado" [selected]="createTipoEstudiante() === 'subsidiado'">Subsidiado</option>
+        </select>
+      </div>
+    </div>
+    @if (createTipoEstudiante() === 'subsidiado') {
+      <div class="mt-4 border-t border-gray-200 pt-4">
+        <label class="flex cursor-pointer items-center gap-2">
+          <input type="checkbox" class="checkbox" [checked]="createTieneBeca()"
+            (change)="createTieneBeca.set(createBecaCheck.checked)" #createBecaCheck />
+          <span class="label-text text-sm font-semibold">Tiene beca restaurante</span>
+        </label>
+        <div class="mt-3">
+          <p class="label-text mb-2 text-sm font-semibold">Dias de subsidio</p>
+          <div class="flex flex-wrap gap-2">
+            @for (dia of ['lunes','martes','miercoles','jueves','viernes','sabado']; track dia) {
+              <label class="flex cursor-pointer items-center gap-1">
+                <input type="checkbox" class="checkbox checkbox-sm" [checked]="createDias().includes(dia)"
+                  (change)="toggleCreateDia(dia)" />
+                <span class="text-sm">{{ dia === 'lunes' ? 'Lun' : dia === 'martes' ? 'Mar' : dia === 'miercoles' ? 'Mie' : dia === 'jueves' ? 'Jue' : dia === 'viernes' ? 'Vie' : 'Sab' }}</span>
+              </label>
+            }
+          </div>
+        </div>
+      </div>
+    }
+    <div class="modal-action">
+      <button class="btn" (click)="closeCreateModal()" [disabled]="createSaving()">Cancelar</button>
+      <button class="btn bg-red-600 text-white hover:bg-red-700" (click)="saveCreateStudent()" [disabled]="createSaving()">
+        @if (createSaving()) { Creando... } @else { Crear estudiante }
+      </button>
+    </div>
+  </div>
+</div>
+}

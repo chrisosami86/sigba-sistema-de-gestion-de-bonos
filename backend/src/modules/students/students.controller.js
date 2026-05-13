@@ -12,9 +12,9 @@ const createStudent = async (req, res) => {
 
 const getStudents = async (req, res) => {
   try {
-    const { tipo, dia } = req.query;
+    const { tipo, dia, beca, codigo, activo, page, limit } = req.query;
 
-    const students = await studentService.getStudents({ tipo, dia });
+    const students = await studentService.getStudents({ tipo, dia, beca, codigo, activo, page, limit });
 
     res.json(students);
   } catch (error) {
@@ -91,6 +91,26 @@ const deleteStudent = async (req, res) => {
   }
 };
 
+const toggleStudentActivo = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const student = await studentService.toggleStudentActivo(id);
+
+    if (!student) {
+      return res.status(404).json({ message: 'Estudiante no encontrado' });
+    }
+
+    res.json({
+      message: student.activo ? 'Estudiante activado' : 'Estudiante desactivado',
+      student,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Error cambiando estado del estudiante' });
+  }
+};
+
 const importStudents = async (req, res) => {
   try {
     if (!req.file) {
@@ -135,6 +155,7 @@ module.exports = {
   getStudentById,
   updateStudent,
   deleteStudent,
+  toggleStudentActivo,
   importStudents,
   importSubsidies,
   getStudentByCodigo,

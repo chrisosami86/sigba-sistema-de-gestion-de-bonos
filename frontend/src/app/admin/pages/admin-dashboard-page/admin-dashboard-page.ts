@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, OnInit, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import * as XLSX from 'xlsx';
@@ -8,30 +8,87 @@ import {
   BonoTipo,
   DisponibilidadBono,
 } from '../../../students/interfaces/bono.interface';
+import { type Student } from '../../../students/interfaces/student.interface';
 import { BonosService } from '../../../students/services/bonos.service';
 import { AdminAuthService } from '../../services/admin-auth.service';
 import {
   AdminStudentsImportService,
   ImportResult,
+  type StudentsPage,
 } from '../../services/admin-students-import.service';
+import { SystemService, type SystemSettings, type WorkingDay, type Holiday } from '../../services/system.service';
+
+type AdminModule = 'dashboard' | 'bonos' | 'resumen' | 'base_de_datos' | 'gestion_estudiantes' | 'configuracion';
+
+const DIAS_SEMANA = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'] as const;
+
+const FORMATO_DIA: Record<string, string> = {
+  lunes: 'Lunes',
+  martes: 'Martes',
+  miercoles: 'Miércoles',
+  jueves: 'Jueves',
+  viernes: 'Viernes',
+  sabado: 'Sábado',
+};
 
 @Component({
   selector: 'admin-dashboard-page',
   imports: [],
   templateUrl: './admin-dashboard-page.html',
 })
-export class AdminDashboardPage {
+export class AdminDashboardPage implements OnInit {
   private authService = inject(AdminAuthService);
   private bonosService = inject(BonosService);
-  private studentsImportService = inject(AdminStudentsImportService);
+  private studentsService = inject(AdminStudentsImportService);
+  private systemService = inject(SystemService);
   private router = inject(Router);
 
+  readonly tiposDocumento = ['TI', 'CC', 'CR', 'PPT', 'CE', 'PA', 'RC'] as const;
+
+  readonly programas: Record<string, string> = {
+    '3845': 'Administración de empresas',
+    '3857': 'Comercio exterior',
+    '2134': 'Tecnología en análisis y laboratorio químico',
+    '2724': 'Tecnología en desarrollo de software',
+    '2725': 'Tecnología en electrónica industrial',
+    '2839': 'Tecnología en gestión logística',
+    '2722': 'Tecnología en mantenimiento de sistemas electromecánicos',
+  };
+
+  readonly programasCodigos = Object.keys(this.programas);
+
+  ngOnInit() {
+    this.refreshDisponibilidad();
+    this.refreshStats();
+    this.loadSystemConfig();
+  }
+
+  // ── Estado general ──
+
   admin = this.authService.currentAdmin;
-  selectedModule = signal<'dashboard' | 'bonos' | 'resumen' | 'reportes' | 'estudiantes' | 'configuracion'>(
-    'dashboard',
-  );
+  selectedModule = signal<AdminModule>('dashboard');
   disponibilidades = signal<Partial<Record<BonoTipo, DisponibilidadBono>>>({});
   stats = signal<BonoStatsDiarias | null>(null);
+  loading = signal(false);
+  message = signal('');
+  errorMessage = signal('');
+  private messageTimer: ReturnType<typeof setTimeout> | null = null;
+  private errorTimer: ReturnType<typeof setTimeout> | null = null;
+
+  private setMessage(msg: string) {
+    if (this.messageTimer) clearTimeout(this.messageTimer);
+    this.message.set(msg);
+    this.messageTimer = setTimeout(() => this.message.set(''), 5000);
+  }
+
+  private setError(msg: string) {
+    if (this.errorTimer) clearTimeout(this.errorTimer);
+    this.errorMessage.set(msg);
+    this.errorTimer = setTimeout(() => this.errorMessage.set(''), 7000);
+  }
+
+  // ── Resumen diario ──
+
   resumenRows = signal<BonoResumenDiarioRow[]>([]);
   resumenTotal = signal(0);
   resumenTotalPages = signal(1);
@@ -41,15 +98,12 @@ export class AdminDashboardPage {
   filtroModalidad = signal('');
   filtroEstado = signal('');
   filtroCodigo = signal('');
+
+  // ── Bonos del día ──
+
   baseCantidad = signal<Record<BonoTipo, number>>({ almuerzo: 0, refrigerio: 0 });
   extraCantidad = signal<Record<BonoTipo, number>>({ almuerzo: 0, refrigerio: 0 });
   liberarCantidad = signal<Record<BonoTipo, number>>({ almuerzo: 0, refrigerio: 0 });
-  loading = signal(false);
-  message = signal('');
-  errorMessage = signal('');
-  importResult = signal<ImportResult | null>(null);
-  studentsFile = signal<File | null>(null);
-  subsidiesFile = signal<File | null>(null);
 
   tipos: BonoTipo[] = ['almuerzo', 'refrigerio'];
 
@@ -59,11 +113,108 @@ export class AdminDashboardPage {
     }, 0);
   });
 
-  constructor() {
-    this.refreshDisponibilidad();
-    this.refreshResumen();
-    this.refreshStats();
+  showBonoCards = computed(() => {
+    const mod = this.selectedModule();
+    return mod === 'dashboard' || mod === 'bonos' || mod === 'resumen';
+  });
+
+  periodosDisponibles = computed(() => {
+    const currentYear = new Date().getFullYear();
+    const periodos: string[] = [];
+
+    for (let year = currentYear; year <= currentYear + 2; year++) {
+      periodos.push(`${year}-1`, `${year}-2`);
+    }
+
+    return periodos;
+  });
+
+  // ── Base de datos ──
+
+  importResult = signal<ImportResult | null>(null);
+  studentsFile = signal<File | null>(null);
+  subsidiesFile = signal<File | null>(null);
+
+  // ── Gestión de estudiantes ──
+
+  estudiantesPage = signal(1);
+  estudiantesLimit = signal(20);
+  estudiantesFiltroTipo = signal('');
+  estudiantesFiltroBeca = signal('');
+  estudiantesFiltroCodigo = signal('');
+  estudiantesFiltroActivo = signal('');
+  estudiantesData = signal<StudentsPage | null>(null);
+  estudiantesLoading = signal(false);
+
+  // -- Modal editar --
+  showEditModal = signal(false);
+  editingStudentId = signal<number | null>(null);
+  editCodigo = signal('');
+  editTipoDocumento = signal('');
+  editNumeroDocumento = signal('');
+  editNombre = signal('');
+  editCorreo = signal('');
+  editProgramaCodigo = signal('');
+  editProgramaNombre = signal('');
+  editTipoEstudiante = signal('');
+  editTieneBeca = signal(false);
+  editDias = signal<string[]>([]);
+  editSaving = signal(false);
+
+  // -- Modal crear --
+  showCreateModal = signal(false);
+  createCodigo = signal('');
+  createTipoDocumento = signal('CC');
+  createNumeroDocumento = signal('');
+  createNombre = signal('');
+  createCorreo = signal('');
+  createProgramaCodigo = signal('');
+  createProgramaNombre = signal('');
+  createTipoEstudiante = signal('no_subsidiado');
+  createTieneBeca = signal(false);
+  createDias = signal<string[]>([]);
+  createSaving = signal(false);
+
+  // -- Confirmación eliminar (deprecated, kept for template cleanup) --
+  showDeleteConfirm = signal(false);
+  deletingStudentId = signal<number | null>(null);
+  deletingStudentNombre = signal('');
+
+  // -- Configuración --
+  configCurrentPassword = signal('');
+  configNewPassword = signal('');
+  configConfirmPassword = signal('');
+  configSaving = signal(false);
+  showConfigPasswords = signal(false);
+
+  // -- Configuración del periodo --
+  systemSettings = signal<SystemSettings | null>(null);
+  workingDays = signal<WorkingDay[]>([]);
+  holidays = signal<Holiday[]>([]);
+  configPeriodo = signal('');
+  configFechaInicio = signal('');
+  configFechaFin = signal('');
+  newHolidayFecha = signal('');
+  newHolidayDescripcion = signal('');
+  configPeriodoSaving = signal(false);
+  configPeriodoLoading = signal(false);
+
+  // -- Toggle activo --
+  toggleStudentActivo(id: number) {
+    this.studentsService.toggleActivo(id).subscribe({
+      next: (result) => {
+        this.setMessage(result.message);
+        this.refreshEstudiantes();
+      },
+      error: (err) => {
+        this.setError(err.error?.message || 'No se pudo cambiar el estado');
+      },
+    });
   }
+
+  // ============================================================
+  //  Dashboard / Bonos / Resumen (código existente sin cambios)
+  // ============================================================
 
   refreshDisponibilidad() {
     this.loading.set(true);
@@ -77,7 +228,7 @@ export class AdminDashboardPage {
         this.loading.set(false);
       },
       error: () => {
-        this.errorMessage.set('No se pudo consultar la disponibilidad');
+        this.setError('No se pudo consultar la disponibilidad');
         this.loading.set(false);
       },
     });
@@ -104,7 +255,7 @@ export class AdminDashboardPage {
           this.loading.set(false);
         },
         error: () => {
-          this.errorMessage.set('No se pudo consultar el resumen diario');
+          this.setError('No se pudo consultar el resumen diario');
           this.loading.set(false);
         },
       });
@@ -147,63 +298,42 @@ export class AdminDashboardPage {
   }
 
   setExtraCantidad(tipo: BonoTipo, cantidad: string) {
-    this.extraCantidad.update((actual) => ({
-      ...actual,
-      [tipo]: Number(cantidad),
-    }));
+    this.extraCantidad.update((actual) => ({ ...actual, [tipo]: Number(cantidad) }));
   }
 
   setBaseCantidad(tipo: BonoTipo, cantidad: string) {
-    this.baseCantidad.update((actual) => ({
-      ...actual,
-      [tipo]: Number(cantidad),
-    }));
+    this.baseCantidad.update((actual) => ({ ...actual, [tipo]: Number(cantidad) }));
   }
 
   setLiberarCantidad(tipo: BonoTipo, cantidad: string) {
-    this.liberarCantidad.update((actual) => ({
-      ...actual,
-      [tipo]: Number(cantidad),
-    }));
+    this.liberarCantidad.update((actual) => ({ ...actual, [tipo]: Number(cantidad) }));
   }
 
   cargarExtra(tipo: BonoTipo) {
     const cantidad = this.extraCantidad()[tipo];
-
     if (!cantidad || cantidad <= 0) {
-      this.errorMessage.set('Ingresa una cantidad extra valida');
+      this.setError('Ingresa una cantidad extra valida');
       return;
     }
-
     this.runAdminAction(() => this.bonosService.cargarExtra(tipo, cantidad), 'Carga extra registrada');
   }
 
   establecerBase(tipo: BonoTipo) {
     const cantidad = this.baseCantidad()[tipo];
-
     if (!cantidad || cantidad <= 0) {
-      this.errorMessage.set('Ingresa una cantidad base valida');
+      this.setError('Ingresa una cantidad base valida');
       return;
     }
-
-    this.runAdminAction(
-      () => this.bonosService.establecerBase(tipo, cantidad),
-      'Cantidad base actualizada',
-    );
+    this.runAdminAction(() => this.bonosService.establecerBase(tipo, cantidad), 'Cantidad base actualizada');
   }
 
   liberarExpirados(tipo: BonoTipo) {
     const cantidad = this.liberarCantidad()[tipo];
-
     if (!cantidad || cantidad <= 0) {
-      this.errorMessage.set('Ingresa una cantidad a liberar valida');
+      this.setError('Ingresa una cantidad a liberar valida');
       return;
     }
-
-    this.runAdminAction(
-      () => this.bonosService.liberarExpirados(tipo, cantidad),
-      'Bonos expirados liberados',
-    );
+    this.runAdminAction(() => this.bonosService.liberarExpirados(tipo, cantidad), 'Bonos expirados liberados');
   }
 
   marcarReclamado(redencionId: number) {
@@ -226,7 +356,6 @@ export class AdminDashboardPage {
           const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
           const url = URL.createObjectURL(blob);
           const link = document.createElement('a');
-
           link.href = url;
           link.download = `resumen-diario-sigba-${new Date().toISOString().slice(0, 10)}.xls`;
           link.click();
@@ -237,27 +366,24 @@ export class AdminDashboardPage {
 
   formatTime(value: string | null) {
     if (!value) return '-';
-
     if (/^\d{2}:\d{2}/.test(value)) {
       const [hourValue, minute] = value.split(':');
       const hour = Number(hourValue);
       const period = hour >= 12 ? 'p.m.' : 'a.m.';
       const normalizedHour = hour % 12 || 12;
-
       return `${normalizedHour}:${minute} ${period}`;
     }
-
-    return new Date(value).toLocaleTimeString('es-CO', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true,
-    });
+    return new Date(value).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: true });
   }
 
   logout() {
     this.authService.logout();
     this.router.navigate(['/admin/login']);
   }
+
+  // ============================================================
+  //  Base de datos (ex-Estudiantes)
+  // ============================================================
 
   setStudentsFile(fileList: FileList | null) {
     this.studentsFile.set(fileList?.item(0) ?? null);
@@ -269,24 +395,20 @@ export class AdminDashboardPage {
 
   cargarEstudiantes() {
     const file = this.studentsFile();
-
     if (!file) {
-      this.errorMessage.set('Selecciona el archivo de estudiantes');
+      this.setError('Selecciona el archivo de estudiantes');
       return;
     }
-
-    this.runImport(() => this.studentsImportService.importStudents(file));
+    this.runImport(() => this.studentsService.importStudents(file));
   }
 
   cargarSubsidiados() {
     const file = this.subsidiesFile();
-
     if (!file) {
-      this.errorMessage.set('Selecciona el archivo de subsidiados');
+      this.setError('Selecciona el archivo de subsidiados');
       return;
     }
-
-    this.runImport(() => this.studentsImportService.importSubsidies(file));
+    this.runImport(() => this.studentsService.importSubsidies(file));
   }
 
   descargarPlantillaEstudiantes() {
@@ -294,7 +416,6 @@ export class AdminDashboardPage {
       ['codigo', 'tipo_documento', 'numero_documento', 'nombre', 'correo', 'programa_codigo', 'programa_nombre'],
       ['20231234', 'CC', '12345678', 'Nombre Apellido', 'estudiante@correo.com', '2711', 'Desarrollo de software'],
     ];
-
     this.downloadExcelTemplate('plantilla-estudiantes-sigba.xlsx', 'Plantilla estudiantes', rows);
   }
 
@@ -303,25 +424,430 @@ export class AdminDashboardPage {
       ['codigo', 'tiene_beca', 'dias'],
       ['20231234', 'si', 'lunes,martes,miercoles'],
     ];
-
     this.downloadExcelTemplate('plantilla-subsidiados-sigba.xlsx', 'Plantilla subsidiados', rows);
+  }
+
+  // ============================================================
+  //  Gestión de estudiantes
+  // ============================================================
+
+  refreshEstudiantes(page = this.estudiantesPage()) {
+    this.estudiantesLoading.set(true);
+    this.estudiantesPage.set(page);
+
+    this.studentsService
+      .getStudents({
+        tipo: this.estudiantesFiltroTipo(),
+        beca: this.estudiantesFiltroBeca(),
+        codigo: this.estudiantesFiltroCodigo(),
+        activo: this.estudiantesFiltroActivo(),
+        page,
+        limit: this.estudiantesLimit(),
+      })
+      .subscribe({
+        next: (data) => {
+          this.estudiantesData.set(data);
+          this.estudiantesLoading.set(false);
+        },
+        error: () => {
+          this.setError('No se pudo consultar la lista de estudiantes');
+          this.estudiantesLoading.set(false);
+        },
+      });
+  }
+
+  setEstudiantesFiltroTipo(value: string) {
+    this.estudiantesFiltroTipo.set(value);
+    this.refreshEstudiantes(1);
+  }
+
+  setEstudiantesFiltroBeca(value: string) {
+    this.estudiantesFiltroBeca.set(value);
+    this.refreshEstudiantes(1);
+  }
+
+  buscarEstudianteCodigo(value: string) {
+    this.estudiantesFiltroCodigo.set(value.trim());
+    this.refreshEstudiantes(1);
+  }
+
+  setEstudiantesFiltroActivo(value: string) {
+    this.estudiantesFiltroActivo.set(value);
+    this.refreshEstudiantes(1);
+  }
+
+  limpiarFiltrosEstudiantes() {
+    this.estudiantesFiltroTipo.set('');
+    this.estudiantesFiltroBeca.set('');
+    this.estudiantesFiltroCodigo.set('');
+    this.estudiantesFiltroActivo.set('');
+    this.refreshEstudiantes(1);
+  }
+
+  // -- Modal crear --
+
+  openCreateModal() {
+    this.createCodigo.set('');
+    this.createTipoDocumento.set('CC');
+    this.createNumeroDocumento.set('');
+    this.createNombre.set('');
+    this.createCorreo.set('');
+    this.createProgramaCodigo.set('');
+    this.createProgramaNombre.set('');
+    this.createTipoEstudiante.set('no_subsidiado');
+    this.createTieneBeca.set(false);
+    this.createDias.set([]);
+    this.createSaving.set(false);
+    this.setMessage('');
+    this.setError('');
+    this.showCreateModal.set(true);
+  }
+
+  closeCreateModal() {
+    this.showCreateModal.set(false);
+  }
+
+  toggleCreateDia(dia: string) {
+    this.createDias.update((dias) =>
+      dias.includes(dia) ? dias.filter((d) => d !== dia) : [...dias, dia],
+    );
+  }
+
+  setCreateProgramaCodigo(value: string) {
+    this.createProgramaCodigo.set(value);
+    this.createProgramaNombre.set(this.programas[value] || '');
+  }
+
+  saveCreateStudent() {
+    const codigo = this.createCodigo().trim();
+    const numeroDocumento = this.createNumeroDocumento().trim();
+    const nombre = this.createNombre().trim();
+    const correo = this.createCorreo().trim();
+    const programaCodigo = this.createProgramaCodigo().trim();
+    const programaNombre = this.createProgramaNombre().trim();
+    const tipoEstudiante = this.createTipoEstudiante();
+
+    if (!codigo || !numeroDocumento || !nombre || !correo || !programaCodigo || !programaNombre) {
+      this.setError('Todos los campos son obligatorios');
+      return;
+    }
+
+    if (tipoEstudiante === 'subsidiado' && this.createDias().length === 0) {
+      this.setError('Debe seleccionar al menos un día de subsidio');
+      return;
+    }
+
+    this.createSaving.set(true);
+    this.setMessage('');
+    this.setError('');
+
+    this.studentsService
+      .createStudent({
+        codigo,
+        tipo_documento: this.createTipoDocumento(),
+        numero_documento: numeroDocumento,
+        nombre,
+        correo,
+        programa_codigo: programaCodigo,
+        programa_nombre: programaNombre,
+        tipo_estudiante: tipoEstudiante,
+        tiene_beca: tipoEstudiante === 'subsidiado' ? this.createTieneBeca() : undefined,
+        dias: tipoEstudiante === 'subsidiado' ? this.createDias() : [],
+      })
+      .subscribe({
+        next: () => {
+          this.setMessage('Estudiante creado correctamente');
+          this.createSaving.set(false);
+          this.showCreateModal.set(false);
+          this.refreshEstudiantes();
+        },
+        error: (err) => {
+          this.setError(err.error?.message || 'No se pudo crear el estudiante');
+          this.createSaving.set(false);
+        },
+      });
+  }
+
+  // -- Modal editar --
+
+  openEditModal(student: Student) {
+    this.editingStudentId.set(student.id);
+    this.editCodigo.set(student.codigo);
+    this.editTipoDocumento.set(student.tipo_documento);
+    this.editNumeroDocumento.set(student.numero_documento);
+    this.editNombre.set(student.nombre);
+    this.editCorreo.set(student.correo);
+    this.editProgramaCodigo.set(student.programa_codigo);
+    this.editProgramaNombre.set(student.programa_nombre);
+    this.editTipoEstudiante.set(student.tipo_estudiante);
+    this.editTieneBeca.set(student.tiene_beca);
+    this.editDias.set([...student.dias]);
+    this.editSaving.set(false);
+    this.setMessage('');
+    this.setError('');
+    this.showEditModal.set(true);
+  }
+
+  closeEditModal() {
+    this.showEditModal.set(false);
+    this.editingStudentId.set(null);
+  }
+
+  toggleEditDia(dia: string) {
+    this.editDias.update((dias) =>
+      dias.includes(dia) ? dias.filter((d) => d !== dia) : [...dias, dia],
+    );
+  }
+
+  setEditProgramaCodigo(value: string) {
+    this.editProgramaCodigo.set(value);
+    this.editProgramaNombre.set(this.programas[value] || '');
+  }
+
+  saveEditStudent() {
+    const id = this.editingStudentId();
+    if (!id) return;
+
+    const codigo = this.editCodigo().trim();
+    const numeroDocumento = this.editNumeroDocumento().trim();
+    const nombre = this.editNombre().trim();
+    const correo = this.editCorreo().trim();
+    const programaCodigo = this.editProgramaCodigo().trim();
+    const programaNombre = this.editProgramaNombre().trim();
+    const tipoEstudiante = this.editTipoEstudiante();
+
+    if (!codigo || !numeroDocumento || !nombre || !correo || !programaCodigo || !programaNombre) {
+      this.setError('Todos los campos son obligatorios');
+      return;
+    }
+
+    if (tipoEstudiante === 'subsidiado' && this.editDias().length === 0) {
+      this.setError('Debe seleccionar al menos un día de subsidio');
+      return;
+    }
+
+    this.editSaving.set(true);
+    this.setMessage('');
+    this.setError('');
+
+    this.studentsService
+      .updateStudent(id, {
+        codigo,
+        tipo_documento: this.editTipoDocumento(),
+        numero_documento: numeroDocumento,
+        nombre,
+        correo,
+        programa_codigo: programaCodigo,
+        programa_nombre: programaNombre,
+        tipo_estudiante: tipoEstudiante,
+        tiene_beca: tipoEstudiante === 'subsidiado' ? this.editTieneBeca() : undefined,
+        dias: tipoEstudiante === 'subsidiado' ? this.editDias() : [],
+      })
+      .subscribe({
+        next: () => {
+          this.setMessage('Estudiante actualizado correctamente');
+          this.editSaving.set(false);
+          this.showEditModal.set(false);
+          this.editingStudentId.set(null);
+          this.refreshEstudiantes();
+        },
+        error: (err) => {
+          this.setError(err.error?.message || 'No se pudo actualizar el estudiante');
+          this.editSaving.set(false);
+        },
+      });
+  }
+
+  // ============================================================
+  //  Dashboard / Bonos / Resumen (código existente sin cambios)
+  // ============================================================
+  //  Configuración
+  // ============================================================
+
+  changePassword() {
+    const current = this.configCurrentPassword().trim();
+    const newPw = this.configNewPassword().trim();
+    const confirm = this.configConfirmPassword().trim();
+
+    if (!current || !newPw || !confirm) {
+      this.setError('Todos los campos son obligatorios');
+      return;
+    }
+
+    if (newPw.length < 6) {
+      this.setError('La nueva contrasena debe tener al menos 6 caracteres');
+      return;
+    }
+
+    if (newPw !== confirm) {
+      this.setError('Las contrasenas no coinciden');
+      return;
+    }
+
+    this.configSaving.set(true);
+    this.setMessage('');
+    this.setError('');
+
+    this.authService.changePassword(current, newPw).subscribe({
+      next: (result) => {
+        this.setMessage(result.message);
+        this.configCurrentPassword.set('');
+        this.configNewPassword.set('');
+        this.configConfirmPassword.set('');
+        this.configSaving.set(false);
+      },
+      error: (err) => {
+        this.setError(err.error?.message || 'No se pudo cambiar la contrasena');
+        this.configSaving.set(false);
+      },
+    });
+  }
+
+  // ============================================================
+  //  Periodo
+  // ============================================================
+
+  loadSystemConfig() {
+    this.configPeriodoLoading.set(true);
+
+    this.systemService.getSettings().subscribe({
+      next: (settings) => {
+        this.systemSettings.set(settings);
+        this.configPeriodo.set(settings.periodo_actual);
+        this.configFechaInicio.set(settings.fecha_inicio || '');
+        this.configFechaFin.set(settings.fecha_fin || '');
+        this.configPeriodoLoading.set(false);
+      },
+      error: () => {
+        this.configPeriodoLoading.set(false);
+      },
+    });
+
+    this.systemService.getWorkingDays().subscribe({
+      next: (days) => {
+        this.workingDays.set(days);
+      },
+    });
+
+    this.systemService.getHolidays().subscribe({
+      next: (holidays) => {
+        this.holidays.set(holidays);
+      },
+    });
+  }
+
+  toggleWorkingDay(dia: string) {
+    this.workingDays.update((days) =>
+      days.map((d) => (d.dia === dia ? { ...d, activo: !d.activo } : d)),
+    );
+  }
+
+  addHoliday() {
+    const fecha = this.newHolidayFecha().trim();
+    const descripcion = this.newHolidayDescripcion().trim();
+
+    if (!fecha) {
+      this.setError('Selecciona una fecha para el festivo');
+      return;
+    }
+
+    this.systemService.createHoliday(fecha, descripcion).subscribe({
+      next: (holiday) => {
+        this.holidays.update((list) => [...list, holiday]);
+        this.newHolidayFecha.set('');
+        this.newHolidayDescripcion.set('');
+        this.setMessage('Festivo agregado correctamente');
+      },
+      error: (err) => {
+        this.setError(err.error?.message || 'No se pudo agregar el festivo');
+      },
+    });
+  }
+
+  removeHoliday(id: number) {
+    this.systemService.deleteHoliday(id).subscribe({
+      next: () => {
+        this.holidays.update((list) => list.filter((h) => h.id !== id));
+        this.setMessage('Festivo eliminado correctamente');
+      },
+      error: (err) => {
+        this.setError(err.error?.message || 'No se pudo eliminar el festivo');
+      },
+    });
+  }
+
+  savePeriodConfig() {
+    const periodo = this.configPeriodo().trim();
+    const fechaInicio = this.configFechaInicio().trim();
+    const fechaFin = this.configFechaFin().trim();
+
+    if (!periodo) {
+      this.setError('Selecciona un periodo academico');
+      return;
+    }
+
+    this.configPeriodoSaving.set(true);
+    this.setMessage('');
+    this.setError('');
+
+    this.systemService.updateSettings({
+      periodo_actual: periodo,
+      fecha_inicio: fechaInicio || null,
+      fecha_fin: fechaFin || null,
+    }).subscribe({
+      next: (settings) => {
+        this.systemSettings.set(settings);
+
+        // Guardar dias habiles
+        this.systemService.updateWorkingDays(this.workingDays()).subscribe({
+          next: () => {
+            this.setMessage('Configuracion del periodo guardada correctamente');
+            this.configPeriodoSaving.set(false);
+          },
+          error: (err) => {
+            this.setError(err.error?.message || 'Error al guardar dias habiles');
+            this.configPeriodoSaving.set(false);
+          },
+        });
+      },
+      error: (err) => {
+        this.setError(err.error?.message || 'Error al guardar configuracion');
+        this.configPeriodoSaving.set(false);
+      },
+    });
+  }
+
+  // ============================================================
+  //  Helpers
+  // ============================================================
+
+  diasSeleccionados(dias: string[]) {
+    return dias.length === 0
+      ? '-'
+      : dias.map((d) => FORMATO_DIA[d] ?? d).join(', ');
+  }
+
+  private clearMessages() {
+    if (this.messageTimer) { clearTimeout(this.messageTimer); this.messageTimer = null; }
+    if (this.errorTimer) { clearTimeout(this.errorTimer); this.errorTimer = null; }
+    this.message.set('');
+    this.errorMessage.set('');
   }
 
   private runAdminAction(action: () => ReturnType<BonosService['cargarExtra']>, successMessage: string) {
     this.loading.set(true);
-    this.message.set('');
-    this.errorMessage.set('');
+    this.clearMessages();
 
     action().subscribe({
       next: () => {
-        this.message.set(successMessage);
+        this.setMessage(successMessage);
         this.loading.set(false);
         this.refreshDisponibilidad();
         this.refreshResumen();
         this.refreshStats();
       },
       error: (err) => {
-        this.errorMessage.set(err.error?.message || 'No se pudo completar la operacion');
+        this.setError(err.error?.message || 'No se pudo completar la operacion');
         this.loading.set(false);
       },
     });
@@ -329,36 +855,28 @@ export class AdminDashboardPage {
 
   private runImport(action: () => ReturnType<AdminStudentsImportService['importStudents']>) {
     this.loading.set(true);
-    this.message.set('');
-    this.errorMessage.set('');
+    this.clearMessages();
     this.importResult.set(null);
 
     action().subscribe({
       next: (result) => {
         this.importResult.set(result);
-        this.message.set(result.message);
+        this.setMessage(result.message);
         this.loading.set(false);
       },
       error: (err) => {
-        this.errorMessage.set(err.error?.message || 'No se pudo cargar el archivo');
+        this.setError(err.error?.message || 'No se pudo cargar el archivo');
         this.loading.set(false);
       },
     });
   }
 
-  private downloadExcelTemplate(
-  filename: string,
-  sheetName: string,
-  rows: string[][]
-) {
-  const worksheet = XLSX.utils.aoa_to_sheet(rows);
-
-  const workbook = XLSX.utils.book_new();
-
-  XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
-
-  XLSX.writeFile(workbook, filename);
-}
+  private downloadExcelTemplate(filename: string, sheetName: string, rows: string[][]) {
+    const worksheet = XLSX.utils.aoa_to_sheet(rows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+    XLSX.writeFile(workbook, filename);
+  }
 
   private buildExcelResumen(rows: BonoResumenDiarioRow[]) {
     const sections = [
@@ -378,14 +896,14 @@ export class AdminDashboardPage {
 
     const sectionTables = sections
       .map((section) => {
-        const sectionRows = rows.filter((row) => {
-          return row.tipo === section.tipo && row.modalidad === section.modalidad;
-        });
+        const sectionRows = rows.filter(
+          (row) => row.tipo === section.tipo && row.modalidad === section.modalidad,
+        );
 
         const body = sectionRows.length
           ? sectionRows
-              .map((row) => {
-                return `
+              .map(
+                (row) => `
                   <tr>
                     <td>${escapeHtml(row.codigo)}</td>
                     <td>${escapeHtml(row.nombre)}</td>
@@ -394,8 +912,8 @@ export class AdminDashboardPage {
                     <td>${escapeHtml(this.formatTime(row.hora_solicitud))}</td>
                     <td>${escapeHtml(this.formatTime(row.hora_reclamo))}</td>
                   </tr>
-                `;
-              })
+                `,
+              )
               .join('')
           : '<tr><td colspan="6">Sin registros</td></tr>';
 

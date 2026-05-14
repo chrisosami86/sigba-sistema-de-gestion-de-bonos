@@ -111,6 +111,7 @@ export class DetailsStudentsPage implements OnDestroy {
           tipo_estudiante: student.tipo_estudiante,
           tiene_beca: student.tiene_beca,
           dias: student.dias,
+          must_change_password: false,
         });
       },
     });

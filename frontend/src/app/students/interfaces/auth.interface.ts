@@ -7,9 +7,11 @@ export interface StudentSession {
   tipo_estudiante: string;
   tiene_beca: boolean;
   dias: string[];
+  must_change_password: boolean;
 }
 
 export interface StudentLoginResponse {
   message: string;
+  token: string;
   student: StudentSession;
 }

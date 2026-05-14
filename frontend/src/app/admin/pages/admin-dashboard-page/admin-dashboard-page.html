@@ -17,7 +17,7 @@
       <button class="btn justify-start"
         [class.btn-error]="selectedModule() === 'resumen'"
         [class.text-white]="selectedModule() === 'resumen'"
-        (click)="selectedModule.set('resumen')">Resumen diario</button>
+        (click)="selectedModule.set('resumen'); refreshResumen()">Resumen diario</button>
       <button class="btn justify-start"
         [class.btn-error]="selectedModule() === 'gestion_estudiantes'"
         [class.text-white]="selectedModule() === 'gestion_estudiantes'"
@@ -358,7 +358,7 @@
               <option value="true">Con beca</option>
               <option value="false">Sin beca</option>
             </select>
-            <select class="select w-full" (change)="setEstudiantesFiltroActivo(estFiltroActivo.value)" #estFiltroActivo>
+            <select class="select w-full" (change)="setEstudiantesFiltroTipo(estFiltroActivo.value)" #estFiltroActivo>
               <option value="">Todos los estados</option>
               <option value="true">Activo</option>
               <option value="false">Inactivo</option>
@@ -693,6 +693,15 @@
         <select class="select w-full" (change)="createTipoEstudiante.set(createTipoEstSelect.value)" #createTipoEstSelect>
           <option value="no_subsidiado" [selected]="createTipoEstudiante() === 'no_subsidiado'">No subsidiado</option>
           <option value="subsidiado" [selected]="createTipoEstudiante() === 'subsidiado'">Subsidiado</option>
+        </select>
+      </div>
+      <div>
+        <label class="label text-sm font-semibold">Periodo academico *</label>
+        <select class="select w-full" (change)="createPeriodo.set(createPeriodoSelect.value)" #createPeriodoSelect>
+          <option value="" [selected]="!createPeriodo()">Seleccionar periodo</option>
+          @for (p of periodosDisponibles(); track p) {
+            <option [value]="p" [selected]="createPeriodo() === p">{{ p }}</option>
+          }
         </select>
       </div>
     </div>

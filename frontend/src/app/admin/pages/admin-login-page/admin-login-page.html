@@ -102,3 +102,78 @@
 
   <footer-component />
 </main>
+
+<!-- Modal obligatorio de cambio de contrasena administrador -->
+@if (showForceChange()) {
+<div class="modal modal-open">
+  <div class="modal-box flex flex-col gap-4">
+    <h3 class="text-xl font-bold">Cambio de contrasena obligatorio</h3>
+    <p class="text-sm text-gray-600">
+      Es tu primer inicio de sesion como administrador. Por seguridad, debes cambiar tu contrasena antes de continuar.
+    </p>
+
+    <div>
+      <label class="label text-sm font-semibold">Contrasena actual</label>
+      <input
+        [type]="forceShowPasswords() ? 'text' : 'password'"
+        class="input w-full"
+        placeholder="Contrasena actual"
+        [value]="forceCurrentPassword()"
+        (input)="forceCurrentPassword.set(fCurrentPw.value)"
+        #fCurrentPw
+      />
+    </div>
+
+    <div>
+      <label class="label text-sm font-semibold">Nueva contrasena</label>
+      <div class="join w-full">
+        <input
+          [type]="forceShowPasswords() ? 'text' : 'password'"
+          class="input join-item w-full"
+          placeholder="Minimo 6 caracteres"
+          autocomplete="new-password"
+          [value]="forceNewPassword()"
+          (input)="forceNewPassword.set(fNewPw.value)"
+          #fNewPw
+        />
+        <button type="button" class="btn join-item" (click)="forceShowPasswords.set(!forceShowPasswords())">
+          {{ forceShowPasswords() ? 'Ocultar' : 'Ver' }}
+        </button>
+      </div>
+    </div>
+
+    <div>
+      <label class="label text-sm font-semibold">Confirmar nueva contrasena</label>
+      <input
+        [type]="forceShowPasswords() ? 'text' : 'password'"
+        class="input w-full"
+        placeholder="Repite la nueva contrasena"
+        autocomplete="new-password"
+        [value]="forceConfirmPassword()"
+        (input)="forceConfirmPassword.set(fConfirmPw.value)"
+        #fConfirmPw
+      />
+    </div>
+
+    @if (forceError()) {
+      <div class="alert alert-error text-sm"><span>{{ forceError() }}</span></div>
+    }
+
+    @if (forceMessage()) {
+      <div class="alert alert-success text-sm"><span>{{ forceMessage() }}</span></div>
+    }
+
+    <button
+      class="btn bg-red-600 text-white hover:bg-red-700"
+      [disabled]="forceLoading()"
+      (click)="submitForceChange()"
+    >
+      @if (forceLoading()) {
+        Cambiando...
+      } @else {
+        Cambiar contrasena
+      }
+    </button>
+  </div>
+</div>
+}

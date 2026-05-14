@@ -1,11 +1,22 @@
 const pool = require("../../config/db");
 const XLSX = require("xlsx");
+const bcrypt = require("bcryptjs");
+
+const SALT_ROUNDS = 8;
+
+const hashIfNeeded = async (existingRow, codigo) => {
+  if (!existingRow) return await bcrypt.hash(String(codigo), SALT_ROUNDS);
+  if (!existingRow.password_hash) return await bcrypt.hash(String(codigo), SALT_ROUNDS);
+  return null;
+};
 
 const createStudent = async (data) => {
   const client = await pool.connect();
 
   try {
     await client.query("BEGIN");
+
+    const passwordHash = await bcrypt.hash(String(data.codigo), SALT_ROUNDS);
 
     // 1. Insertar estudiante
     const studentQuery = `
@@ -17,9 +28,12 @@ const createStudent = async (data) => {
         correo,
         programa_codigo,
         programa_nombre,
-        tipo_estudiante
+        tipo_estudiante,
+        periodo_actual,
+        password_hash,
+        must_change_password
       )
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10, true)
       RETURNING *;
     `;
 
@@ -32,6 +46,8 @@ const createStudent = async (data) => {
       data.programa_codigo,
       data.programa_nombre,
       data.tipo_estudiante,
+      data.periodo_actual || null,
+      passwordHash,
     ];
 
     const studentResult = await client.query(studentQuery, studentValues);
@@ -114,7 +130,7 @@ const getStudents = async (filters) => {
   // filtro por activo
   if (activo !== undefined && activo !== '') {
     values.push(activo === 'true');
-    conditions.push(`s.activo = ${nextParam()}`);
+    conditions.push(`COALESCE(s.activo, true) = ${nextParam()}`);
   }
 
   const whereClause = conditions.length > 0 ? ` WHERE ` + conditions.join(" AND ") : '';
@@ -454,9 +470,12 @@ const importStudentsFromExcel = async (buffer) => {
         processedCodes.push(data.codigo);
 
         const existing = await client.query(
-          "SELECT id FROM students WHERE codigo = $1",
+          "SELECT id, password_hash FROM students WHERE codigo = $1",
           [data.codigo],
         );
+
+        const existingRow = existing.rows[0] || null;
+        const passwordHash = await hashIfNeeded(existingRow, data.codigo);
 
         const upsertQuery = `
           INSERT INTO students (
@@ -469,9 +488,11 @@ const importStudentsFromExcel = async (buffer) => {
             programa_nombre,
             tipo_estudiante,
             periodo_actual,
-            activo
+            activo,
+            password_hash,
+            must_change_password
           )
-          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9, true)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9, true, $10, true)
           ON CONFLICT (codigo)
           DO UPDATE SET
             tipo_documento = EXCLUDED.tipo_documento,
@@ -481,7 +502,9 @@ const importStudentsFromExcel = async (buffer) => {
             programa_codigo = EXCLUDED.programa_codigo,
             programa_nombre = EXCLUDED.programa_nombre,
             periodo_actual = EXCLUDED.periodo_actual,
-            activo = true
+            activo = true,
+            password_hash = COALESCE(students.password_hash, EXCLUDED.password_hash),
+            must_change_password = CASE WHEN students.password_hash IS NULL THEN true ELSE students.must_change_password END
         `;
 
         await client.query(upsertQuery, [
@@ -494,6 +517,7 @@ const importStudentsFromExcel = async (buffer) => {
           data.programa_nombre,
           "no_subsidiado",
           periodoActual,
+          passwordHash,
         ]);
 
         if (existing.rows.length > 0) {

@@ -23,6 +23,16 @@ export class AdminLoginPage {
   recoveryMessage = signal('');
   recoveryError = signal('');
 
+  // Force change password modal
+  showForceChange = signal(false);
+  forceCurrentPassword = signal('');
+  forceNewPassword = signal('');
+  forceConfirmPassword = signal('');
+  forceShowPasswords = signal(false);
+  forceLoading = signal(false);
+  forceMessage = signal('');
+  forceError = signal('');
+
   login() {
     if (!this.correo() || !this.password()) {
       this.errorMessage.set('Ingresa correo y contrasena');
@@ -33,13 +43,66 @@ export class AdminLoginPage {
     this.errorMessage.set('');
 
     this.authService.login(this.correo(), this.password()).subscribe({
-      next: () => {
+      next: (response) => {
         this.loading.set(false);
-        this.router.navigate(['/admin']);
+
+        if (response.admin.must_change_password) {
+          this.forceCurrentPassword.set(this.password());
+          this.password.set('');
+          this.showForceChange.set(true);
+        } else {
+          this.router.navigate(['/admin']);
+        }
       },
       error: (err) => {
         this.errorMessage.set(err.error?.message || 'No se pudo iniciar sesion');
         this.loading.set(false);
+      },
+    });
+  }
+
+  submitForceChange() {
+    const currentPw = this.forceCurrentPassword().trim();
+    const newPw = this.forceNewPassword().trim();
+    const confirmPw = this.forceConfirmPassword().trim();
+
+    if (!currentPw || !newPw || !confirmPw) {
+      this.forceError.set('Todos los campos son obligatorios');
+      return;
+    }
+
+    if (newPw.length < 6) {
+      this.forceError.set('La contrasena debe tener al menos 6 caracteres');
+      return;
+    }
+
+    if (newPw !== confirmPw) {
+      this.forceError.set('Las contrasenas no coinciden');
+      return;
+    }
+
+    if (currentPw === newPw) {
+      this.forceError.set('La nueva contrasena no puede ser igual a la actual');
+      return;
+    }
+
+    this.forceLoading.set(true);
+    this.forceError.set('');
+    this.forceMessage.set('');
+
+    this.authService.changePassword(currentPw, newPw).subscribe({
+      next: (result) => {
+        this.forceMessage.set(result.message);
+        this.forceLoading.set(false);
+
+        setTimeout(() => {
+          this.showForceChange.set(false);
+          this.router.navigate(['/admin']);
+        }, 2000);
+      },
+      error: (err) => {
+        this.forceError.set(err.error?.message || 'No se pudo cambiar la contrasena');
+        this.forceLoading.set(false);
       },
     });
   }

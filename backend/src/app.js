@@ -25,7 +25,12 @@ app.use('/api/auth', authRoutes);
 
 
 pool.connect()
-  .then(() => console.log('✅ Conectado a PostgreSQL'))
+  .then(async () => {
+    console.log('✅ Conectado a PostgreSQL');
+
+    const { ensureDefaultAdmin } = require('./modules/auth/auth.service');
+    await ensureDefaultAdmin();
+  })
   .catch(err => console.error('❌ Error de conexión', err));
 
 

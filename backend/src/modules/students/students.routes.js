@@ -2,26 +2,19 @@ const express = require('express');
 const multer = require('multer');
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
+const { authenticateAdmin } = require('../../middlewares/auth');
 
 const studentController = require('./students.controller');
 
-router.get('/', studentController.getStudents);
-
-router.post('/import/students', upload.single('file'), studentController.importStudents);
-
-router.post('/import/subsidies', upload.single('file'), studentController.importSubsidies);
-
-router.get('/:id', studentController.getStudentById);
-
-router.get('/code/:codigo', studentController.getStudentByCodigo);
-
-router.post('/', studentController.createStudent);
-
-router.patch('/:id', studentController.updateStudent);
-
-router.patch('/:id/toggle-activo', studentController.toggleStudentActivo);
-
-router.delete('/:id', studentController.deleteStudent);
-
+// Admin-only endpoints
+router.get('/', authenticateAdmin, studentController.getStudents);
+router.post('/import/students', authenticateAdmin, upload.single('file'), studentController.importStudents);
+router.post('/import/subsidies', authenticateAdmin, upload.single('file'), studentController.importSubsidies);
+router.get('/:id', authenticateAdmin, studentController.getStudentById);
+router.get('/code/:codigo', authenticateAdmin, studentController.getStudentByCodigo);
+router.post('/', authenticateAdmin, studentController.createStudent);
+router.patch('/:id', authenticateAdmin, studentController.updateStudent);
+router.patch('/:id/toggle-activo', authenticateAdmin, studentController.toggleStudentActivo);
+router.delete('/:id', authenticateAdmin, studentController.deleteStudent);
 
 module.exports = router;

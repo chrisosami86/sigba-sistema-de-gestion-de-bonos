@@ -171,6 +171,7 @@ export class AdminDashboardPage implements OnInit {
   createProgramaCodigo = signal('');
   createProgramaNombre = signal('');
   createTipoEstudiante = signal('no_subsidiado');
+  createPeriodo = signal('');
   createTieneBeca = signal(false);
   createDias = signal<string[]>([]);
   createSaving = signal(false);
@@ -495,6 +496,7 @@ export class AdminDashboardPage implements OnInit {
     this.createProgramaCodigo.set('');
     this.createProgramaNombre.set('');
     this.createTipoEstudiante.set('no_subsidiado');
+    this.createPeriodo.set(this.systemSettings()?.periodo_actual || '');
     this.createTieneBeca.set(false);
     this.createDias.set([]);
     this.createSaving.set(false);
@@ -526,9 +528,15 @@ export class AdminDashboardPage implements OnInit {
     const programaCodigo = this.createProgramaCodigo().trim();
     const programaNombre = this.createProgramaNombre().trim();
     const tipoEstudiante = this.createTipoEstudiante();
+    const periodoActual = this.createPeriodo().trim();
 
     if (!codigo || !numeroDocumento || !nombre || !correo || !programaCodigo || !programaNombre) {
       this.setError('Todos los campos son obligatorios');
+      return;
+    }
+
+    if (!periodoActual) {
+      this.setError('Debe seleccionar un periodo academico');
       return;
     }
 
@@ -551,6 +559,7 @@ export class AdminDashboardPage implements OnInit {
         programa_codigo: programaCodigo,
         programa_nombre: programaNombre,
         tipo_estudiante: tipoEstudiante,
+        periodo_actual: periodoActual,
         tiene_beca: tipoEstudiante === 'subsidiado' ? this.createTieneBeca() : undefined,
         dias: tipoEstudiante === 'subsidiado' ? this.createDias() : [],
       })

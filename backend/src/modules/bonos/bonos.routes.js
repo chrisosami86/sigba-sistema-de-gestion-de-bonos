@@ -1,27 +1,23 @@
 const express = require('express');
 const router = express.Router();
+const { authenticateStudent, authenticateAdmin, authenticate } = require('../../middlewares/auth');
 
 const bonosController = require('./bonos.controller');
 
-router.post('/solicitar', bonosController.requestBono);
+// Shared endpoints (any valid JWT)
+router.get('/disponibilidad/:tipo', authenticate, bonosController.getDisponibilidad);
+router.get('/estado/:tipo', authenticate, bonosController.getEstadoSistema);
 
-router.patch('/reclamar/:id', bonosController.claimBono);
+// Student-only endpoints
+router.post('/solicitar', authenticateStudent, bonosController.requestBono);
+router.get('/student/:studentId', authenticateStudent, bonosController.getStudentBonos);
 
-router.get('/disponibilidad/:tipo', bonosController.getDisponibilidad);
-
-router.get('/student/:studentId', bonosController.getStudentBonos);
-
-router.get('/admin/resumen-diario', bonosController.getResumenDiario);
-
-router.get('/admin/stats-diarias', bonosController.getStatsDiarias);
-
-router.patch('/liberar', bonosController.liberarBonos);
-
-router.patch('/extra', bonosController.cargarBonosExtra);
-
-router.patch('/base', bonosController.establecerCantidadBase);
-
-router.get('/estado/:tipo', bonosController.getEstadoSistema);
-
+// Admin-only endpoints
+router.get('/admin/resumen-diario', authenticateAdmin, bonosController.getResumenDiario);
+router.get('/admin/stats-diarias', authenticateAdmin, bonosController.getStatsDiarias);
+router.patch('/liberar', authenticateAdmin, bonosController.liberarBonos);
+router.patch('/extra', authenticateAdmin, bonosController.cargarBonosExtra);
+router.patch('/base', authenticateAdmin, bonosController.establecerCantidadBase);
+router.patch('/reclamar/:id', authenticateAdmin, bonosController.claimBono);
 
 module.exports = router;

@@ -4,6 +4,7 @@ import { tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { StudentLoginResponse, StudentSession } from '../interfaces/auth.interface';
 
+const STUDENT_TOKEN_KEY = 'sigba_student_token';
 const STUDENT_SESSION_KEY = 'sigba_student_session';
 
 @Injectable({
@@ -23,9 +24,24 @@ export class StudentAuthService {
       })
       .pipe(
         tap((response) => {
+          localStorage.setItem(STUDENT_TOKEN_KEY, response.token);
           this.setSession(response.student);
         }),
       );
+  }
+
+  changePassword(currentPassword: string, newPassword: string) {
+    return this.http.patch<{ message: string }>(
+      `${this.apiUrl}/api/auth/students/change-password`,
+      { currentPassword, newPassword },
+    ).pipe(
+      tap(() => {
+        const student = this.currentStudent();
+        if (student) {
+          this.setSession({ ...student, must_change_password: false });
+        }
+      }),
+    );
   }
 
   recoverPassword(correo: string) {
@@ -35,7 +51,8 @@ export class StudentAuthService {
   }
 
   logout() {
-    sessionStorage.removeItem(STUDENT_SESSION_KEY);
+    localStorage.removeItem(STUDENT_TOKEN_KEY);
+    localStorage.removeItem(STUDENT_SESSION_KEY);
     this.currentStudent.set(null);
   }
 
@@ -44,23 +61,27 @@ export class StudentAuthService {
   }
 
   isLoggedIn() {
-    return this.currentStudent() !== null;
+    return this.currentStudent() !== null && !!this.getToken();
+  }
+
+  getToken() {
+    return localStorage.getItem(STUDENT_TOKEN_KEY);
   }
 
   private setSession(student: StudentSession) {
-    sessionStorage.setItem(STUDENT_SESSION_KEY, JSON.stringify(student));
+    localStorage.setItem(STUDENT_SESSION_KEY, JSON.stringify(student));
     this.currentStudent.set(student);
   }
 
   private getStoredStudent() {
-    const rawSession = sessionStorage.getItem(STUDENT_SESSION_KEY);
+    const rawSession = localStorage.getItem(STUDENT_SESSION_KEY);
 
     if (!rawSession) return null;
 
     try {
       return JSON.parse(rawSession) as StudentSession;
     } catch {
-      sessionStorage.removeItem(STUDENT_SESSION_KEY);
+      localStorage.removeItem(STUDENT_SESSION_KEY);
       return null;
     }
   }

@@ -18,6 +18,8 @@ export interface DisponibilidadBono {
   expirados: number;
   expiradosLiberados: number;
   expiradosPendientes: number;
+  noUtilizada: number;
+  reutilizables: number;
   disponibles: number;
 }
 
@@ -67,6 +69,7 @@ export interface BonoStatsDiarias {
   reclamados: number;
   reservados: number;
   expirados: number;
+  noUtilizados: number;
   frecuenciaUso: number;
   porTipo: Record<BonoTipo, number>;
   porModalidad: {

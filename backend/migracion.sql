@@ -66,3 +66,8 @@ CREATE TABLE IF NOT EXISTS holidays (
   fecha DATE UNIQUE NOT NULL,
   descripcion VARCHAR(255)
 );
+
+-- Migración: trazabilidad de cupos no utilizados
+
+ALTER TABLE bonos_diarios
+ADD COLUMN IF NOT EXISTS cantidad_no_utilizada INTEGER DEFAULT 0;

@@ -1,4 +1,5 @@
 const pool = require("../../config/db");
+const { getModalidadExpression } = require("../../shared/helpers/modalidad.helper");
 
 const VALID_BONO_TYPES = ["almuerzo", "refrigerio"];
 
@@ -300,6 +301,7 @@ const getStatsDiarias = async () => {
     reclamados: 0,
     reservados: 0,
     expirados: 0,
+    noUtilizados: 0,
     porTipo: {
       almuerzo: 0,
       refrigerio: 0,
@@ -327,6 +329,14 @@ const getStatsDiarias = async () => {
     if (row.estado === "expirado") stats.expirados += row.total;
   }
 
+  const noUtilQuery = `
+    SELECT COALESCE(SUM(cantidad_no_utilizada), 0)::int AS total
+    FROM bonos_diarios
+    WHERE fecha = CURRENT_DATE
+  `;
+  const noUtilResult = await pool.query(noUtilQuery);
+  stats.noUtilizados = Number(noUtilResult.rows[0].total);
+
   return {
     ...stats,
     frecuenciaUso:
@@ -349,15 +359,16 @@ const liberarBonos = async (tipo, cantidad) => {
     const bonoDiario = await getOrCreateBonoDiario(tipo, client);
     const disponibilidad = await calculateDisponibilidad(bonoDiario.id, client);
 
-    const expiradosPendientes =
-      disponibilidad.expirados - disponibilidad.expiradosLiberados;
+    const reutilizables = disponibilidad.reutilizables;
 
-    if (expiradosPendientes <= 0) {
-      throw new Error("No hay bonos expirados pendientes por liberar");
+    if (reutilizables <= 0) {
+      throw new Error("No hay cupos reutilizables disponibles (ni expirados ni no utilizados)");
     }
 
-    if (cantidadNumerica > expiradosPendientes) {
-      throw new Error(`Solo hay ${expiradosPendientes} bonos expirados pendientes por liberar`);
+    if (cantidadNumerica > reutilizables) {
+      throw new Error(
+        `Solo hay ${reutilizables} cupos reutilizables (${disponibilidad.expiradosPendientes} expirados + ${disponibilidad.noUtilizada} no utilizados)`,
+      );
     }
 
     const updateQuery = `
@@ -406,20 +417,42 @@ const establecerCantidadBase = async (tipo, cantidad) => {
   validateTipo(tipo);
   const cantidadNumerica = validateCantidad(cantidad);
 
-  const bonoDiario = await getOrCreateBonoDiario(tipo);
+  const client = await pool.connect();
 
-  const updateQuery = `
-    UPDATE bonos_diarios
-    SET
-      cantidad_base = $1,
-      updated_at = NOW()
-    WHERE id = $2
-    RETURNING *
-  `;
+  try {
+    await client.query("BEGIN");
 
-  const result = await pool.query(updateQuery, [cantidadNumerica, bonoDiario.id]);
+    const bonoDiario = await getOrCreateBonoDiario(tipo, client);
 
-  return result.rows[0];
+    const updateDiarioQuery = `
+      UPDATE bonos_diarios
+      SET
+        cantidad_base = $1,
+        updated_at = NOW()
+      WHERE id = $2
+      RETURNING *
+    `;
+
+    const diarioResult = await client.query(updateDiarioQuery, [cantidadNumerica, bonoDiario.id]);
+
+    const updateConfigQuery = `
+      UPDATE config_bonos
+      SET
+        cantidad_base = $1
+      WHERE tipo = $2
+    `;
+
+    await client.query(updateConfigQuery, [cantidadNumerica, tipo]);
+
+    await client.query("COMMIT");
+
+    return diarioResult.rows[0];
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
 };
 
 const claimBono = async (redencionId) => {
@@ -601,21 +634,26 @@ const calculateDisponibilidad = async (bonoDiarioId, client = pool) => {
   const expirados = Number(redenciones.expirados);
   const expiradosLiberados = Math.min(Number(bonoDiario.cantidad_liberada), expirados);
   const expiradosPendientes = expirados - expiradosLiberados;
+  const noUtilizada = Number(bonoDiario.cantidad_no_utilizada || 0);
 
-  const totalOperativo = bonoDiario.cantidad_base + bonoDiario.cantidad_extra;
+  const totalOperativo = Number(bonoDiario.cantidad_base) + Number(bonoDiario.cantidad_extra);
   const reservasActivas = reservados + reclamados;
-  const disponibles = totalOperativo - reservasActivas - expiradosPendientes;
+  const disponibles = totalOperativo - reservasActivas - expiradosPendientes - noUtilizada;
+
+  const reutilizables = expiradosPendientes + noUtilizada;
 
   return {
     totalOperativo,
-    cantidadBase: bonoDiario.cantidad_base,
-    cantidadExtra: bonoDiario.cantidad_extra,
+    cantidadBase: Number(bonoDiario.cantidad_base),
+    cantidadExtra: Number(bonoDiario.cantidad_extra),
     reservasActivas,
     reservados,
     reclamados,
     expirados,
     expiradosLiberados,
     expiradosPendientes,
+    noUtilizada,
+    reutilizables,
     disponibles: Math.max(disponibles, 0),
   };
 };
@@ -633,7 +671,57 @@ const expireBonos = async () => {
 
   const result = await pool.query(expireQuery);
 
+  await calcularNoUtilizada();
+
   return result.rows;
+};
+
+const getClosingTime = (tipo) => {
+  const now = new Date();
+  const closing = new Date(now);
+  const horario = HORARIOS[tipo];
+
+  closing.setHours(horario.ventaLibre.expiracion.hours, horario.ventaLibre.expiracion.minutes, 0, 0);
+
+  return closing;
+};
+
+const isPastClosing = (tipo) => {
+  const closing = getClosingTime(tipo);
+  return new Date() >= closing;
+};
+
+const calcularNoUtilizada = async (client = pool) => {
+  for (const tipo of VALID_BONO_TYPES) {
+    if (!isPastClosing(tipo)) continue;
+
+    const bonoDiarioQuery = `
+      SELECT * FROM bonos_diarios bd
+      JOIN config_bonos cb ON cb.id = bd.config_bono_id
+      WHERE cb.tipo = $1 AND bd.fecha = CURRENT_DATE
+    `;
+    const bonoResult = await client.query(bonoDiarioQuery, [tipo]);
+
+    if (bonoResult.rows.length === 0) continue;
+
+    const bonoDiario = bonoResult.rows[0];
+    const totalOperativo = Number(bonoDiario.cantidad_base) + Number(bonoDiario.cantidad_extra);
+
+    const reservasQuery = `
+      SELECT COUNT(*)::int AS total_reservas
+      FROM redenciones
+      WHERE bono_diario_id = $1
+    `;
+    const reservasResult = await client.query(reservasQuery, [bonoDiario.id]);
+    const totalReservas = Number(reservasResult.rows[0].total_reservas);
+
+    const noUtilizada = Math.max(0, totalOperativo - totalReservas);
+
+    await client.query(
+      `UPDATE bonos_diarios SET cantidad_no_utilizada = $1, updated_at = NOW() WHERE id = $2`,
+      [noUtilizada, bonoDiario.id],
+    );
+  }
 };
 
 const getExpiracion = (tipo, modalidad) => {
@@ -676,30 +764,11 @@ const normalizeDia = (dia) => {
     .replace(/[\u0300-\u036f]/g, "");
 };
 
-const getModalidadExpression = () => {
-  return `
-    CASE
-      WHEN cb.tipo = 'almuerzo'
-        AND r.hora_solicitud::time BETWEEN TIME '08:00' AND TIME '10:15'
-        THEN 'subsidiado'
-      WHEN cb.tipo = 'almuerzo'
-        AND r.hora_solicitud::time BETWEEN TIME '11:30' AND TIME '12:05'
-        THEN 'venta_libre'
-      WHEN cb.tipo = 'refrigerio'
-        AND r.hora_solicitud::time BETWEEN TIME '17:00' AND TIME '18:29'
-        THEN 'subsidiado'
-      WHEN cb.tipo = 'refrigerio'
-        AND r.hora_solicitud::time BETWEEN TIME '18:30' AND TIME '22:00'
-        THEN 'venta_libre'
-      ELSE 'desconocida'
-    END
-  `;
-};
-
 module.exports = {
   requestBono,
   claimBono,
   expireBonos,
+  calcularNoUtilizada,
   getDisponibilidad,
   getStudentBonos,
   getResumenDiario,

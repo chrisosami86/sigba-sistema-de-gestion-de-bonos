@@ -3,6 +3,24 @@ import { Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import * as XLSX from 'xlsx';
 import {
+  Chart,
+  BarController,
+  BarElement,
+  LineController,
+  LineElement,
+  PointElement,
+  CategoryScale,
+  LinearScale,
+  TimeScale,
+  Title,
+  Tooltip,
+  Legend,
+  Filler,
+  type ChartConfiguration,
+} from 'chart.js';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import {
   BonoResumenDiarioRow,
   BonoStatsDiarias,
   BonoTipo,
@@ -17,6 +35,18 @@ import {
   type StudentsPage,
 } from '../../services/admin-students-import.service';
 import { SystemService, type SystemSettings, type WorkingDay, type Holiday } from '../../services/system.service';
+import {
+  AdminAnalyticsService,
+  type AnalyticsResponse,
+  type AnalyticsFilters,
+} from '../../services/admin-analytics.service';
+
+Chart.register(
+  BarController, BarElement,
+  LineController, LineElement, PointElement,
+  CategoryScale, LinearScale, TimeScale,
+  Title, Tooltip, Legend, Filler,
+);
 
 type AdminModule = 'dashboard' | 'bonos' | 'resumen' | 'base_de_datos' | 'gestion_estudiantes' | 'configuracion';
 
@@ -41,6 +71,7 @@ export class AdminDashboardPage implements OnInit {
   private bonosService = inject(BonosService);
   private studentsService = inject(AdminStudentsImportService);
   private systemService = inject(SystemService);
+  private analyticsService = inject(AdminAnalyticsService);
   private router = inject(Router);
 
   readonly tiposDocumento = ['TI', 'CC', 'CR', 'PPT', 'CE', 'PA', 'RC'] as const;
@@ -61,6 +92,7 @@ export class AdminDashboardPage implements OnInit {
     this.refreshDisponibilidad();
     this.refreshStats();
     this.loadSystemConfig();
+    this.loadAnalytics();
   }
 
   // ── Estado general ──
@@ -199,6 +231,17 @@ export class AdminDashboardPage implements OnInit {
   newHolidayDescripcion = signal('');
   configPeriodoSaving = signal(false);
   configPeriodoLoading = signal(false);
+
+  // ── Analytics Dashboard ──
+
+  analyticsData = signal<AnalyticsResponse | null>(null);
+  analyticsLoading = signal(false);
+  analyticsFiltroAgrupacion = signal<'diaria' | 'semanal' | 'mensual'>('diaria');
+  analyticsFiltroTipo = signal('');
+  analyticsFiltroPrograma = signal('');
+  analyticsFiltroFechaInicio = signal('');
+  analyticsFiltroFechaFin = signal('');
+  private chartInstances: Chart[] = [];
 
   // -- Toggle activo --
   toggleStudentActivo(id: number) {
@@ -375,6 +418,244 @@ export class AdminDashboardPage implements OnInit {
       return `${normalizedHour}:${minute} ${period}`;
     }
     return new Date(value).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: true });
+  }
+
+  // ============================================================
+  //  Analytics Dashboard
+  // ============================================================
+
+  loadAnalytics() {
+    this.analyticsLoading.set(true);
+
+    const filters: AnalyticsFilters = {};
+    const tipo = this.analyticsFiltroTipo();
+    const programa = this.analyticsFiltroPrograma();
+    const agrupacion = this.analyticsFiltroAgrupacion();
+    const fechaInicio = this.analyticsFiltroFechaInicio();
+    const fechaFin = this.analyticsFiltroFechaFin();
+
+    if (tipo) filters.tipo = tipo;
+    if (programa) filters.programa = programa;
+    if (agrupacion) filters.agrupacion = agrupacion;
+    if (fechaInicio) filters.fechaInicio = fechaInicio;
+    if (fechaFin) filters.fechaFin = fechaFin;
+
+    this.analyticsService.getAnalytics(filters).subscribe({
+      next: (data) => {
+        this.analyticsData.set(data);
+        this.analyticsLoading.set(false);
+        setTimeout(() => this.renderCharts(), 100);
+      },
+      error: (err) => {
+        this.setError(err.error?.message || 'No se pudieron cargar las analiticas');
+        this.analyticsLoading.set(false);
+      },
+    });
+  }
+
+  setAnalyticsAgrupacion(value: string) {
+    this.analyticsFiltroAgrupacion.set(value as 'diaria' | 'semanal' | 'mensual');
+    this.loadAnalytics();
+  }
+
+  setAnalyticsTipo(value: string) {
+    this.analyticsFiltroTipo.set(value);
+    this.loadAnalytics();
+  }
+
+  setAnalyticsPrograma(value: string) {
+    this.analyticsFiltroPrograma.set(value);
+    this.loadAnalytics();
+  }
+
+  setAnalyticsFechaInicio(value: string) {
+    this.analyticsFiltroFechaInicio.set(value);
+    if (this.analyticsFiltroFechaFin()) this.loadAnalytics();
+  }
+
+  setAnalyticsFechaFin(value: string) {
+    this.analyticsFiltroFechaFin.set(value);
+    if (this.analyticsFiltroFechaInicio()) this.loadAnalytics();
+  }
+
+  destroyCharts() {
+    for (const chart of this.chartInstances) {
+      chart.destroy();
+    }
+    this.chartInstances = [];
+  }
+
+  renderCharts() {
+    this.destroyCharts();
+    const data = this.analyticsData();
+    if (!data) return;
+
+    this.renderTimeSeriesChart(data);
+    this.renderTipoChart(data);
+  }
+
+  renderTimeSeriesChart(data: AnalyticsResponse) {
+    const canvas = document.getElementById('analytics-time-series') as HTMLCanvasElement | null;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const labels = data.timeSeries.map((p) => {
+      const d = new Date(p.periodo + 'T00:00:00');
+      if (data.filtros.agrupacion === 'semanal') {
+        return `Sem ${d.toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit' })}`;
+      }
+      if (data.filtros.agrupacion === 'mensual') {
+        return d.toLocaleDateString('es-CO', { month: 'short', year: '2-digit' });
+      }
+      return d.toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit' });
+    });
+
+    const config: ChartConfiguration = {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: 'Reclamados',
+            data: data.timeSeries.map((p) => p.reclamados),
+            borderColor: '#22c55e',
+            backgroundColor: 'rgba(34, 197, 94, 0.1)',
+            fill: true,
+            tension: 0.3,
+            pointRadius: 3,
+            pointHoverRadius: 6,
+          },
+          {
+            label: 'Expirados (inasistencias)',
+            data: data.timeSeries.map((p) => p.expirados),
+            borderColor: '#ef4444',
+            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+            fill: true,
+            tension: 0.3,
+            pointRadius: 3,
+            pointHoverRadius: 6,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20 } },
+        },
+        scales: {
+          y: { beginAtZero: true, ticks: { precision: 0 }, title: { display: true, text: 'Cantidad' } },
+          x: { title: { display: true, text: 'Periodo' } },
+        },
+      },
+    };
+
+    const chart = new Chart(ctx, config);
+    this.chartInstances.push(chart);
+  }
+
+  renderTipoChart(data: AnalyticsResponse) {
+    const canvas = document.getElementById('analytics-tipo-chart') as HTMLCanvasElement | null;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const config: ChartConfiguration = {
+      type: 'bar',
+      data: {
+        labels: ['Asistencia Subsidiada'],
+        datasets: [
+          {
+            label: 'Reclamados',
+            data: [data.kpiPrincipal.reclamadosSubsidiados],
+            backgroundColor: '#22c55e',
+            borderRadius: 4,
+          },
+          {
+            label: 'Expirados',
+            data: [data.kpiPrincipal.expiradosSubsidiados],
+            backgroundColor: '#ef4444',
+            borderRadius: 4,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        indexAxis: 'y',
+        plugins: {
+          legend: { display: false },
+        },
+        scales: {
+          x: { stacked: true, ticks: { precision: 0 } },
+          y: { stacked: true },
+        },
+      },
+    };
+
+    const chart = new Chart(ctx, config);
+    this.chartInstances.push(chart);
+  }
+
+  // Exportación
+
+  exportarAnalyticsExcel() {
+    const data = this.analyticsData();
+    if (!data) return;
+
+    const wb = XLSX.utils.book_new();
+
+    const resumen = [
+      ['Indice de Asistencia', `${data.kpiPrincipal.indiceAsistencia}%`],
+      ['Reclamados Subsidiados', data.kpiPrincipal.reclamadosSubsidiados],
+      ['Expirados Subsidiados', data.kpiPrincipal.expiradosSubsidiados],
+      ['Estudiantes Subsidiados Activos', data.kpisSecundarios.estudiantesSubsidiadosActivos],
+      ['Promedio Diario Asistencia', data.kpisSecundarios.promedioDiarioAsistencia],
+      ['Reutilizacion Expirados', `${data.reutilizacion.porcentajeReutilizacion}%`],
+      [],
+    ];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(resumen), 'Resumen');
+
+    const bajaFreq = [
+      ['Codigo', 'Nombre', 'Programa', 'Reclamados', 'Expirados', '% Asistencia'],
+      ...data.bajaFrecuencia.map((s) => [
+        s.codigo, s.nombre, s.programa, s.reclamados, s.expirados, `${s.porcentajeAsistencia}%`,
+      ]),
+    ];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(bajaFreq), 'Baja Asistencia');
+
+    XLSX.writeFile(wb, `analytics-sigba-${new Date().toISOString().slice(0, 10)}.xlsx`);
+  }
+
+  exportarAnalyticsPDF() {
+    const data = this.analyticsData();
+    if (!data) return;
+
+    const doc = new jsPDF();
+    const titulo = 'Reporte de Asistencia Subsidiada - SIGBA';
+    doc.setFontSize(16);
+    doc.text(titulo, 14, 20);
+
+    doc.setFontSize(10);
+    doc.text(`Indice de Asistencia: ${data.kpiPrincipal.indiceAsistencia}%`, 14, 32);
+    doc.text(`Reclamados: ${data.kpiPrincipal.reclamadosSubsidiados} | Expirados: ${data.kpiPrincipal.expiradosSubsidiados}`, 14, 40);
+    doc.text(`Estudiantes Activos: ${data.kpisSecundarios.estudiantesSubsidiadosActivos}`, 14, 48);
+
+    autoTable(doc, {
+      startY: 58,
+      head: [['Codigo', 'Nombre', 'Programa', 'Reclamados', 'Expirados', '% Asistencia']],
+      body: data.bajaFrecuencia.map((s) => [
+        s.codigo, s.nombre, s.programa, s.reclamados, s.expirados, `${s.porcentajeAsistencia}%`,
+      ]),
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [220, 38, 38] },
+    });
+
+    doc.save(`reporte-asistencia-sigba-${new Date().toISOString().slice(0, 10)}.pdf`);
   }
 
   logout() {

@@ -321,7 +321,7 @@ const updateStudent = async (id, data) => {
       return null;
     }
 
-    // 2. Actualizar datos básicos (solo si vienen)
+    // 2. Actualizar datos basicos (solo si vienen)
     const updateQuery = `
       UPDATE students SET
         codigo = COALESCE($1, codigo),
@@ -331,8 +331,9 @@ const updateStudent = async (id, data) => {
         correo = COALESCE($5, correo),
         programa_codigo = COALESCE($6, programa_codigo),
         programa_nombre = COALESCE($7, programa_nombre),
-        tipo_estudiante = COALESCE($8, tipo_estudiante)
-      WHERE id = $9
+        tipo_estudiante = COALESCE($8, tipo_estudiante),
+        periodo_actual = COALESCE($9, periodo_actual)
+      WHERE id = $10
       RETURNING *;
     `;
 
@@ -345,6 +346,7 @@ const updateStudent = async (id, data) => {
       data.programa_codigo,
       data.programa_nombre,
       data.tipo_estudiante,
+      data.periodo_actual || null,
       id,
     ];
 

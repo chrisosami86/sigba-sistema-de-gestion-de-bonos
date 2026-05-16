@@ -80,32 +80,26 @@
 
       <!-- ==================== DASHBOARD ANALYTICS ==================== -->
       @if (selectedModule() === 'dashboard') {
-        <!-- Filtros globales -->
+        <!-- Filtros -->
         <div class="border-base-300 rounded-box border bg-white p-4">
           <div class="flex flex-wrap items-end gap-3">
             <div class="w-36">
-              <label class="label text-xs font-semibold pb-1">Agrupacion</label>
-              <select class="select select-sm w-full" (change)="setAnalyticsAgrupacion(analyticsAgrupSelect.value)" #analyticsAgrupSelect>
-                <option value="diaria" [selected]="analyticsFiltroAgrupacion() === 'diaria'">Diaria</option>
-                <option value="semanal" [selected]="analyticsFiltroAgrupacion() === 'semanal'">Semanal</option>
-                <option value="mensual" [selected]="analyticsFiltroAgrupacion() === 'mensual'">Mensual</option>
-              </select>
-            </div>
-            <div class="w-36">
               <label class="label text-xs font-semibold pb-1">Tipo de bono</label>
               <select class="select select-sm w-full" (change)="setAnalyticsTipo(analyticsTipoSelect.value)" #analyticsTipoSelect>
-                <option value="" [selected]="!analyticsFiltroTipo()">Todos</option>
+                <option value="" [selected]="!analyticsFiltroTipo()">Seleccionar</option>
                 <option value="almuerzo" [selected]="analyticsFiltroTipo() === 'almuerzo'">Almuerzo</option>
                 <option value="refrigerio" [selected]="analyticsFiltroTipo() === 'refrigerio'">Refrigerio</option>
               </select>
             </div>
-            <div class="w-44">
-              <label class="label text-xs font-semibold pb-1">Programa</label>
-              <select class="select select-sm w-full" (change)="setAnalyticsPrograma(analyticsProgSelect.value)" #analyticsProgSelect>
-                <option value="" [selected]="!analyticsFiltroPrograma()">Todos</option>
-                @for (codigo of programasCodigos; track codigo) {
-                  <option [value]="codigo" [selected]="analyticsFiltroPrograma() === codigo">{{ codigo }}</option>
-                }
+            <div class="w-36">
+              <label class="label text-xs font-semibold pb-1">Dia subsidiado</label>
+              <select class="select select-sm w-full" (change)="setAnalyticsDia(analyticsDiaSelect.value)" #analyticsDiaSelect>
+                <option value="" [selected]="!analyticsFiltroDia()">Seleccionar</option>
+                <option value="lunes" [selected]="analyticsFiltroDia() === 'lunes'">Lunes</option>
+                <option value="martes" [selected]="analyticsFiltroDia() === 'martes'">Martes</option>
+                <option value="miercoles" [selected]="analyticsFiltroDia() === 'miercoles'">Miercoles</option>
+                <option value="jueves" [selected]="analyticsFiltroDia() === 'jueves'">Jueves</option>
+                <option value="viernes" [selected]="analyticsFiltroDia() === 'viernes'">Viernes</option>
               </select>
             </div>
             <div>
@@ -117,7 +111,7 @@
               <input type="date" class="input input-sm w-full" [value]="analyticsFiltroFechaFin()" (change)="setAnalyticsFechaFin(analyticsFechaFin.value)" #analyticsFechaFin>
             </div>
             <div class="flex gap-2">
-              <button class="btn btn-sm bg-red-600 text-white hover:bg-red-700" (click)="loadAnalytics()" [disabled]="analyticsLoading()">Aplicar</button>
+              <button class="btn btn-sm bg-red-600 text-white hover:bg-red-700" (click)="aplicarFiltros()" [disabled]="analyticsLoading()">Aplicar</button>
               <button class="btn btn-sm" (click)="exportarAnalyticsExcel()" [disabled]="!analyticsData()">Excel</button>
               <button class="btn btn-sm" (click)="exportarAnalyticsPDF()" [disabled]="!analyticsData()">PDF</button>
             </div>
@@ -129,189 +123,179 @@
             <span class="loading loading-spinner loading-lg"></span>
           </div>
         } @else if (analyticsData(); as data) {
-          <!-- KPI Principal -->
+          <!-- KPI Principal: Inasistencia -->
           <section class="mt-4">
             <div class="border-base-300 rounded-box border bg-gradient-to-r from-red-50 to-white p-6">
-              <p class="text-sm font-semibold text-gray-500 uppercase tracking-wide">Indice general de asistencia subsidiada</p>
+              <p class="text-sm font-semibold text-gray-600 uppercase tracking-wide">Indice general de inasistencia subsidiada</p>
               <div class="mt-2 flex items-end gap-4">
-                <p class="text-6xl font-extrabold" [class.text-green-600]="data.kpiPrincipal.indiceAsistencia >= 70" [class.text-yellow-600]="data.kpiPrincipal.indiceAsistencia >= 40 && data.kpiPrincipal.indiceAsistencia < 70" [class.text-red-600]="data.kpiPrincipal.indiceAsistencia < 40">{{ data.kpiPrincipal.indiceAsistencia }}%</p>
-                <p class="text-sm text-gray-500 pb-1">{{ data.kpiPrincipal.reclamadosSubsidiados }} reclamados / {{ data.kpiPrincipal.totalInteracciones }} interacciones</p>
+                <p class="text-6xl font-extrabold" [class.text-green-600]="data.kpiPrincipal.indiceInasistencia <= 20" [class.text-yellow-600]="data.kpiPrincipal.indiceInasistencia > 20 && data.kpiPrincipal.indiceInasistencia <= 40" [class.text-red-600]="data.kpiPrincipal.indiceInasistencia > 40">{{ data.kpiPrincipal.indiceInasistencia }}%</p>
+                <p class="text-sm text-gray-500 pb-1">{{ data.kpiPrincipal.inasistencias }} inasistencias / {{ data.kpiPrincipal.asistenciasEsperadas }} esperadas</p>
               </div>
-              <p class="text-xs text-gray-400 mt-1">Reclamaciones subsidiadas sobre total de reservas (reclamadas + expiradas)</p>
+              <p class="text-xs text-gray-400 mt-1">{{ data.filtros.diasEncontrados }} dias {{ data.filtros.dia }} en el rango ({{ data.filtros.festivosExcluidos }} festivos excluidos)</p>
             </div>
           </section>
 
           <!-- KPIs Secundarios -->
           <section class="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
             <div class="border-base-300 rounded-box border bg-white p-4">
-              <p class="text-xs font-semibold text-gray-500">Reclamados Subs.</p>
-              <p class="text-2xl font-bold text-green-600">{{ data.kpisSecundarios.totalReclamadosSubsidiados }}</p>
+              <p class="text-xs font-semibold text-gray-500">Base subsidiada</p>
+              <p class="text-2xl font-bold">{{ data.kpisSecundarios.baseSubsidiada }}</p>
+              <p class="text-xs text-gray-400">estudiantes con subsidio {{ data.filtros.dia }}</p>
             </div>
             <div class="border-base-300 rounded-box border bg-white p-4">
-              <p class="text-xs font-semibold text-gray-500">Expirados Subs.</p>
-              <p class="text-2xl font-bold text-red-600">{{ data.kpisSecundarios.totalExpiradosSubsidiados }}</p>
+              <p class="text-xs font-semibold text-gray-500">Dias encontrados</p>
+              <p class="text-2xl font-bold text-blue-600">{{ data.kpisSecundarios.diasEncontrados }}</p>
+              <p class="text-xs text-gray-400">dias {{ data.filtros.dia }} en el rango</p>
             </div>
             <div class="border-base-300 rounded-box border bg-white p-4">
-              <p class="text-xs font-semibold text-gray-500">No Utilizados</p>
-              <p class="text-2xl font-bold text-gray-500">{{ data.kpisSecundarios.totalNoUtilizados }}</p>
+              <p class="text-xs font-semibold text-gray-500">Asistencias esperadas</p>
+              <p class="text-2xl font-bold text-blue-600">{{ data.kpisSecundarios.asistenciasEsperadas }}</p>
+              <p class="text-xs text-gray-400">{{ data.kpisSecundarios.baseSubsidiada }} x {{ data.kpisSecundarios.diasEncontrados }}</p>
             </div>
             <div class="border-base-300 rounded-box border bg-white p-4">
-              <p class="text-xs font-semibold text-gray-500">Reutilizados</p>
-              <p class="text-2xl font-bold text-blue-600">{{ data.kpisSecundarios.totalReutilizadosExpirados }}</p>
+              <p class="text-xs font-semibold text-gray-500">Reclamados reales</p>
+              <p class="text-2xl font-bold text-green-600">{{ data.kpisSecundarios.reclamadosReales }}</p>
             </div>
             <div class="border-base-300 rounded-box border bg-white p-4">
-              <p class="text-xs font-semibold text-gray-500">Estudiantes Activos</p>
-              <p class="text-2xl font-bold">{{ data.kpisSecundarios.estudiantesSubsidiadosActivos }}</p>
+              <p class="text-xs font-semibold text-gray-500">Inasistencias</p>
+              <p class="text-2xl font-bold text-red-600">{{ data.kpisSecundarios.inasistencias }}</p>
+              <p class="text-xs text-gray-400">bonos expirados subsidiados</p>
             </div>
             <div class="border-base-300 rounded-box border bg-white p-4">
-              <p class="text-xs font-semibold text-gray-500">Promedio Diario</p>
-              <p class="text-2xl font-bold text-green-600">{{ data.kpisSecundarios.promedioDiarioAsistencia }}</p>
+              <p class="text-xs font-semibold text-gray-500">% Asistencia</p>
+              <p class="text-2xl font-bold text-green-600">{{ data.kpisSecundarios.porcentajeAsistencia }}%</p>
             </div>
             <div class="border-base-300 rounded-box border bg-white p-4">
-              <p class="text-xs font-semibold text-gray-500">% Reutilizacion</p>
-              <p class="text-2xl font-bold text-blue-600">{{ data.kpisSecundarios.porcentajeReutilizacion }}%</p>
-            </div>
-            <div class="border-base-300 rounded-box border bg-white p-4">
-              <p class="text-xs font-semibold text-gray-500">Asistencia Periodo</p>
-              <p class="text-2xl font-bold">{{ data.kpisSecundarios.asistenciaPromedioPeriodo }}%</p>
-            </div>
-            <div class="border-base-300 rounded-box border bg-white p-4">
-              <p class="text-xs font-semibold text-gray-500">Dias Habilitados</p>
-              <p class="text-2xl font-bold">{{ data.kpisSecundarios.diasHabilitadosTotal }}</p>
+              <p class="text-xs font-semibold text-gray-500">% Inasistencia</p>
+              <p class="text-2xl font-bold text-red-600">{{ data.kpisSecundarios.porcentajeInasistencia }}%</p>
             </div>
           </section>
 
-          <!-- Grafico Principal + Barra apilada -->
-          <section class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-4">
-            <div class="border-base-300 rounded-box border bg-white p-4 lg:col-span-3">
-              <h3 class="text-lg font-bold mb-2">Reclamados vs Expirados ({{ analyticsFiltroAgrupacion() }})</h3>
-              <div class="h-72">
-                <canvas id="analytics-time-series"></canvas>
-              </div>
-            </div>
+          <!-- Grafica unica: Reclamados vs Inasistencias por fecha -->
+          <section class="mt-4">
             <div class="border-base-300 rounded-box border bg-white p-4">
-              <h3 class="text-lg font-bold mb-2">Distribucion</h3>
-              <div class="h-72">
-                <canvas id="analytics-tipo-chart"></canvas>
+              <h3 class="text-lg font-bold mb-2">Reclamados vs Inasistencias por fecha ({{ data.filtros.dia }})</h3>
+              @if (data.chartData.length > 0) {
+                <div class="h-72">
+                  <canvas id="analytics-chart"></canvas>
+                </div>
+              } @else {
+                <div class="flex items-center justify-center h-48 text-gray-400">
+                  <p>Sin datos para graficar en este rango</p>
+                </div>
+              }
+            </div>
+          </section>
+
+          <!-- Tabla principal: Estudiantes con mayor inasistencia -->
+          <section class="mt-4">
+            <div class="border-base-300 rounded-box border bg-white p-4">
+              <h3 class="text-lg font-bold text-red-700 mb-2">Estudiantes con mayor inasistencia</h3>
+              <p class="text-xs text-gray-500 mb-3">Ordenados por mayor % de inasistencia. Identifica estudiantes en riesgo de perder el subsidio.</p>
+              <div class="overflow-x-auto max-h-96">
+                <table class="table table-xs">
+                  <thead>
+                    <tr>
+                      <th>Codigo</th>
+                      <th>Nombre</th>
+                      <th>Programa</th>
+                      <th>Dias Hab.</th>
+                      <th>Recl.</th>
+                      <th>Inasist.</th>
+                      <th>% Asist.</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (s of data.estudiantesInasistencia; track s.id) {
+                      <tr>
+                        <td class="font-mono text-xs">{{ s.codigo }}</td>
+                        <td class="text-xs">{{ s.nombre }}</td>
+                        <td class="text-xs text-gray-500">{{ s.programa }}</td>
+                        <td class="text-xs text-center">{{ s.diasHabilitados }}</td>
+                        <td class="text-xs text-green-600 text-center">{{ s.reclamados }}</td>
+                        <td class="text-xs text-red-600 text-center">{{ s.inasistencias }}</td>
+                        <td>
+                          <span class="badge badge-xs"
+                            [class.badge-success]="s.porcentajeInasistencia <= 20"
+                            [class.badge-warning]="s.porcentajeInasistencia > 20 && s.porcentajeInasistencia <= 40"
+                            [class.badge-error]="s.porcentajeInasistencia > 40">{{ s.porcentajeAsistencia }}%</span>
+                        </td>
+                      </tr>
+                    }
+                    @empty {
+                      <tr><td colspan="7" class="text-center text-gray-400 py-4">Sin datos de inasistencia</td></tr>
+                    }
+                  </tbody>
+                </table>
               </div>
             </div>
           </section>
 
-          <!-- Dia Critico + Reutilizacion -->
-          <section class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-            @if (data.diaCritico; as critico) {
-              <div class="border-base-300 rounded-box border bg-red-50 p-4">
-                <h3 class="text-lg font-bold text-red-700">Dia con mayor inasistencia</h3>
-                <div class="mt-3 flex flex-col gap-2">
-                  <p class="text-3xl font-extrabold text-red-600">{{ critico.porcentajeInasistencia }}%</p>
-                  <p class="text-sm text-gray-600">Fecha: {{ critico.fecha }}</p>
-                  <p class="text-sm text-gray-600">{{ critico.expiradosSubsidiados }} bonos expirados subsidiados</p>
-                  <p class="text-xs text-gray-500 italic">{{ critico.comparacionPromedio }}</p>
+          <!-- Tabla secundaria: Mejor asistencia (menor protagonismo) -->
+          @if (data.estudiantesMejorAsistencia.length > 0) {
+            <section class="mt-4">
+              <div class="border-base-300 rounded-box border bg-white p-4 opacity-75">
+                <h3 class="text-base font-semibold text-green-700 mb-2">Estudiantes con mejor asistencia</h3>
+                <div class="overflow-x-auto max-h-64">
+                  <table class="table table-xs">
+                    <thead>
+                      <tr>
+                        <th>Codigo</th>
+                        <th>Nombre</th>
+                        <th>Recl.</th>
+                        <th>% Asist.</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (s of data.estudiantesMejorAsistencia; track s.id) {
+                        <tr>
+                          <td class="font-mono text-xs">{{ s.codigo }}</td>
+                          <td class="text-xs">{{ s.nombre }}</td>
+                          <td class="text-xs text-green-600 text-center">{{ s.reclamados }}</td>
+                          <td><span class="badge badge-xs badge-success">{{ s.porcentajeAsistencia }}%</span></td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
                 </div>
               </div>
-            }
-            <div class="border-base-300 rounded-box border bg-white p-4">
-              <h3 class="text-lg font-bold text-blue-700">Reutilizacion de Cupos</h3>
-              <p class="text-sm text-gray-600 mt-1">Expirados + No utilizados que pueden liberarse</p>
-              <div class="mt-3 grid grid-cols-2 gap-3">
-                <div><p class="text-xs text-gray-500">Total expirados</p><p class="text-xl font-bold">{{ data.reutilizacion.totalExpirados }}</p></div>
-                <div><p class="text-xs text-gray-500">No utilizados</p><p class="text-xl font-bold text-gray-500">{{ data.reutilizacion.totalNoUtilizados }}</p></div>
-                <div><p class="text-xs text-gray-500">Liberados</p><p class="text-xl font-bold text-blue-600">{{ data.reutilizacion.totalLiberados }}</p></div>
-                <div><p class="text-xs text-gray-500">Reutilizables</p><p class="text-xl font-bold text-green-600">{{ data.reutilizacion.totalReutilizables }}</p></div>
-              </div>
-            </div>
-          </section>
+            </section>
+          }
 
-          <!-- Tabla Baja Frecuencia + Mejor Asistencia -->
-          <section class="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <div class="border-base-300 rounded-box border bg-white p-4">
-              <h3 class="text-lg font-bold text-red-700 mb-2">Estudiantes con baja frecuencia de uso</h3>
-              <p class="text-xs text-gray-500 mb-3">Ordenados por menor % de asistencia. Expirados = inasistencias.</p>
-              <div class="overflow-x-auto max-h-80">
-                <table class="table table-xs">
-                  <thead>
-                    <tr>
-                      <th>Codigo</th>
-                      <th>Nombre</th>
-                      <th>Recl.</th>
-                      <th>Exp.</th>
-                      <th>% Asist.</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    @for (s of data.bajaFrecuencia; track s.id) {
-                      <tr>
-                        <td class="font-mono text-xs">{{ s.codigo }}</td>
-                        <td class="text-xs">{{ s.nombre }}</td>
-                        <td class="text-xs text-green-600">{{ s.reclamados }}</td>
-                        <td class="text-xs text-red-600">{{ s.expirados }}</td>
-                        <td>
-                          <span class="badge badge-xs" [class.badge-error]="s.porcentajeAsistencia < 50" [class.badge-warning]="s.porcentajeAsistencia >= 50 && s.porcentajeAsistencia < 70" [class.badge-success]="s.porcentajeAsistencia >= 70">{{ s.porcentajeAsistencia }}%</span>
-                        </td>
-                      </tr>
-                    }
-                    @empty {
-                      <tr><td colspan="5" class="text-center text-gray-400 py-4">Sin datos de baja frecuencia</td></tr>
-                    }
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <div class="border-base-300 rounded-box border bg-white p-4">
-              <h3 class="text-lg font-bold text-green-700 mb-2">Estudiantes con mejor asistencia</h3>
-              <p class="text-xs text-gray-500 mb-3">Estudiantes que mas aprovechan el beneficio (min. 3 interacciones)</p>
-              <div class="overflow-x-auto max-h-80">
-                <table class="table table-xs">
-                  <thead>
-                    <tr>
-                      <th>Codigo</th>
-                      <th>Nombre</th>
-                      <th>Recl.</th>
-                      <th>Exp.</th>
-                      <th>% Asist.</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    @for (s of data.mejorAsistencia; track s.id) {
-                      <tr>
-                        <td class="font-mono text-xs">{{ s.codigo }}</td>
-                        <td class="text-xs">{{ s.nombre }}</td>
-                        <td class="text-xs text-green-600">{{ s.reclamados }}</td>
-                        <td class="text-xs text-red-600">{{ s.expirados }}</td>
-                        <td>
-                          <span class="badge badge-xs badge-success">{{ s.porcentajeAsistencia }}%</span>
-                        </td>
-                      </tr>
-                    }
-                    @empty {
-                      <tr><td colspan="5" class="text-center text-gray-400 py-4">Sin datos de mejor asistencia</td></tr>
-                    }
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </section>
-
-          <!-- Venta Libre (menor prioridad) -->
+          <!-- Venta Libre (colapsable, secundaria) -->
           <section class="mt-4">
             <div class="border-base-300 rounded-box border bg-gray-50 p-4">
-              <details class="cursor-pointer">
-                <summary class="text-base font-semibold text-gray-600">Venta libre</summary>
-                <p class="text-xs text-gray-400 mt-1 mb-3">Estudiantes no subsidiados que usan el sistema en horario de venta libre.</p>
+              <details [attr.open]="showVentaLibre() ? '' : null" (toggle)="showVentaLibre.set(!showVentaLibre())">
+                <summary class="cursor-pointer text-sm font-semibold text-gray-500 select-none">Venta libre</summary>
+                <p class="text-xs text-gray-400 mt-1 mb-3">Uso del sistema en horario de venta libre, sin importar tipo de estudiante.</p>
                 <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
                   <div><p class="text-xs text-gray-500">Solicitudes</p><p class="text-xl font-bold">{{ data.ventaLibre.solicitudes }}</p></div>
                   <div><p class="text-xs text-gray-500">Reclamados</p><p class="text-xl font-bold text-green-600">{{ data.ventaLibre.reclamados }}</p></div>
                   <div><p class="text-xs text-gray-500">Expirados</p><p class="text-xl font-bold text-red-600">{{ data.ventaLibre.expirados }}</p></div>
-                  <div><p class="text-xs text-gray-500">Efectividad</p><p class="text-xl font-bold">{{ data.ventaLibre.tendenciaPorcentaje }}%</p></div>
+                  <div><p class="text-xs text-gray-500">Efectividad</p><p class="text-xl font-bold">{{ data.ventaLibre.efectividad }}%</p></div>
+                </div>
+              </details>
+            </div>
+          </section>
+
+          <!-- Reutilizacion (colapsable, secundaria) -->
+          <section class="mt-4">
+            <div class="border-base-300 rounded-box border bg-gray-50 p-4">
+              <details [attr.open]="showReutilizacion() ? '' : null" (toggle)="showReutilizacion.set(!showReutilizacion())">
+                <summary class="cursor-pointer text-sm font-semibold text-gray-500 select-none">Reutilizacion de cupos</summary>
+                <p class="text-xs text-gray-400 mt-1 mb-3">Cupos expirados y no utilizados que pueden liberarse.</p>
+                <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
+                  <div><p class="text-xs text-gray-500">Total expirados</p><p class="text-xl font-bold">{{ data.reutilizacion.totalExpirados }}</p></div>
+                  <div><p class="text-xs text-gray-500">No utilizados</p><p class="text-xl font-bold text-gray-500">{{ data.reutilizacion.totalNoUtilizados }}</p></div>
+                  <div><p class="text-xs text-gray-500">Liberados</p><p class="text-xl font-bold text-blue-600">{{ data.reutilizacion.totalLiberados }}</p></div>
+                  <div><p class="text-xs text-gray-500">Reutilizables</p><p class="text-xl font-bold text-green-600">{{ data.reutilizacion.totalReutilizables }}</p></div>
                 </div>
               </details>
             </div>
           </section>
         } @else {
           <div class="mt-6 flex flex-col items-center gap-2 py-12">
-            <p class="text-gray-400">No se pudieron cargar las analiticas.</p>
-            <button class="btn btn-sm" (click)="loadAnalytics()">Reintentar</button>
+            <p class="text-gray-400">Selecciona tipo de bono, dia y rango de fechas para ver las analiticas.</p>
           </div>
         }
       }
@@ -414,8 +398,8 @@
             <table class="table table-sm">
               <thead>
                 <tr>
-                  <th>Codigo</th><th>Nombre</th><th>Tipo</th><th>Franja</th><th>Estado</th>
-                  <th>Solicitud</th><th>Reclamo</th><th>Accion</th>
+                  <th>Codigo</th><th>Nombre</th><th>Beca</th><th>Tipo</th><th>Franja</th><th>Estado</th>
+                  <th>Solicitud</th><th>Reclamo</th><th>Codigo bono</th><th>Accion</th>
                 </tr>
               </thead>
               <tbody>
@@ -423,6 +407,13 @@
                   <tr>
                     <td>{{ row.codigo }}</td>
                     <td>{{ row.nombre }}</td>
+                    <td>
+                      @if (row.tiene_beca) {
+                        <span class="badge badge-success">Si</span>
+                      } @else {
+                        <span class="badge badge-ghost">No</span>
+                      }
+                    </td>
                     <td>{{ row.tipo }}</td>
                     <td>{{ row.modalidad === 'venta_libre' ? 'Venta libre' : row.modalidad }}</td>
                     <td>
@@ -434,13 +425,24 @@
                     <td>{{ formatTime(row.hora_solicitud) }}</td>
                     <td>{{ formatTime(row.hora_reclamo) }}</td>
                     <td>
+                      @if (row.estado === 'reservado') {
+                        <input type="number" class="input input-sm w-24" placeholder="Codigo"
+                          [value]="codigosBonos()[row.id] || ''"
+                          (input)="setCodigoBono(row.id, codigoBonoInput.value)" #codigoBonoInput />
+                      } @else if (row.codigo_bono) {
+                        <span class="text-sm font-mono">{{ row.codigo_bono }}</span>
+                      } @else {
+                        <span class="text-sm text-gray-400">-</span>
+                      }
+                    </td>
+                    <td>
                       <button class="btn btn-sm bg-red-600 text-white hover:bg-red-700"
                         [disabled]="row.estado !== 'reservado' || loading()"
                         (click)="marcarReclamado(row.id)">Reclamar</button>
                     </td>
                   </tr>
                 } @empty {
-                  <tr><td colspan="8" class="text-center text-gray-500">No hay registros para los filtros actuales</td></tr>
+                  <tr><td colspan="10" class="text-center text-gray-500">No hay registros para los filtros actuales</td></tr>
                 }
               </tbody>
             </table>
@@ -684,6 +686,67 @@
                   @if (configPeriodoSaving()) { Guardando... } @else { Guardar periodo }
                 </button>
               </div>
+
+              <!-- Card resumen de configuracion actual -->
+              @if (configResumenVisible()) {
+                <div class="mt-6 border-t border-gray-200 pt-4">
+                  <h4 class="font-bold text-sm mb-3 text-green-700">Configuracion actual del sistema</h4>
+                  <div class="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
+                    <div class="rounded-box bg-green-50 p-3">
+                      <p class="text-xs font-semibold text-gray-500">Periodo activo</p>
+                      <p class="text-lg font-bold">{{ systemSettings()?.periodo_actual || '-' }}</p>
+                    </div>
+                    <div class="rounded-box bg-green-50 p-3">
+                      <p class="text-xs font-semibold text-gray-500">Fecha inicio</p>
+                      <p class="text-lg font-bold">{{ systemSettings()?.fecha_inicio || '-' }}</p>
+                    </div>
+                    <div class="rounded-box bg-green-50 p-3">
+                      <p class="text-xs font-semibold text-gray-500">Fecha fin</p>
+                      <p class="text-lg font-bold">{{ systemSettings()?.fecha_fin || '-' }}</p>
+                    </div>
+                    <div class="rounded-box bg-green-50 p-3">
+                      <p class="text-xs font-semibold text-gray-500">Ultima actualizacion</p>
+                      <p class="text-sm font-bold text-gray-600">{{ configLastUpdate() }}</p>
+                    </div>
+                    <div class="rounded-box bg-green-50 p-3 md:col-span-2">
+                      <p class="text-xs font-semibold text-gray-500">Dias habiles activos</p>
+                      <div class="flex flex-wrap gap-1 mt-1">
+                        @for (d of workingDays(); track d.id) {
+                          @if (d.activo) {
+                            <span class="badge badge-success badge-sm">{{ d.dia }}</span>
+                          }
+                        }
+                      </div>
+                    </div>
+                    <div class="rounded-box bg-green-50 p-3 md:col-span-2">
+                      <p class="text-xs font-semibold text-gray-500">Festivos configurados</p>
+                      <div class="flex flex-wrap gap-1 mt-1">
+                        @for (h of holidays(); track h.id) {
+                          <span class="badge badge-warning badge-sm">{{ h.fecha.slice(0, 10) }}{{ h.descripcion ? ' - ' + h.descripcion : '' }}</span>
+                        }
+                        @empty {
+                          <span class="text-xs text-gray-400">No hay festivos registrados</span>
+                        }
+                      </div>
+                    </div>
+                    <div class="rounded-box bg-green-50 p-3 md:col-span-2">
+                      <p class="text-xs font-semibold text-gray-500">Horarios de operacion</p>
+                      <div class="grid grid-cols-1 gap-1 mt-1 text-xs md:grid-cols-2">
+                        <div>
+                          <p class="font-semibold">Almuerzo</p>
+                          <p class="text-gray-600">Subsidiado: 8:00 a.m. - 10:15 a.m. (expira 11:00 a.m.)</p>
+                          <p class="text-gray-600">Venta libre: 11:30 a.m. - 12:05 p.m. (expira 12:05 p.m.)</p>
+                        </div>
+                        <div>
+                          <p class="font-semibold">Refrigerio</p>
+                          <p class="text-gray-600">Subsidiado: 5:00 p.m. - 6:29 p.m. (expira 9:30 p.m.)</p>
+                          <p class="text-gray-600">Venta libre: 6:30 p.m. - 10:00 p.m. (expira 10:00 p.m.)</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              }
             }
           </section>
 
@@ -783,6 +846,15 @@
         <select class="select w-full" (change)="editTipoEstudiante.set(editTipoEstSelect.value)" #editTipoEstSelect>
           <option value="no_subsidiado" [selected]="editTipoEstudiante() === 'no_subsidiado'">No subsidiado</option>
           <option value="subsidiado" [selected]="editTipoEstudiante() === 'subsidiado'">Subsidiado</option>
+        </select>
+      </div>
+      <div>
+        <label class="label text-sm font-semibold">Periodo academico</label>
+        <select class="select w-full" (change)="editPeriodo.set(editPeriodoSelect.value)" #editPeriodoSelect>
+          <option value="" [selected]="!editPeriodo()">Seleccionar periodo</option>
+          @for (p of periodosDisponibles(); track p) {
+            <option [value]="p" [selected]="editPeriodo() === p">{{ p }}</option>
+          }
         </select>
       </div>
     </div>

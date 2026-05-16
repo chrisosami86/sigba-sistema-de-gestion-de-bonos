@@ -49,18 +49,18 @@
     <div class="card-body bg-gray-100">
       <div class="flex flex-col gap-1">
         <p class="text-sm font-semibold text-gray-500">Estudiante</p>
-        <h1 class="card-title text-2xl">{{ student()?.nombre || 'Cargando estudiante' }}</h1>
+        <h1 class="card-title text-2xl break-words">{{ student()?.nombre || 'Cargando estudiante' }}</h1>
       </div>
 
       <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
         <div>
           <p class="font-bold">Codigo</p>
-          <p>{{ student()?.codigo || '-' }}</p>
+          <p class="break-words">{{ student()?.codigo || '-' }}</p>
         </div>
 
-        <div>
+        <div class="md:col-span-2">
           <p class="font-bold">Programa</p>
-          <p>{{ student()?.programa_codigo || '-' }} - {{ student()?.programa_nombre || '-' }}</p>
+          <p class="break-words max-w-full">{{ student()?.programa_codigo || '-' }} - {{ student()?.programa_nombre || '-' }}</p>
         </div>
 
         <div>

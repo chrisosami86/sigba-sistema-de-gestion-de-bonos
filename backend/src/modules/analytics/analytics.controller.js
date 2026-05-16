@@ -3,21 +3,17 @@ const analyticsService = require("./analytics.service");
 const getAnalytics = async (req, res) => {
   try {
     const {
-      periodo,
       fechaInicio,
       fechaFin,
       tipo,
-      programa,
-      agrupacion,
+      dia,
     } = req.query;
 
     const data = await analyticsService.getAnalytics({
-      periodo,
       fechaInicio,
       fechaFin,
       tipo,
-      programa,
-      agrupacion,
+      dia,
     });
 
     res.json(data);

@@ -130,6 +130,7 @@ export class AdminDashboardPage implements OnInit {
   filtroModalidad = signal('');
   filtroEstado = signal('');
   filtroCodigo = signal('');
+  codigosBonos = signal<Record<number, string>>({});
 
   // ── Bonos del día ──
 
@@ -192,6 +193,7 @@ export class AdminDashboardPage implements OnInit {
   editTieneBeca = signal(false);
   editDias = signal<string[]>([]);
   editSaving = signal(false);
+  editPeriodo = signal('');
 
   // -- Modal crear --
   showCreateModal = signal(false);
@@ -231,17 +233,20 @@ export class AdminDashboardPage implements OnInit {
   newHolidayDescripcion = signal('');
   configPeriodoSaving = signal(false);
   configPeriodoLoading = signal(false);
+  configResumenVisible = signal(false);
+  configLastUpdate = signal('');
 
   // ── Analytics Dashboard ──
 
   analyticsData = signal<AnalyticsResponse | null>(null);
   analyticsLoading = signal(false);
-  analyticsFiltroAgrupacion = signal<'diaria' | 'semanal' | 'mensual'>('diaria');
+  analyticsFiltroDia = signal('');
   analyticsFiltroTipo = signal('');
-  analyticsFiltroPrograma = signal('');
   analyticsFiltroFechaInicio = signal('');
   analyticsFiltroFechaFin = signal('');
-  private chartInstances: Chart[] = [];
+  showVentaLibre = signal(false);
+  showReutilizacion = signal(false);
+  private chartInstance: Chart | null = null;
 
   // -- Toggle activo --
   toggleStudentActivo(id: number) {
@@ -296,6 +301,15 @@ export class AdminDashboardPage implements OnInit {
           this.resumenRows.set(resumen.rows);
           this.resumenTotal.set(resumen.total);
           this.resumenTotalPages.set(resumen.totalPages || 1);
+
+          const bonosMap: Record<number, string> = {};
+          for (const row of resumen.rows) {
+            if (row.codigo_bono) {
+              bonosMap[row.id] = String(row.codigo_bono);
+            }
+          }
+          this.codigosBonos.set(bonosMap);
+
           this.loading.set(false);
         },
         error: () => {
@@ -341,6 +355,10 @@ export class AdminDashboardPage implements OnInit {
     this.refreshResumen(1);
   }
 
+  setCodigoBono(rowId: number, value: string) {
+    this.codigosBonos.update((map) => ({ ...map, [rowId]: value }));
+  }
+
   setExtraCantidad(tipo: BonoTipo, cantidad: string) {
     this.extraCantidad.update((actual) => ({ ...actual, [tipo]: Number(cantidad) }));
   }
@@ -381,7 +399,29 @@ export class AdminDashboardPage implements OnInit {
   }
 
   marcarReclamado(redencionId: number) {
-    this.runAdminAction(() => this.bonosService.reclamar(redencionId), 'Bono marcado como reclamado');
+    const codigo = this.codigosBonos()[redencionId];
+
+    if (!codigo || codigo.trim() === '') {
+      this.setError('Debe ingresar el codigo del bono');
+      return;
+    }
+
+    this.loading.set(true);
+    this.clearMessages();
+
+    this.bonosService.reclamar(redencionId, codigo.trim()).subscribe({
+      next: () => {
+        this.setMessage('Bono reclamado correctamente');
+        this.loading.set(false);
+        this.refreshDisponibilidad();
+        this.refreshResumen();
+        this.refreshStats();
+      },
+      error: (err) => {
+        this.setError(err.error?.message || 'No se pudo reclamar el bono');
+        this.loading.set(false);
+      },
+    });
   }
 
   descargarResumen() {
@@ -429,14 +469,12 @@ export class AdminDashboardPage implements OnInit {
 
     const filters: AnalyticsFilters = {};
     const tipo = this.analyticsFiltroTipo();
-    const programa = this.analyticsFiltroPrograma();
-    const agrupacion = this.analyticsFiltroAgrupacion();
+    const dia = this.analyticsFiltroDia();
     const fechaInicio = this.analyticsFiltroFechaInicio();
     const fechaFin = this.analyticsFiltroFechaFin();
 
     if (tipo) filters.tipo = tipo;
-    if (programa) filters.programa = programa;
-    if (agrupacion) filters.agrupacion = agrupacion;
+    if (dia) filters.dia = dia;
     if (fechaInicio) filters.fechaInicio = fechaInicio;
     if (fechaFin) filters.fechaFin = fechaFin;
 
@@ -444,7 +482,7 @@ export class AdminDashboardPage implements OnInit {
       next: (data) => {
         this.analyticsData.set(data);
         this.analyticsLoading.set(false);
-        setTimeout(() => this.renderCharts(), 100);
+        setTimeout(() => this.renderChart(), 100);
       },
       error: (err) => {
         this.setError(err.error?.message || 'No se pudieron cargar las analiticas');
@@ -453,8 +491,8 @@ export class AdminDashboardPage implements OnInit {
     });
   }
 
-  setAnalyticsAgrupacion(value: string) {
-    this.analyticsFiltroAgrupacion.set(value as 'diaria' | 'semanal' | 'mensual');
+  setAnalyticsDia(value: string) {
+    this.analyticsFiltroDia.set(value);
     this.loadAnalytics();
   }
 
@@ -463,79 +501,60 @@ export class AdminDashboardPage implements OnInit {
     this.loadAnalytics();
   }
 
-  setAnalyticsPrograma(value: string) {
-    this.analyticsFiltroPrograma.set(value);
-    this.loadAnalytics();
-  }
-
   setAnalyticsFechaInicio(value: string) {
     this.analyticsFiltroFechaInicio.set(value);
-    if (this.analyticsFiltroFechaFin()) this.loadAnalytics();
   }
 
   setAnalyticsFechaFin(value: string) {
     this.analyticsFiltroFechaFin.set(value);
-    if (this.analyticsFiltroFechaInicio()) this.loadAnalytics();
   }
 
-  destroyCharts() {
-    for (const chart of this.chartInstances) {
-      chart.destroy();
+  aplicarFiltros() {
+    if (this.analyticsFiltroFechaInicio() && this.analyticsFiltroFechaFin()
+      && this.analyticsFiltroTipo() && this.analyticsFiltroDia()) {
+      this.loadAnalytics();
     }
-    this.chartInstances = [];
   }
 
-  renderCharts() {
-    this.destroyCharts();
+  destroyChart() {
+    if (this.chartInstance) {
+      this.chartInstance.destroy();
+      this.chartInstance = null;
+    }
+  }
+
+  renderChart() {
+    this.destroyChart();
     const data = this.analyticsData();
-    if (!data) return;
+    if (!data || data.chartData.length === 0) return;
 
-    this.renderTimeSeriesChart(data);
-    this.renderTipoChart(data);
-  }
-
-  renderTimeSeriesChart(data: AnalyticsResponse) {
-    const canvas = document.getElementById('analytics-time-series') as HTMLCanvasElement | null;
+    const canvas = document.getElementById('analytics-chart') as HTMLCanvasElement | null;
     if (!canvas) return;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const labels = data.timeSeries.map((p) => {
-      const d = new Date(p.periodo + 'T00:00:00');
-      if (data.filtros.agrupacion === 'semanal') {
-        return `Sem ${d.toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit' })}`;
-      }
-      if (data.filtros.agrupacion === 'mensual') {
-        return d.toLocaleDateString('es-CO', { month: 'short', year: '2-digit' });
-      }
+    const labels = data.chartData.map((p) => {
+      const d = new Date(p.fecha + 'T00:00:00');
       return d.toLocaleDateString('es-CO', { day: '2-digit', month: '2-digit' });
     });
 
     const config: ChartConfiguration = {
-      type: 'line',
+      type: 'bar',
       data: {
         labels,
         datasets: [
           {
             label: 'Reclamados',
-            data: data.timeSeries.map((p) => p.reclamados),
-            borderColor: '#22c55e',
-            backgroundColor: 'rgba(34, 197, 94, 0.1)',
-            fill: true,
-            tension: 0.3,
-            pointRadius: 3,
-            pointHoverRadius: 6,
+            data: data.chartData.map((p) => p.reclamados),
+            backgroundColor: '#22c55e',
+            borderRadius: 4,
           },
           {
-            label: 'Expirados (inasistencias)',
-            data: data.timeSeries.map((p) => p.expirados),
-            borderColor: '#ef4444',
-            backgroundColor: 'rgba(239, 68, 68, 0.1)',
-            fill: true,
-            tension: 0.3,
-            pointRadius: 3,
-            pointHoverRadius: 6,
+            label: 'Inasistencias',
+            data: data.chartData.map((p) => p.inasistencias),
+            backgroundColor: '#ef4444',
+            borderRadius: 4,
           },
         ],
       },
@@ -545,60 +564,16 @@ export class AdminDashboardPage implements OnInit {
         interaction: { mode: 'index', intersect: false },
         plugins: {
           legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20 } },
+          tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.raw}` } },
         },
         scales: {
           y: { beginAtZero: true, ticks: { precision: 0 }, title: { display: true, text: 'Cantidad' } },
-          x: { title: { display: true, text: 'Periodo' } },
+          x: { title: { display: true, text: 'Fecha' } },
         },
       },
     };
 
-    const chart = new Chart(ctx, config);
-    this.chartInstances.push(chart);
-  }
-
-  renderTipoChart(data: AnalyticsResponse) {
-    const canvas = document.getElementById('analytics-tipo-chart') as HTMLCanvasElement | null;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const config: ChartConfiguration = {
-      type: 'bar',
-      data: {
-        labels: ['Asistencia Subsidiada'],
-        datasets: [
-          {
-            label: 'Reclamados',
-            data: [data.kpiPrincipal.reclamadosSubsidiados],
-            backgroundColor: '#22c55e',
-            borderRadius: 4,
-          },
-          {
-            label: 'Expirados',
-            data: [data.kpiPrincipal.expiradosSubsidiados],
-            backgroundColor: '#ef4444',
-            borderRadius: 4,
-          },
-        ],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        indexAxis: 'y',
-        plugins: {
-          legend: { display: false },
-        },
-        scales: {
-          x: { stacked: true, ticks: { precision: 0 } },
-          y: { stacked: true },
-        },
-      },
-    };
-
-    const chart = new Chart(ctx, config);
-    this.chartInstances.push(chart);
+    this.chartInstance = new Chart(ctx, config);
   }
 
   // Exportación
@@ -610,25 +585,28 @@ export class AdminDashboardPage implements OnInit {
     const wb = XLSX.utils.book_new();
 
     const resumen = [
-      ['Indice de Asistencia', `${data.kpiPrincipal.indiceAsistencia}%`],
-      ['Reclamados Subsidiados', data.kpiPrincipal.reclamadosSubsidiados],
-      ['Expirados Subsidiados', data.kpiPrincipal.expiradosSubsidiados],
-      ['Estudiantes Subsidiados Activos', data.kpisSecundarios.estudiantesSubsidiadosActivos],
-      ['Promedio Diario Asistencia', data.kpisSecundarios.promedioDiarioAsistencia],
-      ['Reutilizacion Expirados', `${data.reutilizacion.porcentajeReutilizacion}%`],
+      ['Indice de Inasistencia', `${data.kpiPrincipal.indiceInasistencia}%`],
+      ['Asistencias Esperadas', data.kpiPrincipal.asistenciasEsperadas],
+      ['Reclamados Reales', data.kpiPrincipal.reclamadosReales],
+      ['Inasistencias', data.kpiPrincipal.inasistencias],
+      ['Base Subsidiada', data.kpisSecundarios.baseSubsidiada],
+      ['Dias Encontrados', data.kpisSecundarios.diasEncontrados],
+      ['% Asistencia', `${data.kpisSecundarios.porcentajeAsistencia}%`],
+      ['% Inasistencia', `${data.kpisSecundarios.porcentajeInasistencia}%`],
       [],
     ];
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(resumen), 'Resumen');
 
-    const bajaFreq = [
-      ['Codigo', 'Nombre', 'Programa', 'Reclamados', 'Expirados', '% Asistencia'],
-      ...data.bajaFrecuencia.map((s) => [
-        s.codigo, s.nombre, s.programa, s.reclamados, s.expirados, `${s.porcentajeAsistencia}%`,
+    const inasistencia = [
+      ['Codigo', 'Nombre', 'Programa', 'Dias Hab.', 'Reclamados', 'Inasistencias', '% Asistencia', '% Inasistencia'],
+      ...data.estudiantesInasistencia.map((s) => [
+        s.codigo, s.nombre, s.programa, s.diasHabilitados, s.reclamados, s.inasistencias,
+        `${s.porcentajeAsistencia}%`, `${s.porcentajeInasistencia}%`,
       ]),
     ];
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(bajaFreq), 'Baja Asistencia');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(inasistencia), 'Inasistencia');
 
-    XLSX.writeFile(wb, `analytics-sigba-${new Date().toISOString().slice(0, 10)}.xlsx`);
+    XLSX.writeFile(wb, `inasistencia-sigba-${new Date().toISOString().slice(0, 10)}.xlsx`);
   }
 
   exportarAnalyticsPDF() {
@@ -636,26 +614,26 @@ export class AdminDashboardPage implements OnInit {
     if (!data) return;
 
     const doc = new jsPDF();
-    const titulo = 'Reporte de Asistencia Subsidiada - SIGBA';
+    const titulo = 'Reporte de Inasistencia Subsidiada - SIGBA';
     doc.setFontSize(16);
     doc.text(titulo, 14, 20);
 
     doc.setFontSize(10);
-    doc.text(`Indice de Asistencia: ${data.kpiPrincipal.indiceAsistencia}%`, 14, 32);
-    doc.text(`Reclamados: ${data.kpiPrincipal.reclamadosSubsidiados} | Expirados: ${data.kpiPrincipal.expiradosSubsidiados}`, 14, 40);
-    doc.text(`Estudiantes Activos: ${data.kpisSecundarios.estudiantesSubsidiadosActivos}`, 14, 48);
+    doc.text(`Indice de Inasistencia: ${data.kpiPrincipal.indiceInasistencia}%`, 14, 32);
+    doc.text(`Asistencias Esperadas: ${data.kpiPrincipal.asistenciasEsperadas} | Reclamados: ${data.kpiPrincipal.reclamadosReales} | Inasistencias: ${data.kpiPrincipal.inasistencias}`, 14, 40);
+    doc.text(`Base Subsidiada: ${data.kpisSecundarios.baseSubsidiada} estudiantes`, 14, 48);
 
     autoTable(doc, {
       startY: 58,
-      head: [['Codigo', 'Nombre', 'Programa', 'Reclamados', 'Expirados', '% Asistencia']],
-      body: data.bajaFrecuencia.map((s) => [
-        s.codigo, s.nombre, s.programa, s.reclamados, s.expirados, `${s.porcentajeAsistencia}%`,
+      head: [['Codigo', 'Nombre', 'Programa', 'Dias Hab.', 'Reclamados', 'Inasistencias', '% Inasistencia']],
+      body: data.estudiantesInasistencia.map((s) => [
+        s.codigo, s.nombre, s.programa, s.diasHabilitados, s.reclamados, s.inasistencias, `${s.porcentajeInasistencia}%`,
       ]),
       styles: { fontSize: 8 },
       headStyles: { fillColor: [220, 38, 38] },
     });
 
-    doc.save(`reporte-asistencia-sigba-${new Date().toISOString().slice(0, 10)}.pdf`);
+    doc.save(`reporte-inasistencia-sigba-${new Date().toISOString().slice(0, 10)}.pdf`);
   }
 
   logout() {
@@ -873,6 +851,7 @@ export class AdminDashboardPage implements OnInit {
     this.editTieneBeca.set(student.tiene_beca);
     this.editDias.set([...student.dias]);
     this.editSaving.set(false);
+    this.editPeriodo.set(student.periodo_actual || '');
     this.setMessage('');
     this.setError('');
     this.showEditModal.set(true);
@@ -930,6 +909,7 @@ export class AdminDashboardPage implements OnInit {
         programa_codigo: programaCodigo,
         programa_nombre: programaNombre,
         tipo_estudiante: tipoEstudiante,
+        periodo_actual: this.editPeriodo().trim() || null,
         tiene_beca: tipoEstudiante === 'subsidiado' ? this.editTieneBeca() : undefined,
         dias: tipoEstudiante === 'subsidiado' ? this.editDias() : [],
       })
@@ -1007,6 +987,7 @@ export class AdminDashboardPage implements OnInit {
         this.configFechaInicio.set(settings.fecha_inicio || '');
         this.configFechaFin.set(settings.fecha_fin || '');
         this.configPeriodoLoading.set(false);
+        this.configResumenVisible.set(true);
       },
       error: () => {
         this.configPeriodoLoading.set(false);
@@ -1088,9 +1069,12 @@ export class AdminDashboardPage implements OnInit {
       next: (settings) => {
         this.systemSettings.set(settings);
 
-        // Guardar dias habiles
         this.systemService.updateWorkingDays(this.workingDays()).subscribe({
           next: () => {
+            this.configResumenVisible.set(true);
+            this.configLastUpdate.set(
+              new Date().toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' }),
+            );
             this.setMessage('Configuracion del periodo guardada correctamente');
             this.configPeriodoSaving.set(false);
           },
@@ -1197,15 +1181,17 @@ export class AdminDashboardPage implements OnInit {
                   <tr>
                     <td>${escapeHtml(row.codigo)}</td>
                     <td>${escapeHtml(row.nombre)}</td>
+                    <td>${escapeHtml(row.tiene_beca ? 'Si' : 'No')}</td>
                     <td>${escapeHtml(`${row.programa_codigo} - ${row.programa_nombre}`)}</td>
                     <td>${escapeHtml(row.estado)}</td>
                     <td>${escapeHtml(this.formatTime(row.hora_solicitud))}</td>
                     <td>${escapeHtml(this.formatTime(row.hora_reclamo))}</td>
+                    <td>${escapeHtml(row.codigo_bono ?? '-')}</td>
                   </tr>
                 `,
               )
               .join('')
-          : '<tr><td colspan="6">Sin registros</td></tr>';
+          : '<tr><td colspan="8">Sin registros</td></tr>';
 
         return `
           <h2>${escapeHtml(section.title)}</h2>
@@ -1214,10 +1200,12 @@ export class AdminDashboardPage implements OnInit {
               <tr>
                 <th>Codigo estudiante</th>
                 <th>Nombre</th>
+                <th>Beca</th>
                 <th>Programa academico</th>
                 <th>Estado del bono</th>
                 <th>Hora solicitud</th>
                 <th>Hora reclamo</th>
+                <th>Codigo bono</th>
               </tr>
             </thead>
             <tbody>${body}</tbody>

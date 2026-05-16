@@ -1,5 +1,6 @@
 const pool = require("../../config/db");
 const { getModalidadExpression } = require("../../shared/helpers/modalidad.helper");
+const { isWorkingDay } = require("../../shared/helpers/workingDay.helper");
 
 const VALID_BONO_TYPES = ["almuerzo", "refrigerio"];
 
@@ -40,13 +41,20 @@ const DIAS_SEMANA = [
   "sabado",
 ];
 
+// ─────────────────────────────────────
+// requestBono — transacción completa con FOR UPDATE
+// ─────────────────────────────────────
+
 const requestBono = async (studentId, tipo) => {
   validateTipo(tipo);
   validateStudentId(studentId);
 
-  await expireBonos();
+  const workingDayCheck = await isWorkingDay();
+  if (!workingDayCheck.isWorking) {
+    throw new Error(workingDayCheck.reason);
+  }
 
-  const estadoSistema = getEstadoSistema(tipo);
+  const estadoSistema = await getEstadoSistema(tipo);
 
   if (estadoSistema.estado === "bloqueado" || estadoSistema.estado === "cerrado") {
     throw new Error(estadoSistema.mensaje);
@@ -56,35 +64,56 @@ const requestBono = async (studentId, tipo) => {
 
   try {
     await client.query("BEGIN");
+    await client.query("SET TRANSACTION ISOLATION LEVEL READ COMMITTED");
 
+    // Expirar bonos dentro de la transacción
+    await expireBonosInTransaction(client);
+
+    // Bloquear fila crítica con FOR UPDATE
+    const bonoDiario = await getOrCreateBonoDiario(tipo, client);
+
+    // Validar subsidio si aplica
     if (estadoSistema.estado === "subsidiado") {
       await validateSubsidio(client, studentId);
     }
 
+    // Verificar que el estudiante no tenga bono activo hoy (FOR UPDATE sobre sus redenciones)
     const alreadyHasBono = await studentAlreadyHasBono(client, studentId);
     if (alreadyHasBono) {
       throw new Error("El estudiante ya tiene un bono activo o reclamado hoy");
     }
 
-    const bonoDiario = await getOrCreateBonoDiario(tipo, client);
+    // Calcular disponibilidad real desde DB
     const disponibilidad = await calculateDisponibilidad(bonoDiario.id, client);
 
     if (disponibilidad.disponibles <= 0) {
       throw new Error("No hay bonos disponibles");
     }
 
-    const reserva = await createReserva(
-      client,
+    const expiracion = getExpiracion(tipo, estadoSistema.estado);
+
+    const insertQuery = `
+      INSERT INTO redenciones (
+        student_id,
+        bono_diario_id,
+        estado,
+        expiracion_at
+      )
+      VALUES ($1, $2, $3, $4)
+      RETURNING *
+    `;
+
+    const insertResult = await client.query(insertQuery, [
       studentId,
-      bonoDiario,
-      tipo,
-      estadoSistema.estado,
-    );
+      bonoDiario.id,
+      "reservado",
+      expiracion,
+    ]);
 
     await client.query("COMMIT");
 
     return {
-      ...reserva,
+      ...insertResult.rows[0],
       tipo,
       modalidad: estadoSistema.estado,
       disponibilidad: {
@@ -100,6 +129,88 @@ const requestBono = async (studentId, tipo) => {
   }
 };
 
+// ─────────────────────────────────────
+// claimBono — transacción completa con FOR UPDATE
+// ─────────────────────────────────────
+
+const claimBono = async (redencionId, codigoBono) => {
+  if (codigoBono === undefined || codigoBono === null || String(codigoBono).trim() === '') {
+    throw new Error("Debe ingresar el codigo del bono");
+  }
+
+  const codigoNumerico = Number(codigoBono);
+
+  if (!Number.isInteger(codigoNumerico) || codigoNumerico <= 0) {
+    throw new Error("El codigo del bono debe ser un numero entero positivo");
+  }
+
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    // Bloquear la redención específica con FOR UPDATE
+    const searchQuery = `
+      SELECT *
+      FROM redenciones
+      WHERE id = $1
+      FOR UPDATE
+    `;
+
+    const searchResult = await client.query(searchQuery, [redencionId]);
+
+    if (searchResult.rows.length === 0) {
+      throw new Error("Redencion no encontrada");
+    }
+
+    const redencion = searchResult.rows[0];
+
+    if (redencion.estado !== "reservado") {
+      throw new Error("El bono no puede reclamarse");
+    }
+
+    if (new Date(redencion.expiracion_at) < new Date()) {
+      // Expirar dentro de la transacción
+      await client.query(
+        `UPDATE redenciones SET estado = 'expirado', updated_at = NOW()
+         WHERE id = $1 AND estado = 'reservado'`,
+        [redencionId],
+      );
+      throw new Error("El bono ya expiro");
+    }
+
+    const updateQuery = `
+      UPDATE redenciones
+      SET
+        estado = 'reclamado',
+        hora_reclamo = NOW(),
+        codigo_bono = $2,
+        updated_at = NOW()
+      WHERE id = $1
+      RETURNING *
+    `;
+
+    const updateResult = await client.query(updateQuery, [redencionId, codigoNumerico]);
+
+    if (updateResult.rows.length === 0) {
+      throw new Error("No se pudo reclamar el bono");
+    }
+
+    await client.query("COMMIT");
+
+    return updateResult.rows[0];
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+// ─────────────────────────────────────
+// getDisponibilidad — solo lectura, no necesita transacción
+// ─────────────────────────────────────
+
 const getDisponibilidad = async (tipo) => {
   validateTipo(tipo);
   await expireBonos();
@@ -113,11 +224,23 @@ const getDisponibilidad = async (tipo) => {
   };
 };
 
-const getEstadoSistema = (tipo) => {
+// ─────────────────────────────────────
+// getEstadoSistema — validación de día hábil
+// ─────────────────────────────────────
+
+const getEstadoSistema = async (tipo) => {
   if (!VALID_BONO_TYPES.includes(tipo)) {
     return {
       estado: "cerrado",
       mensaje: "Tipo de bono invalido",
+    };
+  }
+
+  const workingDayCheck = await isWorkingDay();
+  if (!workingDayCheck.isWorking) {
+    return {
+      estado: "cerrado",
+      mensaje: workingDayCheck.reason,
     };
   }
 
@@ -158,6 +281,10 @@ const getEstadoSistema = (tipo) => {
   };
 };
 
+// ─────────────────────────────────────
+// getStudentBonos — solo lectura
+// ─────────────────────────────────────
+
 const getStudentBonos = async (studentId) => {
   validateStudentId(studentId);
   await expireBonos();
@@ -184,6 +311,10 @@ const getStudentBonos = async (studentId) => {
 
   return result.rows;
 };
+
+// ─────────────────────────────────────
+// getResumenDiario — solo lectura
+// ─────────────────────────────────────
 
 const getResumenDiario = async (filters = {}) => {
   await expireBonos();
@@ -227,11 +358,14 @@ const getResumenDiario = async (filters = {}) => {
       s.programa_codigo,
       s.programa_nombre,
       s.tipo_estudiante,
+      sub.tiene_beca,
       cb.tipo,
       r.estado,
       r.hora_solicitud,
       r.hora_reclamo,
       r.expiracion_at,
+      r.codigo_bono,
+      r.sincronizado_google,
       ${modalidadExpression} AS modalidad
     FROM redenciones r
     JOIN students s
@@ -240,6 +374,8 @@ const getResumenDiario = async (filters = {}) => {
       ON bd.id = r.bono_diario_id
     JOIN config_bonos cb
       ON cb.id = bd.config_bono_id
+    LEFT JOIN subsidies sub
+      ON sub.student_id = s.id
     WHERE ${whereClause}
     ORDER BY r.created_at DESC
     LIMIT $${values.length + 1}
@@ -273,6 +409,10 @@ const getResumenDiario = async (filters = {}) => {
     rows: dataResult.rows,
   };
 };
+
+// ─────────────────────────────────────
+// getStatsDiarias — solo lectura
+// ─────────────────────────────────────
 
 const getStatsDiarias = async () => {
   await expireBonos();
@@ -346,6 +486,10 @@ const getStatsDiarias = async () => {
   };
 };
 
+// ─────────────────────────────────────
+// liberarBonos — transacción con FOR UPDATE
+// ─────────────────────────────────────
+
 const liberarBonos = async (tipo, cantidad) => {
   validateTipo(tipo);
   const cantidadNumerica = validateCantidad(cantidad);
@@ -393,25 +537,46 @@ const liberarBonos = async (tipo, cantidad) => {
   }
 };
 
+// ─────────────────────────────────────
+// cargarBonosExtra — transacción
+// ─────────────────────────────────────
+
 const cargarBonosExtra = async (tipo, cantidad) => {
   validateTipo(tipo);
   const cantidadNumerica = validateCantidad(cantidad);
 
-  const bonoDiario = await getOrCreateBonoDiario(tipo);
+  const client = await pool.connect();
 
-  const updateQuery = `
-    UPDATE bonos_diarios
-    SET
-      cantidad_extra = cantidad_extra + $1,
-      updated_at = NOW()
-    WHERE id = $2
-    RETURNING *
-  `;
+  try {
+    await client.query("BEGIN");
 
-  const result = await pool.query(updateQuery, [cantidadNumerica, bonoDiario.id]);
+    const bonoDiario = await getOrCreateBonoDiario(tipo, client);
 
-  return result.rows[0];
+    const updateQuery = `
+      UPDATE bonos_diarios
+      SET
+        cantidad_extra = cantidad_extra + $1,
+        updated_at = NOW()
+      WHERE id = $2
+      RETURNING *
+    `;
+
+    const result = await client.query(updateQuery, [cantidadNumerica, bonoDiario.id]);
+
+    await client.query("COMMIT");
+
+    return result.rows[0];
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
 };
+
+// ─────────────────────────────────────
+// establecerCantidadBase — transacción
+// ─────────────────────────────────────
 
 const establecerCantidadBase = async (tipo, cantidad) => {
   validateTipo(tipo);
@@ -455,44 +620,9 @@ const establecerCantidadBase = async (tipo, cantidad) => {
   }
 };
 
-const claimBono = async (redencionId) => {
-  const searchQuery = `
-    SELECT *
-    FROM redenciones
-    WHERE id = $1
-  `;
-
-  const searchResult = await pool.query(searchQuery, [redencionId]);
-
-  if (searchResult.rows.length === 0) {
-    throw new Error("Redencion no encontrada");
-  }
-
-  const redencion = searchResult.rows[0];
-
-  if (redencion.estado !== "reservado") {
-    throw new Error("El bono no puede reclamarse");
-  }
-
-  if (new Date(redencion.expiracion_at) < new Date()) {
-    await expireBonos();
-    throw new Error("El bono ya expiro");
-  }
-
-  const updateQuery = `
-    UPDATE redenciones
-    SET
-      estado = 'reclamado',
-      hora_reclamo = NOW(),
-      updated_at = NOW()
-    WHERE id = $1
-    RETURNING *
-  `;
-
-  const updateResult = await pool.query(updateQuery, [redencionId]);
-
-  return updateResult.rows[0];
-};
+// ─────────────────────────────────────
+// getOrCreateBonoDiario — con FOR UPDATE y ON CONFLICT
+// ─────────────────────────────────────
 
 const getOrCreateBonoDiario = async (tipo, client = pool) => {
   const bonoQuery = `
@@ -523,6 +653,7 @@ const getOrCreateBonoDiario = async (tipo, client = pool) => {
     return diarioResult.rows[0];
   }
 
+  // ON CONFLICT previene creación duplicada en race condition
   const createQuery = `
     INSERT INTO bonos_diarios (
       config_bono_id,
@@ -530,6 +661,7 @@ const getOrCreateBonoDiario = async (tipo, client = pool) => {
       cantidad_base
     )
     VALUES ($1, CURRENT_DATE, $2)
+    ON CONFLICT (config_bono_id, fecha) DO NOTHING
     RETURNING *
   `;
 
@@ -538,8 +670,18 @@ const getOrCreateBonoDiario = async (tipo, client = pool) => {
     configBono.cantidad_base,
   ]);
 
-  return createResult.rows[0];
+  if (createResult.rows.length > 0) {
+    return createResult.rows[0];
+  }
+
+  // Si ON CONFLICT impidió el insert, hacer SELECT de nuevo
+  const retryResult = await client.query(diarioQuery, [configBono.id]);
+  return retryResult.rows[0];
 };
+
+// ─────────────────────────────────────
+// studentAlreadyHasBono — verificación dentro de transacción
+// ─────────────────────────────────────
 
 const studentAlreadyHasBono = async (client, studentId) => {
   const query = `
@@ -557,6 +699,10 @@ const studentAlreadyHasBono = async (client, studentId) => {
 
   return result.rows.length > 0;
 };
+
+// ─────────────────────────────────────
+// validateSubsidio — validación de día de subsidio
+// ─────────────────────────────────────
 
 const validateSubsidio = async (client, studentId) => {
   const diaActual = DIAS_SEMANA[new Date().getDay()];
@@ -582,26 +728,9 @@ const validateSubsidio = async (client, studentId) => {
   }
 };
 
-const createReserva = async (client, studentId, bonoDiario, tipo, modalidad) => {
-  const expiracion = getExpiracion(tipo, modalidad);
-
-  const query = `
-    INSERT INTO redenciones (
-      student_id,
-      bono_diario_id,
-      estado,
-      expiracion_at
-    )
-    VALUES ($1, $2, $3, $4)
-    RETURNING *
-  `;
-
-  const values = [studentId, bonoDiario.id, "reservado", expiracion];
-
-  const result = await client.query(query, values);
-
-  return result.rows[0];
-};
+// ─────────────────────────────────────
+// calculateDisponibilidad — cálculo desde DB real
+// ─────────────────────────────────────
 
 const calculateDisponibilidad = async (bonoDiarioId, client = pool) => {
   const bonoQuery = `
@@ -658,6 +787,10 @@ const calculateDisponibilidad = async (bonoDiarioId, client = pool) => {
   };
 };
 
+// ─────────────────────────────────────
+// expireBonos — expira reservas vencidas (usa pool propio, idempotente)
+// ─────────────────────────────────────
+
 const expireBonos = async () => {
   const expireQuery = `
     UPDATE redenciones
@@ -676,6 +809,27 @@ const expireBonos = async () => {
   return result.rows;
 };
 
+// ─────────────────────────────────────
+// expireBonosInTransaction — expira dentro de transacción existente
+// ─────────────────────────────────────
+
+const expireBonosInTransaction = async (client) => {
+  const expireQuery = `
+    UPDATE redenciones
+    SET
+      estado = 'expirado',
+      updated_at = NOW()
+    WHERE estado = 'reservado'
+    AND expiracion_at < NOW()
+  `;
+
+  await client.query(expireQuery);
+};
+
+// ─────────────────────────────────────
+// getClosingTime / isPastClosing
+// ─────────────────────────────────────
+
 const getClosingTime = (tipo) => {
   const now = new Date();
   const closing = new Date(now);
@@ -691,38 +845,87 @@ const isPastClosing = (tipo) => {
   return new Date() >= closing;
 };
 
+// ─────────────────────────────────────
+// cerrarOperacionDiaria — cierre explícito
+// ─────────────────────────────────────
+
+const cerrarOperacionDiaria = async (tipo) => {
+  validateTipo(tipo);
+
+  const bonoDiarioQuery = `
+    SELECT * FROM bonos_diarios bd
+    JOIN config_bonos cb ON cb.id = bd.config_bono_id
+    WHERE cb.tipo = $1 AND bd.fecha = CURRENT_DATE
+  `;
+  const bonoResult = await pool.query(bonoDiarioQuery, [tipo]);
+
+  if (bonoResult.rows.length === 0) return null;
+
+  const bonoDiario = bonoResult.rows[0];
+  const totalOperativo = Number(bonoDiario.cantidad_base) + Number(bonoDiario.cantidad_extra);
+
+  const reservadosQuery = `
+    SELECT COUNT(*)::int AS total_reservados
+    FROM redenciones
+    WHERE bono_diario_id = $1
+  `;
+  const reservadosResult = await pool.query(reservadosQuery, [bonoDiario.id]);
+  const totalReservados = Number(reservadosResult.rows[0].total_reservados);
+
+  const noUtilizada = Math.max(0, totalOperativo - totalReservados);
+
+  await pool.query(
+    `UPDATE bonos_diarios SET cantidad_no_utilizada = $1, updated_at = NOW() WHERE id = $2`,
+    [noUtilizada, bonoDiario.id],
+  );
+
+  return {
+    tipo,
+    totalOperativo,
+    totalReservados,
+    noUtilizada,
+  };
+};
+
 const calcularNoUtilizada = async (client = pool) => {
   for (const tipo of VALID_BONO_TYPES) {
     if (!isPastClosing(tipo)) continue;
-
-    const bonoDiarioQuery = `
-      SELECT * FROM bonos_diarios bd
-      JOIN config_bonos cb ON cb.id = bd.config_bono_id
-      WHERE cb.tipo = $1 AND bd.fecha = CURRENT_DATE
-    `;
-    const bonoResult = await client.query(bonoDiarioQuery, [tipo]);
-
-    if (bonoResult.rows.length === 0) continue;
-
-    const bonoDiario = bonoResult.rows[0];
-    const totalOperativo = Number(bonoDiario.cantidad_base) + Number(bonoDiario.cantidad_extra);
-
-    const reservasQuery = `
-      SELECT COUNT(*)::int AS total_reservas
-      FROM redenciones
-      WHERE bono_diario_id = $1
-    `;
-    const reservasResult = await client.query(reservasQuery, [bonoDiario.id]);
-    const totalReservas = Number(reservasResult.rows[0].total_reservas);
-
-    const noUtilizada = Math.max(0, totalOperativo - totalReservas);
-
-    await client.query(
-      `UPDATE bonos_diarios SET cantidad_no_utilizada = $1, updated_at = NOW() WHERE id = $2`,
-      [noUtilizada, bonoDiario.id],
-    );
+    await cerrarOperacionDiariaInterna(tipo, client);
   }
 };
+
+const cerrarOperacionDiariaInterna = async (tipo, client) => {
+  const bonoDiarioQuery = `
+    SELECT * FROM bonos_diarios bd
+    JOIN config_bonos cb ON cb.id = bd.config_bono_id
+    WHERE cb.tipo = $1 AND bd.fecha = CURRENT_DATE
+  `;
+  const bonoResult = await client.query(bonoDiarioQuery, [tipo]);
+
+  if (bonoResult.rows.length === 0) return;
+
+  const bonoDiario = bonoResult.rows[0];
+  const totalOperativo = Number(bonoDiario.cantidad_base) + Number(bonoDiario.cantidad_extra);
+
+  const reservadosQuery = `
+    SELECT COUNT(*)::int AS total_reservados
+    FROM redenciones
+    WHERE bono_diario_id = $1
+  `;
+  const reservadosResult = await client.query(reservadosQuery, [bonoDiario.id]);
+  const totalReservados = Number(reservadosResult.rows[0].total_reservados);
+
+  const noUtilizada = Math.max(0, totalOperativo - totalReservados);
+
+  await client.query(
+    `UPDATE bonos_diarios SET cantidad_no_utilizada = $1, updated_at = NOW() WHERE id = $2`,
+    [noUtilizada, bonoDiario.id],
+  );
+};
+
+// ─────────────────────────────────────
+// getExpiracion — calcula fecha de expiración
+// ─────────────────────────────────────
 
 const getExpiracion = (tipo, modalidad) => {
   const horario = modalidad === "subsidiado"
@@ -734,6 +937,10 @@ const getExpiracion = (tipo, modalidad) => {
 
   return expiracion;
 };
+
+// ─────────────────────────────────────
+// Validaciones
+// ─────────────────────────────────────
 
 const validateTipo = (tipo) => {
   if (!VALID_BONO_TYPES.includes(tipo)) {
@@ -769,6 +976,7 @@ module.exports = {
   claimBono,
   expireBonos,
   calcularNoUtilizada,
+  cerrarOperacionDiaria,
   getDisponibilidad,
   getStudentBonos,
   getResumenDiario,

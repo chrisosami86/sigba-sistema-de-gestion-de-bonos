@@ -4,63 +4,52 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
 export interface AnalyticsFilters {
-  periodo?: string;
   fechaInicio?: string;
   fechaFin?: string;
   tipo?: string;
-  programa?: string;
-  agrupacion?: string;
+  dia?: string;
 }
 
 export interface KpiPrincipal {
-  indiceAsistencia: number;
-  reclamadosSubsidiados: number;
-  expiradosSubsidiados: number;
-  totalInteracciones: number;
+  indiceInasistencia: number;
+  asistenciasEsperadas: number;
+  reclamadosReales: number;
+  inasistencias: number;
 }
 
 export interface KpisSecundarios {
-  totalReclamadosSubsidiados: number;
-  totalExpiradosSubsidiados: number;
-  totalNoUtilizados: number;
-  totalReutilizadosExpirados: number;
-  estudiantesSubsidiadosActivos: number;
-  promedioDiarioAsistencia: number;
-  porcentajeReutilizacion: number;
-  asistenciaPromedioPeriodo: number;
-  diasHabilitadosTotal: number;
-}
-
-export interface TimeSeriesPoint {
-  periodo: string;
-  reclamados: number;
-  expirados: number;
-}
-
-export interface DiaCritico {
-  fecha: string;
+  baseSubsidiada: number;
+  diasEncontrados: number;
+  asistenciasEsperadas: number;
+  reclamadosReales: number;
+  inasistencias: number;
+  porcentajeAsistencia: number;
   porcentajeInasistencia: number;
-  expiradosSubsidiados: number;
-  comparacionPromedio: string;
 }
 
-export interface StudentAttendance {
+export interface ChartDataPoint {
+  fecha: string;
+  reclamados: number;
+  inasistencias: number;
+}
+
+export interface StudentInasistencia {
   id: number;
   codigo: string;
   nombre: string;
   programa: string;
-  reclamados: number;
-  expirados: number;
-  totalInteracciones: number;
   diasHabilitados: number;
+  reclamados: number;
+  inasistencias: number;
   porcentajeAsistencia: number;
+  porcentajeInasistencia: number;
 }
 
 export interface VentaLibreStats {
   solicitudes: number;
   reclamados: number;
   expirados: number;
-  tendenciaPorcentaje: number;
+  efectividad: number;
 }
 
 export interface ReutilizacionStats {
@@ -80,13 +69,12 @@ export interface DesconocidaStats {
 }
 
 export interface AnalyticsResponse {
-  filtros: AnalyticsFilters;
+  filtros: AnalyticsFilters & { diasEncontrados: number; festivosExcluidos: number };
   kpiPrincipal: KpiPrincipal;
   kpisSecundarios: KpisSecundarios;
-  timeSeries: TimeSeriesPoint[];
-  diaCritico: DiaCritico | null;
-  bajaFrecuencia: StudentAttendance[];
-  mejorAsistencia: StudentAttendance[];
+  chartData: ChartDataPoint[];
+  estudiantesInasistencia: StudentInasistencia[];
+  estudiantesMejorAsistencia: StudentInasistencia[];
   ventaLibre: VentaLibreStats;
   reutilizacion: ReutilizacionStats;
   desconocida: DesconocidaStats;
@@ -99,12 +87,10 @@ export class AdminAnalyticsService {
 
   getAnalytics(filters: AnalyticsFilters): Observable<AnalyticsResponse> {
     const params: Record<string, string> = {};
-    if (filters.periodo) params['periodo'] = filters.periodo;
     if (filters.fechaInicio) params['fechaInicio'] = filters.fechaInicio;
     if (filters.fechaFin) params['fechaFin'] = filters.fechaFin;
     if (filters.tipo) params['tipo'] = filters.tipo;
-    if (filters.programa) params['programa'] = filters.programa;
-    if (filters.agrupacion) params['agrupacion'] = filters.agrupacion;
+    if (filters.dia) params['dia'] = filters.dia;
 
     return this.http.get<AnalyticsResponse>(`${this.apiUrl}/api/bonos/analytics`, { params });
   }

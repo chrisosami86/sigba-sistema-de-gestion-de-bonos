@@ -71,3 +71,32 @@ CREATE TABLE IF NOT EXISTS holidays (
 
 ALTER TABLE bonos_diarios
 ADD COLUMN IF NOT EXISTS cantidad_no_utilizada INTEGER DEFAULT 0;
+
+-- Migración: trazabilidad de código bono y sincronización Google Sheets
+
+ALTER TABLE redenciones
+ADD COLUMN IF NOT EXISTS codigo_bono INTEGER,
+ADD COLUMN IF NOT EXISTS sincronizado_google BOOLEAN DEFAULT false,
+ADD COLUMN IF NOT EXISTS fecha_sincronizacion TIMESTAMP;
+
+-- Migración: integridad de concurrencia
+
+-- Evitar reservas duplicadas del mismo estudiante en el mismo día
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'unique_student_bono_diario'
+  ) THEN
+    ALTER TABLE redenciones ADD CONSTRAINT unique_student_bono_diario UNIQUE (student_id, bono_diario_id);
+  END IF;
+END $$;
+
+-- Evitar creación duplicada de bonos_diarios
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'unique_config_bono_fecha'
+  ) THEN
+    ALTER TABLE bonos_diarios ADD CONSTRAINT unique_config_bono_fecha UNIQUE (config_bono_id, fecha);
+  END IF;
+END $$;

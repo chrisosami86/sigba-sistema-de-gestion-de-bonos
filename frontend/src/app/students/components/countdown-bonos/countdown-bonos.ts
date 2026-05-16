@@ -46,6 +46,9 @@ export class CountdownBonos implements OnDestroy {
     if (refrigerio.estado === 'venta_libre') return 'Bono refrigerio en venta libre';
     if (refrigerio.estado === 'bloqueado') return 'Refrigerio en pausa antes de venta libre';
 
+    const refrigerioMensaje = refrigerio.mensaje;
+    if (refrigerioMensaje && refrigerioMensaje !== 'Sistema fuera de horario') return refrigerioMensaje;
+
     return 'Sistema fuera de horario de bonos';
   });
 

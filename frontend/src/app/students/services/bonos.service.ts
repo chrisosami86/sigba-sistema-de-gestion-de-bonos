@@ -76,8 +76,8 @@ export class BonosService {
     });
   }
 
-  reclamar(redencionId: number) {
-    return this.http.patch(`${this.apiUrl}/api/bonos/reclamar/${redencionId}`, {});
+  reclamar(redencionId: number, codigoBono: string) {
+    return this.http.patch(`${this.apiUrl}/api/bonos/reclamar/${redencionId}`, { codigoBono });
   }
 
   private cleanParams(filters: Record<string, string | number | undefined>) {

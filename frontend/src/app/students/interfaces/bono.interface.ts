@@ -48,12 +48,15 @@ export interface BonoResumenDiarioRow {
   programa_codigo: string;
   programa_nombre: string;
   tipo_estudiante: string;
+  tiene_beca: boolean | null;
   tipo: BonoTipo;
   estado: 'reservado' | 'reclamado' | 'expirado';
   modalidad: 'subsidiado' | 'venta_libre' | 'desconocida';
   hora_solicitud: string;
   hora_reclamo: string | null;
   expiracion_at: string;
+  codigo_bono: number | null;
+  sincronizado_google: boolean;
 }
 
 export interface BonoResumenDiarioResponse {

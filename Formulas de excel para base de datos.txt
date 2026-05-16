@@ -1,0 +1,9 @@
+formulas excel para acomodar base de datos:
+
+Para unir los nombres y los apellidos =CONCAT(celda con el nombre;" ";celda con el apellido)
+
+Para extraer el tipo de documento sin puntos: =SUSTITUIR(EXTRAE(E2; 1;4); "."; "")
+
+Para extraer el numero de documento: =ESPACIOS(EXTRAE(F2;ENCONTRAR(" "; F2) + 1; LARGO(F2)))
+
+Para sacar encabezados de subsidiados: =UNIRCADENAS(",";VERDADERO;SI(C2:G2=1;$C$1:$G$1;""))

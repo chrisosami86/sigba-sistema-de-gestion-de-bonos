@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+  # ── PostgreSQL ──
+  db:
+    image: postgres:15
+    container_name: sigba_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER:-sigba_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-sigba_pass}
+      POSTGRES_DB: ${DB_NAME:-sigba_db}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
+      - ./database/seed.sql:/docker-entrypoint-initdb.d/02_seed.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-sigba_user} -d ${DB_NAME:-sigba_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ── Mailpit (SMTP testing) ──
+  mailpit:
+    image: axllent/mailpit
+    container_name: sigba_mailpit
+    restart: always
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+  # ── Backend API ──
+  backend:
+    build: ./backend
+    container_name: sigba_backend
+    restart: always
+    environment:
+      DB_USER: ${DB_USER:-sigba_user}
+      DB_HOST: db
+      DB_NAME: ${DB_NAME:-sigba_db}
+      DB_PASSWORD: ${DB_PASSWORD:-sigba_pass}
+      DB_PORT: 5432
+      JWT_SECRET: ${JWT_SECRET:-sigba_jwt_secret_change_in_production}
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      SMTP_SECURE: "false"
+      SMTP_USER: ""
+      SMTP_PASSWORD: ""
+      SMTP_FROM: "SIGBA <noreply@sigba.local>"
+      GOOGLE_APPLICATION_CREDENTIALS_JSON: ${GOOGLE_APPLICATION_CREDENTIALS_JSON:-}
+      SHEET_ID: ${SHEET_ID:-}
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    command: node server.js
+
+  # ── Frontend (desarrollo) ──
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: sigba_frontend
+    restart: always
+    ports:
+      - "4200:4200"
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend/src:/app/src:ro
+
+volumes:
+  postgres_data:

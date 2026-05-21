@@ -32,6 +32,9 @@ pool.connect()
 
     const { ensureDefaultAdmin } = require('./modules/auth/auth.service');
     await ensureDefaultAdmin();
+
+    const { start: startScheduler } = require('./modules/system/scheduler');
+    startScheduler();
   })
   .catch(err => console.error('❌ Error de conexión', err));
 

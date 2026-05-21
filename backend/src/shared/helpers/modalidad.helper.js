@@ -1,6 +1,8 @@
 const getModalidadExpression = () => {
   return `
     CASE
+      WHEN r.tipo_asignacion = 'ADMINISTRATIVA'
+        THEN 'venta_libre'
       WHEN cb.tipo = 'almuerzo'
         AND r.hora_solicitud::time BETWEEN TIME '08:00' AND TIME '10:15'
         THEN 'subsidiado'

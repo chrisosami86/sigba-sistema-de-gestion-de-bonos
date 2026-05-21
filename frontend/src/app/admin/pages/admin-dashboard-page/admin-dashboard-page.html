@@ -325,6 +325,20 @@
                 <div><p class="text-sm text-gray-500">Reutilizables</p><p class="text-2xl font-bold text-blue-600">{{ disponibilidades()[tipo]?.reutilizables ?? 0 }}</p></div>
                 <div><p class="text-sm text-gray-500">Disponibles</p><p class="text-2xl font-bold">{{ disponibilidades()[tipo]?.disponibles ?? 0 }}</p></div>
               </div>
+              <div class="mt-4 rounded-box border border-dashed border-gray-300 bg-gray-50 p-3">
+                <div class="mb-2 flex items-center justify-between gap-3">
+                  <h4 class="font-bold">Base administrativa</h4>
+                  <span class="text-sm font-semibold text-gray-600">
+                    Disponible: {{ baseAdministrativa()[tipo]?.disponible ?? 0 }}
+                  </span>
+                </div>
+                <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
+                  <div><p class="text-xs text-gray-500">Expirados</p><p class="text-lg font-bold">{{ baseAdministrativa()[tipo]?.expirados ?? 0 }}</p></div>
+                  <div><p class="text-xs text-gray-500">No utilizados</p><p class="text-lg font-bold">{{ baseAdministrativa()[tipo]?.noUtilizados ?? 0 }}</p></div>
+                  <div><p class="text-xs text-gray-500">Administrativos</p><p class="text-lg font-bold">{{ baseAdministrativa()[tipo]?.administrativos ?? 0 }}</p></div>
+                  <div><p class="text-xs text-gray-500">Total base</p><p class="text-lg font-bold">{{ baseAdministrativa()[tipo]?.total ?? 0 }}</p></div>
+                </div>
+              </div>
               <div class="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-3">
                 <div class="rounded-box bg-gray-100 p-3">
                   <h4 class="font-bold">Cantidad base del dia</h4>
@@ -358,6 +372,52 @@
             </section>
           }
         </div>
+        <section class="mt-5 border-base-300 rounded-box border bg-white p-4">
+          <div class="mb-4 flex items-center justify-between gap-3">
+            <h3 class="text-xl font-bold">Asignacion administrativa</h3>
+            <button class="btn btn-sm" (click)="refreshBaseAdministrativa()">Actualizar base</button>
+          </div>
+          <div class="grid grid-cols-1 gap-3 lg:grid-cols-5">
+            <label class="form-control">
+              <span class="label-text">Codigo estudiante</span>
+              <input class="input input-bordered" type="text" [value]="asignacionCodigo()"
+                (input)="buscarEstudianteAsignacion(asignacionCodigoInput.value)" #asignacionCodigoInput />
+            </label>
+            <label class="form-control">
+              <span class="label-text">Tipo bono</span>
+              <select class="select select-bordered" [value]="asignacionTipo()"
+                (change)="setAsignacionTipo(asignacionTipoSelect.value)" #asignacionTipoSelect>
+                <option value="almuerzo">Almuerzo</option>
+                <option value="refrigerio">Refrigerio</option>
+              </select>
+            </label>
+            <label class="form-control">
+              <span class="label-text">Codigo bono</span>
+              <input class="input input-bordered" type="number" min="1" [value]="asignacionCodigoBono()"
+                (input)="setAsignacionCodigoBono(asignacionCodigoBonoInput.value)" #asignacionCodigoBonoInput />
+            </label>
+            <label class="form-control lg:col-span-2">
+              <span class="label-text">Motivo</span>
+              <input class="input input-bordered" type="text" [value]="asignacionMotivo()"
+                (input)="setAsignacionMotivo(asignacionMotivoInput.value)" #asignacionMotivoInput />
+            </label>
+          </div>
+          <div class="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              @if (asignacionSearching()) {
+                <p class="text-sm text-gray-500">Buscando estudiante...</p>
+              } @else if (asignacionStudent(); as student) {
+                <p class="font-semibold">{{ student.nombre }}</p>
+                <p class="text-sm text-gray-500">{{ student.codigo }} · {{ student.programa_codigo }} - {{ student.programa_nombre }}</p>
+              } @else {
+                <p class="text-sm text-gray-500">Sin estudiante seleccionado</p>
+              }
+            </div>
+            <button class="btn bg-red-600 text-white hover:bg-red-700"
+              [disabled]="asignacionSaving()"
+              (click)="asignarAdministrativamente()">Asignar</button>
+          </div>
+        </section>
       }
 
       <!-- ==================== RESUMEN DIARIO ==================== -->

@@ -77,7 +77,13 @@ ADD COLUMN IF NOT EXISTS cantidad_no_utilizada INTEGER DEFAULT 0;
 ALTER TABLE redenciones
 ADD COLUMN IF NOT EXISTS codigo_bono INTEGER,
 ADD COLUMN IF NOT EXISTS sincronizado_google BOOLEAN DEFAULT false,
-ADD COLUMN IF NOT EXISTS fecha_sincronizacion TIMESTAMP;
+ADD COLUMN IF NOT EXISTS fecha_sincronizacion TIMESTAMP,
+ADD COLUMN IF NOT EXISTS tipo_asignacion VARCHAR(30) NOT NULL DEFAULT 'OPERATIVA',
+ADD COLUMN IF NOT EXISTS admin_id INTEGER NULL,
+ADD COLUMN IF NOT EXISTS motivo_asignacion TEXT NULL;
+
+ALTER TABLE redenciones
+ALTER COLUMN expiracion_at DROP NOT NULL;
 
 -- Migración: integridad de concurrencia
 

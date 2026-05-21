@@ -2,6 +2,8 @@ import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { environment } from '../../../environments/environment';
 import {
+  AsignacionAdministrativaResponse,
+  BaseAdministrativaResponse,
   BonoHistorial,
   BonoResumenDiarioResponse,
   BonoStatsDiarias,
@@ -48,6 +50,12 @@ export class BonosService {
     return this.http.get<BonoStatsDiarias>(`${this.apiUrl}/api/bonos/admin/stats-diarias`);
   }
 
+  getBaseAdministrativa() {
+    return this.http.get<BaseAdministrativaResponse>(
+      `${this.apiUrl}/api/bonos/admin/asignaciones/base`,
+    );
+  }
+
   solicitar(studentId: number, tipo: BonoTipo) {
     return this.http.post<SolicitudBonoResponse>(`${this.apiUrl}/api/bonos/solicitar`, {
       studentId,
@@ -78,6 +86,18 @@ export class BonosService {
 
   reclamar(redencionId: number, codigoBono: string) {
     return this.http.patch(`${this.apiUrl}/api/bonos/reclamar/${redencionId}`, { codigoBono });
+  }
+
+  asignarAdministrativamente(data: {
+    tipo: BonoTipo;
+    studentId: number;
+    codigoBono: string;
+    motivo?: string;
+  }) {
+    return this.http.post<AsignacionAdministrativaResponse>(
+      `${this.apiUrl}/api/bonos/admin/asignaciones`,
+      data,
+    );
   }
 
   private cleanParams(filters: Record<string, string | number | undefined>) {

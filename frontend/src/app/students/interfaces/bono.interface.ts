@@ -1,6 +1,7 @@
 export type BonoTipo = 'almuerzo' | 'refrigerio';
 
 export type EstadoBono = 'subsidiado' | 'venta_libre' | 'bloqueado' | 'cerrado';
+export type TipoAsignacionBono = 'OPERATIVA' | 'ADMINISTRATIVA';
 
 export interface EstadoSistemaBono {
   estado: EstadoBono;
@@ -27,10 +28,11 @@ export interface BonoHistorial {
   id: number;
   tipo: BonoTipo;
   estado: 'reservado' | 'reclamado' | 'expirado';
+  tipo_asignacion?: TipoAsignacionBono;
   fecha: string;
   hora_solicitud: string;
   hora_reclamo: string | null;
-  expiracion_at: string;
+  expiracion_at: string | null;
 }
 
 export interface SolicitudBonoResponse {
@@ -51,10 +53,13 @@ export interface BonoResumenDiarioRow {
   tiene_beca: boolean | null;
   tipo: BonoTipo;
   estado: 'reservado' | 'reclamado' | 'expirado';
+  tipo_asignacion?: TipoAsignacionBono;
+  admin_id?: number | null;
+  motivo_asignacion?: string | null;
   modalidad: 'subsidiado' | 'venta_libre' | 'desconocida';
   hora_solicitud: string;
   hora_reclamo: string | null;
-  expiracion_at: string;
+  expiracion_at: string | null;
   codigo_bono: number | null;
   sincronizado_google: boolean;
 }
@@ -65,6 +70,37 @@ export interface BonoResumenDiarioResponse {
   total: number;
   totalPages: number;
   rows: BonoResumenDiarioRow[];
+}
+
+export interface BaseAdministrativaBono {
+  tipo: BonoTipo;
+  expirados: number;
+  noUtilizados: number;
+  administrativos: number;
+  total: number;
+  disponible: number;
+}
+
+export type BaseAdministrativaResponse = Record<BonoTipo, BaseAdministrativaBono>;
+
+export interface AsignacionAdministrativaResponse {
+  message: string;
+  bono: BonoHistorial & {
+    codigo_bono: number;
+    tipo_asignacion: 'ADMINISTRATIVA';
+    admin_id: number | null;
+    motivo_asignacion: string | null;
+  };
+  baseAdministrativa: Omit<BaseAdministrativaBono, 'tipo'>;
+  tipo_asignacion: 'ADMINISTRATIVA';
+  student: {
+    id: number;
+    codigo: string;
+    nombre: string;
+    programa_codigo: string;
+    programa_nombre: string;
+    activo: boolean;
+  };
 }
 
 export interface BonoStatsDiarias {

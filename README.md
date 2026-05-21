@@ -48,7 +48,11 @@ Editar `.env` con los valores reales. Como minimo configurar `JWT_SECRET` y `GOO
 ### 3. Levantar servicios con Docker
 
 ```bash
-docker compose up -d
+docker compose up db -d
+```
+
+```bash
+docker compose up mailpit -d
 ```
 
 Esto levanta:
@@ -82,6 +86,18 @@ node server.js
 cd frontend
 pnpm install
 pnpm start
+```
+
+Si sale un error de core-js
+```bash
+pnpm approve-builds
+```
+Se marca con tecla ``space`` y se acepta.
+
+
+Si no se instala chart.js pnpm install
+```bash
+pnpm install chart.js
 ```
 
 El frontend usa un proxy (`proxy.conf.json`) que redirige `/api` al backend en `localhost:3000`.

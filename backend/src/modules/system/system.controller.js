@@ -1,4 +1,6 @@
 const systemService = require("./system.service");
+const { getStatus: getSchedulerStatus } = require("./scheduler");
+const pool = require("../../config/db");
 
 const getServerTime = async (req, res) => {
   try {
@@ -7,6 +9,28 @@ const getServerTime = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Error obteniendo hora" });
+  }
+};
+
+const getHealth = async (req, res) => {
+  try {
+    const uptime = Math.floor(process.uptime());
+    let dbStatus = "ok";
+    try {
+      await pool.query("SELECT 1");
+    } catch {
+      dbStatus = "error";
+    }
+
+    res.json({
+      status: "ok",
+      uptime,
+      db: dbStatus,
+      scheduler: getSchedulerStatus(),
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    res.status(500).json({ status: "error", message: error.message });
   }
 };
 
@@ -94,6 +118,7 @@ const deleteHoliday = async (req, res) => {
 
 module.exports = {
   getServerTime,
+  getHealth,
   getSystemSettings,
   updateSystemSettings,
   getWorkingDays,

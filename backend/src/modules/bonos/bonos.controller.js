@@ -1,4 +1,5 @@
 const bonosService = require("./bonos.service");
+const adminAssignmentService = require("./bonos.admin-assignment.service");
 const googleSheetsService = require("../googleSheets/googleSheets.service");
 const pool = require("../../config/db");
 
@@ -149,6 +150,48 @@ const liberarBonos = async (req, res) => {
   }
 };
 
+const getBaseAdministrativa = async (req, res) => {
+  try {
+    const baseAdministrativa = await adminAssignmentService.getBaseAdministrativa();
+
+    res.status(200).json(baseAdministrativa);
+  } catch (error) {
+    console.error(error);
+
+    res.status(getStatusCode(error)).json({
+      message: error.message,
+    });
+  }
+};
+
+const asignarAdministrativamente = async (req, res) => {
+  try {
+    const { tipo, studentId, codigoBono, motivo } = req.body;
+
+    const result = await adminAssignmentService.asignarAdministrativamente({
+      tipo,
+      studentId,
+      codigoBono,
+      motivo,
+      adminId: req.admin.id,
+    });
+
+    res.status(201).json({
+      message: "Asignacion administrativa registrada correctamente",
+      bono: result.redencion,
+      baseAdministrativa: result.baseAdministrativa,
+      tipo_asignacion: result.redencion.tipo_asignacion,
+      student: result.student,
+    });
+  } catch (error) {
+    console.error(error);
+
+    res.status(getStatusCode(error)).json({
+      message: error.message,
+    });
+  }
+};
+
 const getResumenDiario = async (req, res) => {
   try {
 
@@ -272,9 +315,15 @@ const getStatusCode = (error) => {
     message.includes("pendientes") ||
     message.includes("ya tiene") ||
     message.includes("codigo") ||
-    message.includes("Debe ingresar")
+    message.includes("Debe ingresar") ||
+    message.includes("No hay base administrativa") ||
+    message.includes("reserva o reclamo")
   ) {
     return 400;
+  }
+
+  if (message.includes("inactivo")) {
+    return 403;
   }
 
   if (message.includes("no encontrada") || message.includes("no encontrado")) {
@@ -326,6 +375,8 @@ module.exports = {
   getStudentBonos,
   getResumenDiario,
   getStatsDiarias,
+  getBaseAdministrativa,
+  asignarAdministrativamente,
   liberarBonos,
   cargarBonosExtra,
   establecerCantidadBase,

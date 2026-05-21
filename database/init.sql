@@ -71,10 +71,13 @@ CREATE TABLE redenciones (
   estado                VARCHAR(20) NOT NULL,
   hora_solicitud        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   hora_reclamo          TIMESTAMP,
-  expiracion_at         TIMESTAMP NOT NULL,
+  expiracion_at         TIMESTAMP,
   codigo_bono           INTEGER,
   sincronizado_google   BOOLEAN DEFAULT false,
   fecha_sincronizacion  TIMESTAMP,
+  tipo_asignacion       VARCHAR(30) NOT NULL DEFAULT 'OPERATIVA',
+  admin_id              INTEGER,
+  motivo_asignacion     TEXT,
   created_at            TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at            TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

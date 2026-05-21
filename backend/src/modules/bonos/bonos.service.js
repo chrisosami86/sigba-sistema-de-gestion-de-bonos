@@ -1,6 +1,7 @@
 const pool = require("../../config/db");
 const { getModalidadExpression } = require("../../shared/helpers/modalidad.helper");
 const { isWorkingDay } = require("../../shared/helpers/workingDay.helper");
+const { log, info, error } = require("../../shared/helpers/logger.helper");
 
 const VALID_BONO_TYPES = ["almuerzo", "refrigerio"];
 
@@ -213,9 +214,9 @@ const claimBono = async (redencionId, codigoBono) => {
 
 const getDisponibilidad = async (tipo) => {
   validateTipo(tipo);
-  await expireBonos();
 
   const bonoDiario = await getOrCreateBonoDiario(tipo);
+  await expireBonos();
   const disponibilidad = await calculateDisponibilidad(bonoDiario.id);
 
   return {
@@ -493,6 +494,8 @@ const getStatsDiarias = async () => {
 const liberarBonos = async (tipo, cantidad) => {
   validateTipo(tipo);
   const cantidadNumerica = validateCantidad(cantidad);
+
+  await getOrCreateBonoDiario(tipo);
   await expireBonos();
 
   const client = await pool.connect();
@@ -788,25 +791,65 @@ const calculateDisponibilidad = async (bonoDiarioId, client = pool) => {
 };
 
 // ─────────────────────────────────────
-// expireBonos — expira reservas vencidas (usa pool propio, idempotente)
+// expireBonos — expira reservas vencidas (transaccional, idempotente, throttleado)
 // ─────────────────────────────────────
 
+const EXPIRE_LOCK_KEY = 42;
+const EXPIRE_THROTTLE_MS = 30_000;
+let lastExpireRun = 0;
+
 const expireBonos = async () => {
-  const expireQuery = `
-    UPDATE redenciones
-    SET
-      estado = 'expirado',
-      updated_at = NOW()
-    WHERE estado = 'reservado'
-    AND expiracion_at < NOW()
-    RETURNING *
-  `;
+  const now = Date.now();
+  if (now - lastExpireRun < EXPIRE_THROTTLE_MS) {
+    return [];
+  }
 
-  const result = await pool.query(expireQuery);
+  const client = await pool.connect();
 
-  await calcularNoUtilizada();
+  try {
+    const lockResult = await client.query(
+      "SELECT pg_try_advisory_lock($1) AS acquired",
+      [EXPIRE_LOCK_KEY],
+    );
 
-  return result.rows;
+    if (!lockResult.rows[0].acquired) {
+      return [];
+    }
+
+    await client.query("BEGIN");
+    await client.query("SET TRANSACTION ISOLATION LEVEL READ COMMITTED");
+
+    const expireResult = await client.query(`
+      UPDATE redenciones
+      SET
+        estado = 'expirado',
+        updated_at = NOW()
+      WHERE estado = 'reservado'
+      AND expiracion_at < NOW()
+      RETURNING *
+    `);
+
+    if (expireResult.rows.length > 0) {
+      info("[expireBonos]", {
+        expired: expireResult.rows.length,
+        ids: expireResult.rows.map((r) => r.id),
+      });
+    }
+
+    await calcularNoUtilizada(client);
+
+    await client.query("COMMIT");
+
+    lastExpireRun = Date.now();
+
+    return expireResult.rows;
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    await client.query("SELECT pg_advisory_unlock($1)", [EXPIRE_LOCK_KEY]);
+    client.release();
+  }
 };
 
 // ─────────────────────────────────────
@@ -853,7 +896,7 @@ const cerrarOperacionDiaria = async (tipo) => {
   validateTipo(tipo);
 
   const bonoDiarioQuery = `
-    SELECT * FROM bonos_diarios bd
+    SELECT bd.* FROM bonos_diarios bd
     JOIN config_bonos cb ON cb.id = bd.config_bono_id
     WHERE cb.tipo = $1 AND bd.fecha = CURRENT_DATE
   `;
@@ -868,6 +911,7 @@ const cerrarOperacionDiaria = async (tipo) => {
     SELECT COUNT(*)::int AS total_reservados
     FROM redenciones
     WHERE bono_diario_id = $1
+    AND tipo_asignacion != 'ADMINISTRATIVA'
   `;
   const reservadosResult = await pool.query(reservadosQuery, [bonoDiario.id]);
   const totalReservados = Number(reservadosResult.rows[0].total_reservados);
@@ -896,13 +940,19 @@ const calcularNoUtilizada = async (client = pool) => {
 
 const cerrarOperacionDiariaInterna = async (tipo, client) => {
   const bonoDiarioQuery = `
-    SELECT * FROM bonos_diarios bd
+    SELECT bd.* FROM bonos_diarios bd
     JOIN config_bonos cb ON cb.id = bd.config_bono_id
     WHERE cb.tipo = $1 AND bd.fecha = CURRENT_DATE
   `;
   const bonoResult = await client.query(bonoDiarioQuery, [tipo]);
 
-  if (bonoResult.rows.length === 0) return;
+  if (bonoResult.rows.length === 0) {
+    log("[cerrarOperacionDiariaInterna]", {
+      tipo,
+      error: "BONO_DIARIO_NO_ENCONTRADO",
+    });
+    return;
+  }
 
   const bonoDiario = bonoResult.rows[0];
   const totalOperativo = Number(bonoDiario.cantidad_base) + Number(bonoDiario.cantidad_extra);
@@ -911,16 +961,21 @@ const cerrarOperacionDiariaInterna = async (tipo, client) => {
     SELECT COUNT(*)::int AS total_reservados
     FROM redenciones
     WHERE bono_diario_id = $1
+    AND tipo_asignacion != 'ADMINISTRATIVA'
   `;
   const reservadosResult = await client.query(reservadosQuery, [bonoDiario.id]);
   const totalReservados = Number(reservadosResult.rows[0].total_reservados);
 
   const noUtilizada = Math.max(0, totalOperativo - totalReservados);
+  const valorPrevio = Number(bonoDiario.cantidad_no_utilizada);
+  const cambiara = valorPrevio !== noUtilizada;
 
-  await client.query(
-    `UPDATE bonos_diarios SET cantidad_no_utilizada = $1, updated_at = NOW() WHERE id = $2`,
-    [noUtilizada, bonoDiario.id],
-  );
+  if (cambiara) {
+    await client.query(
+      `UPDATE bonos_diarios SET cantidad_no_utilizada = $1, updated_at = NOW() WHERE id = $2`,
+      [noUtilizada, bonoDiario.id],
+    );
+  }
 };
 
 // ─────────────────────────────────────

@@ -21,6 +21,7 @@ import {
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import {
+  BaseAdministrativaBono,
   BonoResumenDiarioRow,
   BonoStatsDiarias,
   BonoTipo,
@@ -90,6 +91,7 @@ export class AdminDashboardPage implements OnInit {
 
   ngOnInit() {
     this.refreshDisponibilidad();
+    this.refreshBaseAdministrativa();
     this.refreshStats();
     this.loadSystemConfig();
     this.loadAnalytics();
@@ -137,6 +139,14 @@ export class AdminDashboardPage implements OnInit {
   baseCantidad = signal<Record<BonoTipo, number>>({ almuerzo: 0, refrigerio: 0 });
   extraCantidad = signal<Record<BonoTipo, number>>({ almuerzo: 0, refrigerio: 0 });
   liberarCantidad = signal<Record<BonoTipo, number>>({ almuerzo: 0, refrigerio: 0 });
+  baseAdministrativa = signal<Partial<Record<BonoTipo, BaseAdministrativaBono>>>({});
+  asignacionCodigo = signal('');
+  asignacionTipo = signal<BonoTipo>('almuerzo');
+  asignacionCodigoBono = signal('');
+  asignacionMotivo = signal('');
+  asignacionStudent = signal<Student | null>(null);
+  asignacionSearching = signal(false);
+  asignacionSaving = signal(false);
 
   tipos: BonoTipo[] = ['almuerzo', 'refrigerio'];
 
@@ -283,6 +293,17 @@ export class AdminDashboardPage implements OnInit {
     });
   }
 
+  refreshBaseAdministrativa() {
+    this.bonosService.getBaseAdministrativa().subscribe({
+      next: (base) => {
+        this.baseAdministrativa.set(base);
+      },
+      error: () => {
+        this.setError('No se pudo consultar la base administrativa');
+      },
+    });
+  }
+
   refreshResumen(page = this.resumenPage()) {
     this.loading.set(true);
     this.resumenPage.set(page);
@@ -371,6 +392,45 @@ export class AdminDashboardPage implements OnInit {
     this.liberarCantidad.update((actual) => ({ ...actual, [tipo]: Number(cantidad) }));
   }
 
+  setAsignacionTipo(value: string) {
+    if (value === 'almuerzo' || value === 'refrigerio') {
+      this.asignacionTipo.set(value);
+    }
+  }
+
+  buscarEstudianteAsignacion(value: string) {
+    const codigo = value.trim();
+    this.asignacionCodigo.set(codigo);
+    this.asignacionStudent.set(null);
+
+    if (!codigo) {
+      return;
+    }
+
+    this.asignacionSearching.set(true);
+    this.studentsService
+      .getStudents({ codigo, activo: 'true', page: 1, limit: 5 })
+      .subscribe({
+        next: (data) => {
+          const exact = data.rows.find((student) => student.codigo === codigo);
+          this.asignacionStudent.set(exact ?? data.rows[0] ?? null);
+          this.asignacionSearching.set(false);
+        },
+        error: () => {
+          this.setError('No se pudo buscar el estudiante');
+          this.asignacionSearching.set(false);
+        },
+      });
+  }
+
+  setAsignacionCodigoBono(value: string) {
+    this.asignacionCodigoBono.set(value.trim());
+  }
+
+  setAsignacionMotivo(value: string) {
+    this.asignacionMotivo.set(value);
+  }
+
   cargarExtra(tipo: BonoTipo) {
     const cantidad = this.extraCantidad()[tipo];
     if (!cantidad || cantidad <= 0) {
@@ -396,6 +456,56 @@ export class AdminDashboardPage implements OnInit {
       return;
     }
     this.runAdminAction(() => this.bonosService.liberarExpirados(tipo, cantidad), 'Bonos expirados liberados');
+  }
+
+  asignarAdministrativamente() {
+    const student = this.asignacionStudent();
+    const codigoBono = this.asignacionCodigoBono().trim();
+    const motivo = this.asignacionMotivo().trim();
+
+    if (!student) {
+      this.setError('Busca y selecciona un estudiante activo');
+      return;
+    }
+
+    if (!codigoBono) {
+      this.setError('Debe ingresar el codigo del bono');
+      return;
+    }
+
+    if (!motivo) {
+      this.setError('Debe ingresar el motivo administrativo');
+      return;
+    }
+
+    this.asignacionSaving.set(true);
+    this.clearMessages();
+
+    this.bonosService
+      .asignarAdministrativamente({
+        tipo: this.asignacionTipo(),
+        studentId: student.id,
+        codigoBono,
+        motivo,
+      })
+      .subscribe({
+        next: (result) => {
+          this.setMessage(result.message);
+          this.asignacionCodigo.set('');
+          this.asignacionCodigoBono.set('');
+          this.asignacionMotivo.set('');
+          this.asignacionStudent.set(null);
+          this.asignacionSaving.set(false);
+          this.refreshBaseAdministrativa();
+          this.refreshDisponibilidad();
+          this.refreshResumen();
+          this.refreshStats();
+        },
+        error: (err) => {
+          this.setError(err.error?.message || 'No se pudo registrar la asignacion administrativa');
+          this.asignacionSaving.set(false);
+        },
+      });
   }
 
   marcarReclamado(redencionId: number) {
@@ -1117,6 +1227,7 @@ export class AdminDashboardPage implements OnInit {
         this.setMessage(successMessage);
         this.loading.set(false);
         this.refreshDisponibilidad();
+        this.refreshBaseAdministrativa();
         this.refreshResumen();
         this.refreshStats();
       },

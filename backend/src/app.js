@@ -16,6 +16,7 @@ const systemRoutes = require('./modules/system/system.routes');
 const bonosRoutes = require('./modules/bonos/bonos.routes');
 const authRoutes = require('./modules/auth/auth.routes');
 const analyticsRoutes = require('./modules/analytics/analytics.routes');
+const adminRoutes = require('./modules/admin/admin.routes');
 
 app.use('/api/students', studentRoutes);
 app.use('/api/time', systemRoutes);
@@ -23,6 +24,7 @@ app.use('/api/system', systemRoutes);
 app.use('/api/bonos', bonosRoutes);
 app.use('/api/bonos/analytics', analyticsRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/admin/bonos', adminRoutes);
 
 
 

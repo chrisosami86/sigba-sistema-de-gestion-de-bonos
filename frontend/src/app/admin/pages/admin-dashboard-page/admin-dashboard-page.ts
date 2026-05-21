@@ -41,6 +41,7 @@ import {
   type AnalyticsResponse,
   type AnalyticsFilters,
 } from '../../services/admin-analytics.service';
+import { AdminAssignmentService, type AdminAsignacionesResponse } from '../../services/admin-assignment.service';
 
 Chart.register(
   BarController, BarElement,
@@ -49,7 +50,7 @@ Chart.register(
   Title, Tooltip, Legend, Filler,
 );
 
-type AdminModule = 'dashboard' | 'bonos' | 'resumen' | 'base_de_datos' | 'gestion_estudiantes' | 'configuracion';
+type AdminModule = 'dashboard' | 'bonos' | 'resumen' | 'asignaciones' | 'base_de_datos' | 'gestion_estudiantes' | 'configuracion';
 
 const DIAS_SEMANA = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'] as const;
 
@@ -73,6 +74,7 @@ export class AdminDashboardPage implements OnInit {
   private studentsService = inject(AdminStudentsImportService);
   private systemService = inject(SystemService);
   private analyticsService = inject(AdminAnalyticsService);
+  private assignmentService = inject(AdminAssignmentService);
   private router = inject(Router);
 
   readonly tiposDocumento = ['TI', 'CC', 'CR', 'PPT', 'CE', 'PA', 'RC'] as const;
@@ -147,6 +149,17 @@ export class AdminDashboardPage implements OnInit {
   asignacionStudent = signal<Student | null>(null);
   asignacionSearching = signal(false);
   asignacionSaving = signal(false);
+
+  // ── Historial asignaciones ──
+  asignacionesData = signal<AdminAsignacionesResponse | null>(null);
+  asignacionesLoading = signal(false);
+  asignacionesPage = signal(1);
+  asignacionesLimit = signal(10);
+  asignacionesFiltroTipo = signal('');
+  asignacionesFiltroFechaDesde = signal('');
+  asignacionesFiltroFechaHasta = signal('');
+  asignacionesFiltroStudentId = signal('');
+  asignacionesFiltroCodigoBono = signal('');
 
   tipos: BonoTipo[] = ['almuerzo', 'refrigerio'];
 
@@ -506,6 +519,44 @@ export class AdminDashboardPage implements OnInit {
           this.asignacionSaving.set(false);
         },
       });
+  }
+
+  // ── Asignaciones administrativas (institucional) ──
+
+  refreshAsignaciones(page = this.asignacionesPage()) {
+    this.asignacionesLoading.set(true);
+    this.asignacionesPage.set(page);
+
+    this.assignmentService.getAsignaciones({
+      tipo: this.asignacionesFiltroTipo() as BonoTipo | '' || '',
+      fechaDesde: this.asignacionesFiltroFechaDesde() || undefined,
+      fechaHasta: this.asignacionesFiltroFechaHasta() || undefined,
+      codigoBono: this.asignacionesFiltroCodigoBono(),
+      page,
+      limit: this.asignacionesLimit(),
+    }).subscribe({
+      next: (data) => {
+        this.asignacionesData.set(data);
+        this.asignacionesLoading.set(false);
+      },
+      error: () => {
+        this.setError('No se pudo consultar el historial administrativo');
+        this.asignacionesLoading.set(false);
+      },
+    });
+  }
+
+  applyAsignacionesFilters() {
+    this.refreshAsignaciones(1);
+  }
+
+  clearAsignacionesFilters() {
+    this.asignacionesFiltroTipo.set('');
+    this.asignacionesFiltroFechaDesde.set('');
+    this.asignacionesFiltroFechaHasta.set('');
+    this.asignacionesFiltroStudentId.set('');
+    this.asignacionesFiltroCodigoBono.set('');
+    this.refreshAsignaciones(1);
   }
 
   marcarReclamado(redencionId: number) {

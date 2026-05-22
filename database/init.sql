@@ -122,3 +122,28 @@ CREATE TABLE holidays (
   fecha       DATE UNIQUE NOT NULL,
   descripcion VARCHAR(255)
 );
+
+-- 11. Conciliaciones proveedor (Fase 2)
+CREATE TABLE conciliaciones_proveedor (
+  id                  SERIAL PRIMARY KEY,
+  fecha               DATE NOT NULL,
+  tipo                VARCHAR(20) NOT NULL CHECK (tipo IN ('almuerzo', 'refrigerio')),
+  cantidad_sigba      INTEGER NOT NULL,
+  cantidad_proveedor  INTEGER NOT NULL,
+  diferencia          INTEGER NOT NULL,
+  estado              VARCHAR(30) NOT NULL DEFAULT 'PENDIENTE'
+                      CHECK (estado IN ('CONCILIADO', 'DIFERENCIA_MENOR', 'DIFERENCIA_CRITICA', 'PENDIENTE')),
+  observaciones       TEXT,
+  admin_id            INTEGER REFERENCES admins(id),
+  created_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_conciliaciones_fecha
+  ON conciliaciones_proveedor (fecha);
+
+CREATE INDEX idx_conciliaciones_tipo
+  ON conciliaciones_proveedor (tipo);
+
+CREATE UNIQUE INDEX unique_conciliacion_dia_tipo
+  ON conciliaciones_proveedor (fecha, tipo);

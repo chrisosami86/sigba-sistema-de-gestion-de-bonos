@@ -1,7 +1,14 @@
 <div class="min-h-screen bg-gray-100">
-  <aside class="fixed inset-y-0 left-0 hidden w-64 border-r border-gray-200 bg-white p-4 md:block">
+  <!-- Overlay backdrop for mobile sidebar -->
+  @if (sidebarOpen()) {
+    <div class="fixed inset-0 z-40 bg-black/50 md:hidden" (click)="sidebarOpen.set(false)"></div>
+  }
+
+  <!-- Sidebar -->
+  <aside class="fixed inset-y-0 left-0 z-50 w-64 border-r border-gray-200 bg-white p-4 transition-transform duration-200 -translate-x-full md:translate-x-0"
+    [class.translate-x-0]="sidebarOpen()">
     <div class="mb-8">
-      <p class="text-lg font-bold text-gray-500 ">SIG<span class="text-red-600">BA</span></p>
+      <p class="text-2xl font-bold text-gray-800 underline ">SIG<span class="text-red-600">BA</span></p>
       <h1 class="text-2xl font-bold">Administrador</h1>
     </div>
 
@@ -9,45 +16,54 @@
       <button class="btn justify-start"
         [class.btn-error]="selectedModule() === 'dashboard'"
         [class.text-white]="selectedModule() === 'dashboard'"
-        (click)="selectedModule.set('dashboard'); loadAnalytics()">Dashboard</button>
+        (click)="selectedModule.set('dashboard'); loadAnalytics(); sidebarOpen.set(false)">Dashboard</button>
       <button class="btn justify-start"
         [class.btn-error]="selectedModule() === 'bonos'"
         [class.text-white]="selectedModule() === 'bonos'"
-        (click)="selectedModule.set('bonos')">Bonos del dia</button>
+        (click)="selectedModule.set('bonos'); sidebarOpen.set(false)">Bonos del dia</button>
       <button class="btn justify-start"
         [class.btn-error]="selectedModule() === 'resumen'"
         [class.text-white]="selectedModule() === 'resumen'"
-        (click)="selectedModule.set('resumen'); refreshResumen()">Resumen diario</button>
+        (click)="selectedModule.set('resumen'); refreshResumen(); sidebarOpen.set(false)">Resumen diario</button>
       <button class="btn justify-start"
         [class.btn-error]="selectedModule() === 'asignaciones'"
         [class.text-white]="selectedModule() === 'asignaciones'"
-        (click)="selectedModule.set('asignaciones'); refreshBaseAdministrativa(); refreshAsignaciones()">Asignaciones admin</button>
+        (click)="selectedModule.set('asignaciones'); refreshBaseAdministrativa(); refreshAsignaciones(); sidebarOpen.set(false)">Asignaciones admin</button>
       <button class="btn justify-start"
         [class.btn-error]="selectedModule() === 'proveedor'"
         [class.text-white]="selectedModule() === 'proveedor'"
-        (click)="selectedModule.set('proveedor'); refreshProviderResumen()">Oper. proveedor</button>
+        (click)="selectedModule.set('proveedor'); refreshProviderResumen(); sidebarOpen.set(false)">Oper. proveedor</button>
       <button class="btn justify-start"
         [class.btn-error]="selectedModule() === 'gestion_estudiantes'"
         [class.text-white]="selectedModule() === 'gestion_estudiantes'"
-        (click)="selectedModule.set('gestion_estudiantes'); refreshEstudiantes()">Gestion de estudiantes</button>
+        (click)="selectedModule.set('gestion_estudiantes'); refreshEstudiantes(); sidebarOpen.set(false)">Gestion de estudiantes</button>
       <button class="btn justify-start"
         [class.btn-error]="selectedModule() === 'base_de_datos'"
         [class.text-white]="selectedModule() === 'base_de_datos'"
-        (click)="selectedModule.set('base_de_datos')">Base de datos</button>
+        (click)="selectedModule.set('base_de_datos'); sidebarOpen.set(false)">Base de datos</button>
       <button class="btn justify-start" disabled>Reportes</button>
       <button class="btn justify-start"
         [class.btn-error]="selectedModule() === 'configuracion'"
         [class.text-white]="selectedModule() === 'configuracion'"
-        (click)="selectedModule.set('configuracion'); loadSystemConfig()">Configuracion</button>
+        (click)="selectedModule.set('configuracion'); loadSystemConfig(); sidebarOpen.set(false)">Configuracion</button>
     </nav>
   </aside>
 
   <main class="md:ml-64">
     <header class="flex flex-col gap-3 border-b border-gray-200 bg-white p-4 md:flex-row md:items-center md:justify-between">
-      <div>
-        <p class="text-sm font-semibold text-gray-500">Bienestar universitario</p>
-        <h2 class="text-2xl font-bold">{{ admin()?.nombre }}</h2>
-        <p class="text-sm text-gray-600">{{ admin()?.correo }} · {{ admin()?.telefono }}</p>
+      <div class="flex items-center gap-3">
+        <!-- Hamburger mobile -->
+        <button class="btn btn-sm btn-ghost md:hidden" (click)="sidebarOpen.set(!sidebarOpen())">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+        <div>
+          <p class="text-sm font-semibold text-gray-500">Bienestar universitario</p>
+          <h2 class="text-2xl font-bold">{{ admin()?.nombre }}</h2>
+          <p class="text-sm text-gray-600 hidden xl:block">{{ admin()?.correo }}</p>
+          <p class="text-sm text-gray-600"> {{ admin()?.telefono }}</p>
+        </div>
       </div>
       <button class="btn bg-gray-800 text-white hover:bg-gray-900" (click)="logout()">Salir</button>
     </header>
@@ -118,7 +134,7 @@
               <label class="label text-xs font-semibold pb-1">Hasta</label>
               <input type="date" class="input input-sm w-full" [value]="analyticsFiltroFechaFin()" (change)="setAnalyticsFechaFin(analyticsFechaFin.value)" #analyticsFechaFin>
             </div>
-            <div class="flex gap-2">
+          <div class="flex flex-wrap gap-2">
               <button class="btn btn-sm bg-red-600 text-white hover:bg-red-700" (click)="aplicarFiltros()" [disabled]="analyticsLoading()">Aplicar</button>
               <button class="btn btn-sm" (click)="exportarAnalyticsExcel()" [disabled]="!analyticsData()">Excel</button>
               <button class="btn btn-sm" (click)="exportarAnalyticsPDF()" [disabled]="!analyticsData()">PDF</button>
@@ -776,7 +792,7 @@
             <h2 class="text-2xl font-bold">Resumen diario</h2>
             <p class="text-sm text-gray-600">Reservas, expiraciones y reclamos registrados hoy.</p>
           </div>
-          <div class="flex gap-2">
+          <div class="flex gap-2 flex-wrap">
             <button class="btn" (click)="descargarResumen()" [disabled]="loading()">Descargar Excel</button>
             <button class="btn bg-red-600 text-white hover:bg-red-700" (click)="goScanPage()">ESCANEAR QR</button>
             <button class="btn" (click)="refreshResumen()" [disabled]="loading()">Actualizar</button>
@@ -968,7 +984,7 @@
                       <td>{{ est.codigo }}</td>
                       <td>{{ est.nombre }}</td>
                       <td>
-                        <span class="badge" [class.badge-warning]="est.tipo_estudiante === 'subsidiado'"
+                        <span class="badge whitespace-nowrap" [class.badge-warning]="est.tipo_estudiante === 'subsidiado'"
                           [class.badge-ghost]="est.tipo_estudiante !== 'subsidiado'">
                           {{ est.tipo_estudiante === 'subsidiado' ? 'Subsidiado' : 'No subsidiado' }}
                         </span>
@@ -1076,7 +1092,7 @@
                     </span>
                   }
                 </div>
-                <div class="flex gap-2 items-end">
+                <div class="flex flex-col sm:flex-row flex-wrap gap-2 items-start sm:items-end">
                   <div>
                     <label class="label text-xs font-semibold">Fecha</label>
                     <input type="date" class="input input-sm w-36" [value]="newHolidayFecha()"

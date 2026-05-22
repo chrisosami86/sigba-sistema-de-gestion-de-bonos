@@ -105,6 +105,7 @@ export class AdminDashboardPage implements OnInit {
 
   admin = this.authService.currentAdmin;
   selectedModule = signal<AdminModule>('dashboard');
+  sidebarOpen = signal(false);
   disponibilidades = signal<Partial<Record<BonoTipo, DisponibilidadBono>>>({});
   stats = signal<BonoStatsDiarias | null>(null);
   loading = signal(false);

@@ -77,7 +77,7 @@ export class DetailsStudentsPage implements OnDestroy {
 
     this.estadoIntervalId = setInterval(() => {
       this.refreshEstados();
-    }, 30000);
+    }, 5000);
   }
 
   ngOnDestroy() {

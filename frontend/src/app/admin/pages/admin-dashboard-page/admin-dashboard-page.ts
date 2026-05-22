@@ -42,6 +42,7 @@ import {
   type AnalyticsFilters,
 } from '../../services/admin-analytics.service';
 import { AdminAssignmentService, type AdminAsignacionesResponse } from '../../services/admin-assignment.service';
+import { ProviderOperationsService, type ProviderResumenResponse, type ProviderConciliacionesResponse } from '../../services/provider-operations.service';
 
 Chart.register(
   BarController, BarElement,
@@ -50,7 +51,7 @@ Chart.register(
   Title, Tooltip, Legend, Filler,
 );
 
-type AdminModule = 'dashboard' | 'bonos' | 'resumen' | 'asignaciones' | 'base_de_datos' | 'gestion_estudiantes' | 'configuracion';
+type AdminModule = 'dashboard' | 'bonos' | 'resumen' | 'asignaciones' | 'proveedor' | 'base_de_datos' | 'gestion_estudiantes' | 'configuracion';
 
 const DIAS_SEMANA = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'] as const;
 
@@ -75,6 +76,7 @@ export class AdminDashboardPage implements OnInit {
   private systemService = inject(SystemService);
   private analyticsService = inject(AdminAnalyticsService);
   private assignmentService = inject(AdminAssignmentService);
+  private providerService = inject(ProviderOperationsService);
   private router = inject(Router);
 
   readonly tiposDocumento = ['TI', 'CC', 'CR', 'PPT', 'CE', 'PA', 'RC'] as const;
@@ -149,6 +151,7 @@ export class AdminDashboardPage implements OnInit {
   asignacionStudent = signal<Student | null>(null);
   asignacionSearching = signal(false);
   asignacionSaving = signal(false);
+  asignacionAsignado = signal(false);
 
   // ── Historial asignaciones ──
   asignacionesData = signal<AdminAsignacionesResponse | null>(null);
@@ -160,6 +163,28 @@ export class AdminDashboardPage implements OnInit {
   asignacionesFiltroFechaHasta = signal('');
   asignacionesFiltroStudentId = signal('');
   asignacionesFiltroCodigoBono = signal('');
+
+  // ── Operación proveedor ──
+  providerResumen = signal<ProviderResumenResponse | null>(null);
+  providerLoading = signal(false);
+  providerFecha = signal(new Date().toISOString().slice(0, 10));
+  providerConciliacionTipo = signal<BonoTipo>('almuerzo');
+  providerCantidad = signal('');
+  providerObservaciones = signal('');
+  providerSaving = signal(false);
+  providerConciliaciones = signal<ProviderConciliacionesResponse | null>(null);
+  providerConciliacionesLoading = signal(false);
+  providerConciliacionesPage = signal(1);
+  providerConciliacionesFiltroTipo = signal('');
+  providerConciliacionesFiltroFechaDesde = signal('');
+  providerConciliacionesFiltroFechaHasta = signal('');
+  providerConciliacionesFiltroEstado = signal('');
+
+  // ── QR Scanner removed — navega a /admin/scan ──
+
+  goScanPage() {
+    this.router.navigate(['/admin/scan']);
+  }
 
   tipos: BonoTipo[] = ['almuerzo', 'refrigerio'];
 
@@ -509,10 +534,10 @@ export class AdminDashboardPage implements OnInit {
           this.asignacionMotivo.set('');
           this.asignacionStudent.set(null);
           this.asignacionSaving.set(false);
+          this.asignacionAsignado.set(true);
+          setTimeout(() => this.asignacionAsignado.set(false), 4000);
           this.refreshBaseAdministrativa();
-          this.refreshDisponibilidad();
-          this.refreshResumen();
-          this.refreshStats();
+          this.refreshAsignaciones(1);
         },
         error: (err) => {
           this.setError(err.error?.message || 'No se pudo registrar la asignacion administrativa');
@@ -557,6 +582,123 @@ export class AdminDashboardPage implements OnInit {
     this.asignacionesFiltroStudentId.set('');
     this.asignacionesFiltroCodigoBono.set('');
     this.refreshAsignaciones(1);
+  }
+
+  // ── Operación proveedor ──
+
+  refreshProviderResumen() {
+    this.providerLoading.set(true);
+    this.providerService.getResumen(this.providerFecha()).subscribe({
+      next: (resumen: ProviderResumenResponse) => {
+        this.providerResumen.set(resumen);
+        this.providerLoading.set(false);
+      },
+      error: () => {
+        this.setError('No se pudo consultar el resumen del proveedor');
+        this.providerLoading.set(false);
+      },
+    });
+  }
+
+  registrarConciliacion() {
+    const tipo = this.providerConciliacionTipo();
+    const cantidad = Number(this.providerCantidad());
+    if (!cantidad || cantidad < 0) {
+      this.setError('Ingresa una cantidad valida');
+      return;
+    }
+
+    this.providerSaving.set(true);
+    this.clearMessages();
+
+    this.providerService.registrarConciliacion({
+      fecha: this.providerFecha(),
+      tipo,
+      cantidadProveedor: cantidad,
+      observaciones: this.providerObservaciones() || undefined,
+    }).subscribe({
+      next: (result) => {
+        this.setMessage(result.message);
+        this.providerCantidad.set('');
+        this.providerObservaciones.set('');
+        this.providerSaving.set(false);
+        this.refreshProviderResumen();
+        this.refreshProviderConciliaciones(1);
+      },
+      error: (err) => {
+        this.setError(err.error?.message || 'No se pudo registrar la conciliacion');
+        this.providerSaving.set(false);
+      },
+    });
+  }
+
+  refreshProviderConciliaciones(page = this.providerConciliacionesPage()) {
+    this.providerConciliacionesLoading.set(true);
+    this.providerConciliacionesPage.set(page);
+
+    this.providerService.getConciliaciones({
+      tipo: this.providerConciliacionesFiltroTipo() as BonoTipo | '' || '',
+      fechaDesde: this.providerConciliacionesFiltroFechaDesde() || undefined,
+      fechaHasta: this.providerConciliacionesFiltroFechaHasta() || undefined,
+      estado: this.providerConciliacionesFiltroEstado() || undefined,
+      page,
+      limit: 10,
+    }).subscribe({
+      next: (data) => {
+        this.providerConciliaciones.set(data);
+        this.providerConciliacionesLoading.set(false);
+      },
+      error: () => {
+        this.setError('No se pudo consultar el historial de conciliaciones');
+        this.providerConciliacionesLoading.set(false);
+      },
+    });
+  }
+
+  applyProviderFilters() {
+    this.refreshProviderConciliaciones(1);
+  }
+
+  clearProviderFilters() {
+    this.providerConciliacionesFiltroTipo.set('');
+    this.providerConciliacionesFiltroFechaDesde.set('');
+    this.providerConciliacionesFiltroFechaHasta.set('');
+    this.providerConciliacionesFiltroEstado.set('');
+    this.refreshProviderConciliaciones(1);
+  }
+
+  descargarExcel(resumen: ProviderResumenResponse) {
+    const rows: string[][] = [];
+    for (const tipo of ['almuerzo', 'refrigerio'] as BonoTipo[]) {
+      const d = resumen[tipo];
+      rows.push(['Tipo', d.tipo]);
+      rows.push(['Fecha', d.fecha]);
+      rows.push(['Total operativo', String(d.totalOperativo)]);
+      rows.push(['Reclamados operacionales', String(d.reclamados)]);
+      rows.push(['Asignaciones administrativas', String(d.administrativos)]);
+      rows.push(['Total entregado SIGBA', String(d.totalEntregado)]);
+      rows.push(['Expirados', String(d.expirados)]);
+      rows.push(['No utilizados', String(d.noUtilizados)]);
+      rows.push(['Reutilizables', String(d.reutilizables)]);
+      rows.push(['Base administrativa', String(d.baseAdministrativa)]);
+      if (d.ultimaConciliacion) {
+        rows.push(['Reportado proveedor', String(d.ultimaConciliacion.cantidad_proveedor)]);
+        rows.push(['Diferencia', String(d.ultimaConciliacion.diferencia)]);
+        rows.push(['Estado', d.ultimaConciliacion.estado]);
+      }
+      rows.push([]);
+    }
+
+    const html = `<html><head><meta charset="UTF-8"></head><body>
+      <table border="1">${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}
+    </table></body></html>`;
+    const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `resumen-proveedor-sigba-${new Date().toISOString().slice(0, 10)}.xls`;
+    link.click();
+    URL.revokeObjectURL(url);
   }
 
   marcarReclamado(redencionId: number) {
@@ -620,6 +762,10 @@ export class AdminDashboardPage implements OnInit {
     }
     return new Date(value).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: true });
   }
+
+  absValue(value: number) { return Math.abs(value); }
+
+  getProviderExportUrl(tipo: string) { return this.providerService.getExportUrl(tipo as 'resumen' | 'conciliaciones'); }
 
   // ============================================================
   //  Analytics Dashboard

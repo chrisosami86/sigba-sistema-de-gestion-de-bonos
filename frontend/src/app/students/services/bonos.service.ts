@@ -100,6 +100,21 @@ export class BonosService {
     );
   }
 
+  getActiveStudentBonus() {
+    return this.http.get<{
+      hasActive: boolean;
+      bono: { tipo: string; codigoBono: number; estado: string; fecha: string } | null;
+      qrContent: string;
+    }>(`${this.apiUrl}/api/bonos/mis-bonos-activos`);
+  }
+
+  claimByQr(codigoBono: number, tipo: string) {
+    return this.http.post<{ message: string; bono: Record<string, unknown>; student: Record<string, unknown> }>(
+      `${this.apiUrl}/api/bonos/claim-qr`,
+      { codigoBono, tipo },
+    );
+  }
+
   private cleanParams(filters: Record<string, string | number | undefined>) {
     return Object.entries(filters).reduce<Record<string, string>>((params, [key, value]) => {
       if (value !== undefined && value !== '') {

@@ -1,5 +1,6 @@
 const bonosService = require("./bonos.service");
 const adminAssignmentService = require("./bonos.admin-assignment.service");
+const qrService = require("./qr.service");
 const googleSheetsService = require("../googleSheets/googleSheets.service");
 const pool = require("../../config/db");
 
@@ -34,34 +35,7 @@ const claimBono = async (req, res) => {
     const { codigoBono } = req.body;
 
     const bono = await bonosService.claimBono(id, codigoBono);
-
-    let syncResult = { sincronizado: false, error: null };
-
-    try {
-      const studentData = await getStudentDataForSync(bono.student_id);
-      const tipoBonoResult = await getTipoBonoFromRedencion(bono.id);
-
-      await googleSheetsService.appendRedencion({
-        fechaHora: new Date().toLocaleString('es-CO', { timeZone: 'America/Bogota' }),
-        codigo: studentData.codigo,
-        documento: studentData.numero_documento,
-        nombre: studentData.nombre,
-        email: studentData.correo || '',
-        programa: `${studentData.programa_codigo} - ${studentData.programa_nombre}`,
-        recibo: tipoBonoResult.tipo,
-        codBono: String(bono.codigo_bono),
-      });
-
-      await pool.query(
-        `UPDATE redenciones SET sincronizado_google = true, fecha_sincronizacion = NOW() WHERE id = $1`,
-        [bono.id],
-      );
-
-      syncResult.sincronizado = true;
-    } catch (syncError) {
-      console.error('Error al enviar a Google Sheets:', syncError.message);
-      syncResult.error = syncError.message;
-    }
+    const syncResult = await sincronizarRedencionGoogle(bono);
 
     res.json({
       message: 'Bono reclamado correctamente',
@@ -301,6 +275,76 @@ const getEstadoSistema = async (req, res) => {
   }
 };
 
+// ─────────────────────────────────────
+// QR — Bono activo del estudiante
+// ─────────────────────────────────────
+
+const getActiveStudentBonus = async (req, res) => {
+  try {
+    const studentId = req.student?.id || req.user?.id;
+
+    if (!studentId) {
+      return res.status(403).json({ message: "Autenticacion requerida" });
+    }
+
+    const active = await qrService.getActiveBonus(studentId);
+
+    if (!active) {
+      return res.json({ hasActive: false, bono: null });
+    }
+
+    res.json({ hasActive: true, bono: active, qrContent: `SIGBA|${active.tipo.toUpperCase()}|${active.codigoBono}` });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// ─────────────────────────────────────
+// QR — Reclamar bono por código (admin)
+// ─────────────────────────────────────
+
+const claimByQr = async (req, res) => {
+  try {
+    const { codigoBono, tipo } = req.body;
+    const adminId = req.admin?.id || null;
+
+    // 1. Resolver redencion desde el QR
+    const resolved = await qrService.resolveByCode(codigoBono, tipo);
+
+    // 2. Reclamar usando el flujo oficial (claimBono)
+    const bono = await bonosService.claimBono(resolved.id, codigoBono);
+
+    // 3. Sincronizar Google Sheets
+    const syncResult = await sincronizarRedencionGoogle(bono);
+
+    // 4. Datos del estudiante para la respuesta
+    const studentData = await getStudentDataForSync(bono.student_id);
+
+    res.json({
+      message: "BONO RECLAMADO",
+      bono,
+      student: {
+        id: bono.student_id,
+        codigo: studentData.codigo,
+        nombre: studentData.nombre,
+      },
+      sync: syncResult,
+    });
+  } catch (error) {
+    const statusCode = getQrStatusCode(error);
+    res.status(statusCode).json({ message: error.message });
+  }
+};
+
+const getQrStatusCode = (error) => {
+  const message = error.message || "";
+  if (message.includes("no puede reclamarse") || message.includes("YA RECLAMADO")) return 409;
+  if (message.includes("ya expiro") || message.includes("BONO EXPIRADO")) return 410;
+  if (message.includes("invalido") || message.includes("no encontrado")) return 400;
+  return 500;
+};
+
 const getStatusCode = (error) => {
   const message = error.message || "";
 
@@ -322,6 +366,14 @@ const getStatusCode = (error) => {
     return 400;
   }
 
+  if (message.includes("no puede reclamarse")) {
+    return 409;
+  }
+
+  if (message.includes("ya expiro")) {
+    return 410;
+  }
+
   if (message.includes("inactivo")) {
     return 403;
   }
@@ -331,6 +383,42 @@ const getStatusCode = (error) => {
   }
 
   return 500;
+};
+
+// ─────────────────────────────────────
+// Google Sheets — sincronización compartida (manual + QR)
+// ─────────────────────────────────────
+
+const sincronizarRedencionGoogle = async (bono) => {
+  const result = { sincronizado: false, error: null };
+
+  try {
+    const studentData = await getStudentDataForSync(bono.student_id);
+    const tipoBonoResult = await getTipoBonoFromRedencion(bono.id);
+
+    await googleSheetsService.appendRedencion({
+      fechaHora: new Date().toLocaleString('es-CO', { timeZone: 'America/Bogota' }),
+      codigo: studentData.codigo,
+      documento: studentData.numero_documento,
+      nombre: studentData.nombre,
+      email: studentData.correo || '',
+      programa: `${studentData.programa_codigo} - ${studentData.programa_nombre}`,
+      recibo: tipoBonoResult.tipo,
+      codBono: String(bono.codigo_bono),
+    });
+
+    await pool.query(
+      `UPDATE redenciones SET sincronizado_google = true, fecha_sincronizacion = NOW() WHERE id = $1`,
+      [bono.id],
+    );
+
+    result.sincronizado = true;
+  } catch (syncError) {
+    console.error('Error al enviar a Google Sheets:', syncError.message);
+    result.error = syncError.message;
+  }
+
+  return result;
 };
 
 const getStudentDataForSync = async (studentId) => {
@@ -380,5 +468,7 @@ module.exports = {
   liberarBonos,
   cargarBonosExtra,
   establecerCantidadBase,
-  getEstadoSistema
+  getEstadoSistema,
+  getActiveStudentBonus,
+  claimByQr,
 };

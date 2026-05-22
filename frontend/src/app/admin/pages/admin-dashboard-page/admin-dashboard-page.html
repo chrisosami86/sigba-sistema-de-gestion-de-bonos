@@ -23,6 +23,10 @@
         [class.text-white]="selectedModule() === 'asignaciones'"
         (click)="selectedModule.set('asignaciones'); refreshBaseAdministrativa(); refreshAsignaciones()">Asignaciones admin</button>
       <button class="btn justify-start"
+        [class.btn-error]="selectedModule() === 'proveedor'"
+        [class.text-white]="selectedModule() === 'proveedor'"
+        (click)="selectedModule.set('proveedor'); refreshProviderResumen()">Oper. proveedor</button>
+      <button class="btn justify-start"
         [class.btn-error]="selectedModule() === 'gestion_estudiantes'"
         [class.text-white]="selectedModule() === 'gestion_estudiantes'"
         (click)="selectedModule.set('gestion_estudiantes'); refreshEstudiantes()">Gestion de estudiantes</button>
@@ -376,89 +380,53 @@
             </section>
           }
         </div>
-        <section class="mt-5 border-base-300 rounded-box border bg-white p-4">
-          <div class="mb-4 flex items-center justify-between gap-3">
-            <h3 class="text-xl font-bold">Asignacion administrativa</h3>
-            <button class="btn btn-sm" (click)="refreshBaseAdministrativa()">Actualizar base</button>
-          </div>
-          <div class="grid grid-cols-1 gap-3 lg:grid-cols-5">
-            <label class="form-control">
-              <span class="label-text">Codigo estudiante</span>
-              <input class="input input-bordered" type="text" [value]="asignacionCodigo()"
-                (input)="buscarEstudianteAsignacion(asignacionCodigoInput.value)" #asignacionCodigoInput />
-            </label>
-            <label class="form-control">
-              <span class="label-text">Tipo bono</span>
-              <select class="select select-bordered" [value]="asignacionTipo()"
-                (change)="setAsignacionTipo(asignacionTipoSelect.value)" #asignacionTipoSelect>
-                <option value="almuerzo">Almuerzo</option>
-                <option value="refrigerio">Refrigerio</option>
-              </select>
-            </label>
-            <label class="form-control">
-              <span class="label-text">Codigo bono</span>
-              <input class="input input-bordered" type="number" min="1" [value]="asignacionCodigoBono()"
-                (input)="setAsignacionCodigoBono(asignacionCodigoBonoInput.value)" #asignacionCodigoBonoInput />
-            </label>
-            <label class="form-control lg:col-span-2">
-              <span class="label-text">Motivo</span>
-              <input class="input input-bordered" type="text" [value]="asignacionMotivo()"
-                (input)="setAsignacionMotivo(asignacionMotivoInput.value)" #asignacionMotivoInput />
-            </label>
-          </div>
-          <div class="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              @if (asignacionSearching()) {
-                <p class="text-sm text-gray-500">Buscando estudiante...</p>
-              } @else if (asignacionStudent(); as student) {
-                <p class="font-semibold">{{ student.nombre }}</p>
-                <p class="text-sm text-gray-500">{{ student.codigo }} · {{ student.programa_codigo }} - {{ student.programa_nombre }}</p>
-              } @else {
-                <p class="text-sm text-gray-500">Sin estudiante seleccionado</p>
-              }
-            </div>
-            <button class="btn bg-red-600 text-white hover:bg-red-700"
-              [disabled]="asignacionSaving()"
-              (click)="asignarAdministrativamente()">Asignar</button>
-          </div>
-        </section>
       }
 
       <!-- ==================== ASIGNACIONES ADMINISTRATIVAS ==================== -->
       @if (selectedModule() === 'asignaciones') {
         <div class="flex items-center justify-between gap-3">
-          <h2 class="text-2xl font-bold">Asignaciones administrativas</h2>
-          <button class="btn" (click)="refreshBaseAdministrativa(); refreshDisponibilidad()" [disabled]="loading()">Actualizar</button>
+          <div>
+            <h2 class="text-2xl font-bold">Asignaciones administrativas</h2>
+            <p class="text-sm text-gray-500">Gestion institucional de bonos. Cada asignacion queda auditada.</p>
+          </div>
+          <button class="btn" (click)="refreshBaseAdministrativa()" [disabled]="loading()">Actualizar</button>
         </div>
 
-        <!-- Base administrativa -->
-        <div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+        <!-- Resumen institucional -->
+        <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           @for (tipo of tipos; track tipo) {
             <div class="border-base-300 rounded-box border bg-white p-4">
-              <h3 class="text-lg font-bold capitalize mb-2">{{ tipo }}</h3>
-              <div class="grid grid-cols-2 gap-2 md:grid-cols-5">
-                <div><p class="text-xs text-gray-500">Expirados</p><p class="text-xl font-bold">{{ baseAdministrativa()[tipo]?.expirados ?? 0 }}</p></div>
-                <div><p class="text-xs text-gray-500">No util.</p><p class="text-xl font-bold">{{ baseAdministrativa()[tipo]?.noUtilizados ?? 0 }}</p></div>
-                <div><p class="text-xs text-gray-500">Admin.</p><p class="text-xl font-bold">{{ baseAdministrativa()[tipo]?.administrativos ?? 0 }}</p></div>
-                <div><p class="text-xs text-gray-500">Total</p><p class="text-xl font-bold">{{ baseAdministrativa()[tipo]?.total ?? 0 }}</p></div>
-                <div><p class="text-xs text-gray-500">Disponible</p><p class="text-xl font-bold text-green-600">{{ baseAdministrativa()[tipo]?.disponible ?? 0 }}</p></div>
+              <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Base {{ tipo }}</p>
+              <div class="flex items-end justify-between">
+                <p class="text-3xl font-bold"
+                  [class.text-green-600]="(baseAdministrativa()[tipo]?.disponible ?? 0) > 0"
+                  [class.text-gray-400]="(baseAdministrativa()[tipo]?.disponible ?? 0) === 0">{{ baseAdministrativa()[tipo]?.disponible ?? 0 }}</p>
+                <span class="text-xs text-gray-400">disponibles</span>
+              </div>
+              <div class="mt-2 flex gap-3 text-xs text-gray-500">
+                <span>{{ baseAdministrativa()[tipo]?.expirados ?? 0 }} exp</span>
+                <span>{{ baseAdministrativa()[tipo]?.noUtilizados ?? 0 }} no ut</span>
+                <span class="text-indigo-600 font-semibold">{{ baseAdministrativa()[tipo]?.administrativos ?? 0 }} asig</span>
               </div>
             </div>
           }
         </div>
 
-        <!-- Formulario de asignación -->
+        <!-- Formulario -->
         <section class="mt-4 border-base-300 rounded-box border bg-white p-4">
-          <h3 class="text-lg font-bold mb-3">Registrar nueva asignacion</h3>
-          <div class="grid grid-cols-1 gap-3 lg:grid-cols-5">
+          <h3 class="text-lg font-bold mb-3">Registrar asignacion</h3>
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <label class="form-control">
               <span class="label-text">Codigo estudiante</span>
-              <input class="input input-bordered" type="text" [value]="asignacionCodigo()"
+              <input class="input input-bordered" type="text" placeholder="Buscar por codigo"
+                [value]="asignacionCodigo()"
+                [disabled]="asignacionSaving()"
                 (input)="buscarEstudianteAsignacion(asignacionCodigoInput.value)" #asignacionCodigoInput />
             </label>
             <label class="form-control">
               <span class="label-text">Tipo bono</span>
               <select class="select select-bordered" [value]="asignacionTipo()"
+                [disabled]="asignacionSaving()"
                 (change)="setAsignacionTipo(asignacionTipoSelect.value)" #asignacionTipoSelect>
                 <option value="almuerzo">Almuerzo</option>
                 <option value="refrigerio">Refrigerio</option>
@@ -466,120 +434,337 @@
             </label>
             <label class="form-control">
               <span class="label-text">Codigo bono</span>
-              <input class="input input-bordered" type="number" min="1" [value]="asignacionCodigoBono()"
+              <input class="input input-bordered" type="number" min="1" placeholder="Numero del bono"
+                [value]="asignacionCodigoBono()"
+                [disabled]="asignacionSaving()"
                 (input)="setAsignacionCodigoBono(asignacionCodigoBonoInput.value)" #asignacionCodigoBonoInput />
             </label>
-            <label class="form-control lg:col-span-2">
+            <label class="form-control">
               <span class="label-text">Motivo</span>
-              <input class="input input-bordered" type="text" [value]="asignacionMotivo()"
+              <input class="input input-bordered" type="text" placeholder="Justificacion de la asignacion"
+                [value]="asignacionMotivo()"
+                [disabled]="asignacionSaving()"
                 (input)="setAsignacionMotivo(asignacionMotivoInput.value)" #asignacionMotivoInput />
             </label>
           </div>
           <div class="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div>
               @if (asignacionSearching()) {
-                <p class="text-sm text-gray-500">Buscando estudiante...</p>
+                <div class="flex items-center gap-2">
+                  <span class="loading loading-spinner loading-sm"></span>
+                  <p class="text-sm text-gray-500">Buscando estudiante...</p>
+                </div>
               } @else if (asignacionStudent(); as student) {
-                <p class="font-semibold">{{ student.nombre }}</p>
-                <p class="text-sm text-gray-500">{{ student.codigo }} · {{ student.programa_codigo }} - {{ student.programa_nombre }}</p>
+                <div class="flex items-center gap-2">
+                  <span class="badge badge-success badge-sm"></span>
+                  <p class="font-semibold">{{ student.nombre }} <span class="text-gray-400 font-normal text-xs ml-1">{{ student.codigo }} · {{ student.programa_nombre }}</span></p>
+                </div>
+              } @else if (asignacionCodigo()) {
+                <div class="flex items-center gap-2">
+                  <span class="badge badge-error badge-sm"></span>
+                  <p class="text-sm text-gray-500">Estudiante no encontrado</p>
+                </div>
               } @else {
-                <p class="text-sm text-gray-500">Sin estudiante seleccionado</p>
+                <p class="text-sm text-gray-400">Ingresa un codigo de estudiante</p>
               }
             </div>
             <button class="btn bg-red-600 text-white hover:bg-red-700"
-              [disabled]="asignacionSaving()"
-              (click)="asignarAdministrativamente()">Asignar</button>
+              [disabled]="asignacionSaving() || !asignacionStudent()"
+              (click)="asignarAdministrativamente()">
+              @if (asignacionSaving()) {
+                <span class="loading loading-spinner loading-sm"></span>
+                Asignando...
+              } @else {
+                Registrar asignacion
+              }
+            </button>
           </div>
         </section>
 
-        <!-- Historial con filtros -->
+        <!-- Historial -->
         <section class="mt-4 border-base-300 rounded-box border bg-white p-4">
           <div class="flex items-center justify-between gap-3 mb-3">
-            <h3 class="text-lg font-bold">Historial administrativo</h3>
-            <button class="btn btn-sm" (click)="refreshAsignaciones()">Actualizar</button>
-          </div>
-          <div class="grid grid-cols-1 gap-3 md:grid-cols-4 lg:grid-cols-6">
-            <label class="form-control">
-              <span class="label-text text-xs">Tipo</span>
-              <select class="select select-sm select-bordered" [value]="asignacionesFiltroTipo()"
-                (change)="asignacionesFiltroTipo.set(tipoFiltroSelect.value); applyAsignacionesFilters()" #tipoFiltroSelect>
-                <option value="">Todos</option>
-                <option value="almuerzo">Almuerzo</option>
-                <option value="refrigerio">Refrigerio</option>
-              </select>
-            </label>
-            <label class="form-control">
-              <span class="label-text text-xs">Desde</span>
-              <input type="date" class="input input-sm input-bordered"
-                [value]="asignacionesFiltroFechaDesde()"
-                (input)="asignacionesFiltroFechaDesde.set(fechaDesdeInput.value)" #fechaDesdeInput />
-            </label>
-            <label class="form-control">
-              <span class="label-text text-xs">Hasta</span>
-              <input type="date" class="input input-sm input-bordered"
-                [value]="asignacionesFiltroFechaHasta()"
-                (input)="asignacionesFiltroFechaHasta.set(fechaHastaInput.value)" #fechaHastaInput />
-            </label>
-            <label class="form-control">
-              <span class="label-text text-xs">Codigo bono</span>
-              <input type="text" class="input input-sm input-bordered" placeholder="Codigo"
-                [value]="asignacionesFiltroCodigoBono()"
-                (input)="asignacionesFiltroCodigoBono.set(codigoFiltroInput.value)" #codigoFiltroInput />
-            </label>
-            <div class="flex items-end gap-2">
-              <button class="btn btn-sm" (click)="applyAsignacionesFilters()">Filtrar</button>
-              <button class="btn btn-sm btn-ghost" (click)="clearAsignacionesFilters()">Limpiar</button>
+            <h3 class="text-lg font-bold">Historial</h3>
+            <div class="flex items-center gap-2">
+              <span class="text-xs text-gray-400">{{ asignacionesData()?.total ?? 0 }} registros</span>
+              <button class="btn btn-sm btn-ghost" (click)="refreshAsignaciones()" [disabled]="asignacionesLoading()">Actualizar</button>
             </div>
           </div>
 
+          <!-- Filtros -->
+          <div class="flex flex-wrap items-end gap-2 mb-4">
+            <select class="select select-sm select-bordered w-28" [value]="asignacionesFiltroTipo()"
+              (change)="asignacionesFiltroTipo.set(tipoFiltroSelect.value); applyAsignacionesFilters()" #tipoFiltroSelect>
+              <option value="">Todos</option>
+              <option value="almuerzo">Almuerzo</option>
+              <option value="refrigerio">Refrigerio</option>
+            </select>
+            <input type="date" class="input input-sm input-bordered w-36"
+              [value]="asignacionesFiltroFechaDesde()"
+              (input)="asignacionesFiltroFechaDesde.set(fechaDesdeInput.value)" #fechaDesdeInput />
+            <input type="date" class="input input-sm input-bordered w-36"
+              [value]="asignacionesFiltroFechaHasta()"
+              (input)="asignacionesFiltroFechaHasta.set(fechaHastaInput.value)" #fechaHastaInput />
+            <input type="text" class="input input-sm input-bordered w-28" placeholder="Codigo bono"
+              [value]="asignacionesFiltroCodigoBono()"
+              (input)="asignacionesFiltroCodigoBono.set(codigoFiltroInput.value)" #codigoFiltroInput />
+            <button class="btn btn-sm" (click)="applyAsignacionesFilters()">Filtrar</button>
+            <button class="btn btn-sm btn-ghost" (click)="clearAsignacionesFilters()">Limpiar</button>
+          </div>
+
           @if (asignacionesLoading()) {
-            <div class="mt-6 flex justify-center py-8">
-              <span class="loading loading-spinner loading-lg"></span>
+            <div class="flex justify-center py-10">
+              <span class="loading loading-spinner loading-lg text-red-600"></span>
             </div>
           } @else if (asignacionesData(); as data) {
-            <div class="mt-4 overflow-x-auto">
-              <table class="table table-sm">
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>Fecha</th>
-                    <th>Tipo</th>
-                    <th>Estudiante</th>
-                    <th>Codigo bono</th>
-                    <th>Admin</th>
-                    <th>Motivo</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (row of data.rows; track row.id) {
-                    <tr>
-                      <td class="font-mono text-xs">{{ row.id }}</td>
-                      <td class="text-xs">{{ row.fecha }}</td>
-                      <td class="capitalize text-xs">{{ row.tipo }}</td>
-                      <td class="text-xs">
-                        <p class="font-semibold">{{ row.studentCodigo }}</p>
-                        <p class="text-gray-500">{{ row.studentNombre }}</p>
-                      </td>
-                      <td class="font-mono text-xs">{{ row.codigoBono }}</td>
-                      <td class="text-xs">{{ row.adminNombre }}</td>
-                      <td class="text-xs max-w-48 truncate" [title]="row.motivo || ''">{{ row.motivo }}</td>
+            @if (data.rows.length === 0) {
+              <div class="flex flex-col items-center gap-3 py-12 text-gray-400">
+                <svg class="w-12 h-12 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                <p class="text-sm font-semibold">Sin asignaciones administrativas</p>
+                <p class="text-xs">Las asignaciones realizadas apareceran aqui con trazabilidad completa.</p>
+              </div>
+            } @else {
+              <div class="overflow-x-auto">
+                <table class="table table-sm">
+                  <thead>
+                    <tr class="text-xs">
+                      <th>Fecha</th>
+                      <th>Estudiante</th>
+                      <th>Tipo</th>
+                      <th>Bono</th>
+                      <th>Responsable</th>
+                      <th>Motivo</th>
                     </tr>
-                  }
-                  @empty {
-                    <tr><td colspan="7" class="text-center text-gray-400 py-4">Sin asignaciones administrativas</td></tr>
-                  }
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    @for (row of data.rows; track row.id) {
+                      <tr class="hover:bg-gray-50">
+                        <td class="text-xs text-gray-500 whitespace-nowrap">{{ row.fecha }}</td>
+                        <td>
+                          <p class="text-sm font-semibold">{{ row.studentNombre }}</p>
+                          <p class="text-xs text-gray-500">{{ row.studentCodigo }} · {{ row.studentProgramaNombre }}</p>
+                        </td>
+                        <td><span class="badge badge-sm capitalize">{{ row.tipo }}</span></td>
+                        <td class="font-mono text-xs text-center">{{ row.codigoBono }}</td>
+                        <td>
+                          <p class="text-sm">{{ row.adminNombre }}</p>
+                          @if (row.adminId) {
+                            <p class="text-xs text-gray-400 font-mono">ID {{ row.adminId }}</p>
+                          }
+                        </td>
+                        <td class="text-xs max-w-56">
+                          <p class="truncate" [title]="row.motivo || ''">{{ row.motivo || '—' }}</p>
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
               @if (data.totalPages > 1) {
-                <div class="mt-3 flex justify-center gap-2">
+                <div class="mt-3 flex items-center justify-center gap-3">
                   <button class="btn btn-sm" [disabled]="asignacionesPage() <= 1"
                     (click)="refreshAsignaciones(asignacionesPage() - 1)">Anterior</button>
-                  <span class="text-sm text-gray-500 self-center">Pag {{ data.page }} de {{ data.totalPages }} ({{ data.total }} registros)</span>
+                  <span class="text-xs text-gray-500">Pag {{ data.page }} / {{ data.totalPages }}</span>
                   <button class="btn btn-sm" [disabled]="asignacionesPage() >= data.totalPages"
                     (click)="refreshAsignaciones(asignacionesPage() + 1)">Siguiente</button>
                 </div>
               }
+            }
+          }
+        </section>
+      }
+
+      <!-- ==================== OPERACION PROVEEDOR ==================== -->
+      @if (selectedModule() === 'proveedor') {
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <h2 class="text-2xl font-bold">Operacion proveedor</h2>
+            <p class="text-sm text-gray-500">Conciliacion diaria entre SIGBA y el proveedor externo.</p>
+          </div>
+          <button class="btn" (click)="refreshProviderResumen()" [disabled]="providerLoading()">Actualizar</button>
+        </div>
+
+        <!-- Fecha selector -->
+        <div class="mt-3 flex items-center gap-3">
+          <label class="form-control w-40">
+            <span class="label-text text-xs">Fecha consulta</span>
+            <input type="date" class="input input-sm input-bordered"
+              [value]="providerFecha()"
+              (input)="providerFecha.set(fechaInput.value); refreshProviderResumen()" #fechaInput />
+          </label>
+        </div>
+
+        @if (providerLoading()) {
+          <div class="flex justify-center py-12">
+            <span class="loading loading-spinner loading-lg text-red-600"></span>
+          </div>
+        } @else if (providerResumen(); as resumen) {
+          <!-- Métricas por tipo -->
+          <div class="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
+            @for (tipo of tipos; track tipo) {
+              <div class="border-base-300 rounded-box border bg-white p-4">
+                <h3 class="text-lg font-bold capitalize mb-2">{{ tipo }}</h3>
+                <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  <div><p class="text-xs text-gray-500">Total SIGBA</p><p class="text-xl font-bold text-green-700">{{ resumen[tipo].totalEntregado }}</p></div>
+                  <div><p class="text-xs text-gray-500">Reclamados</p><p class="text-lg font-semibold">{{ resumen[tipo].reclamados }}</p></div>
+                  <div><p class="text-xs text-gray-500">Administrativos</p><p class="text-lg font-semibold text-indigo-600">{{ resumen[tipo].administrativos }}</p></div>
+                  <div><p class="text-xs text-gray-500">Expirados</p><p class="text-lg font-semibold">{{ resumen[tipo].expirados }}</p></div>
+                  <div><p class="text-xs text-gray-500">No utilizados</p><p class="text-lg font-semibold">{{ resumen[tipo].noUtilizados }}</p></div>
+                  <div><p class="text-xs text-gray-500">Reutilizables</p><p class="text-lg font-semibold">{{ resumen[tipo].reutilizables }}</p></div>
+                </div>
+
+                <!-- Conciliación -->
+                <div class="mt-3 rounded-box border border-dashed p-3"
+                  [class.border-green-300]="resumen[tipo].ultimaConciliacion?.estado === 'CONCILIADO'"
+                  [class.border-red-300]="resumen[tipo].ultimaConciliacion?.estado === 'DIFERENCIA_CRITICA'"
+                  [class.border-yellow-300]="resumen[tipo].ultimaConciliacion?.estado === 'DIFERENCIA_MENOR'"
+                  [class.border-gray-300]="!resumen[tipo].ultimaConciliacion">
+                  <p class="text-xs font-semibold text-gray-500 mb-2">Ultima conciliacion</p>
+                  @if (resumen[tipo].ultimaConciliacion; as conc) {
+                    <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                      <div><p class="text-xs text-gray-500">Proveedor</p><p class="text-base font-bold">{{ conc.cantidad_proveedor }}</p></div>
+                      <div><p class="text-xs text-gray-500">Diferencia</p><p class="text-base font-bold"
+                        [class.text-green-600]="conc.diferencia === 0"
+                        [class.text-red-600]="absValue(conc.diferencia) > 2">{{ conc.diferencia > 0 ? '+' : '' }}{{ conc.diferencia }}</p></div>
+                      <div><p class="text-xs text-gray-500">Estado</p>
+                        <span class="badge badge-xs"
+                          [class.badge-success]="conc.estado === 'CONCILIADO'"
+                          [class.badge-warning]="conc.estado === 'DIFERENCIA_MENOR'"
+                          [class.badge-error]="conc.estado === 'DIFERENCIA_CRITICA'">{{ conc.estado }}</span>
+                      </div>
+                    </div>
+                  } @else {
+                    <p class="text-sm text-gray-400">Pendiente de conciliar</p>
+                  }
+                </div>
+
+                <!-- Formulario conciliación -->
+                <div class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-4">
+                  <label class="form-control">
+                    <span class="label-text text-xs">Cant. proveedor</span>
+                    <input type="number" min="0" class="input input-sm input-bordered" placeholder="Reportado"
+                      [disabled]="providerSaving()"
+                      (input)="providerCantidad.set(provInput.value)" #provInput />
+                  </label>
+                  <label class="form-control sm:col-span-3">
+                    <span class="label-text text-xs">Observaciones</span>
+                    <input type="text" class="input input-sm input-bordered" placeholder="Notas de conciliacion"
+                      [disabled]="providerSaving()"
+                      (input)="providerObservaciones.set(obsInput.value)" #obsInput />
+                  </label>
+                </div>
+                <div class="mt-2 flex justify-end">
+                  <button class="btn btn-sm bg-red-600 text-white hover:bg-red-700"
+                    [disabled]="providerSaving() || !providerCantidad()"
+                    (click)="providerConciliacionTipo.set(tipo); registrarConciliacion()">
+                    @if (providerSaving() && providerConciliacionTipo() === tipo) {
+                      <span class="loading loading-spinner loading-sm"></span>
+                    }
+                    Conciliar {{ tipo }}
+                  </button>
+                </div>
+              </div>
+            }
+          </div>
+
+          <!-- Exportar -->
+          <div class="mt-3 flex gap-2">
+            <button class="btn btn-sm" (click)="descargarExcel(resumen)">Excel resumen</button>
+            <a class="btn btn-sm" [href]="getProviderExportUrl('conciliaciones')" target="_blank">Excel historial</a>
+          </div>
+        }
+
+        <!-- Historial conciliaciones -->
+        <section class="mt-6 border-base-300 rounded-box border bg-white p-4">
+          <div class="flex items-center justify-between gap-3 mb-3">
+            <h3 class="text-lg font-bold">Historial conciliaciones</h3>
+            <span class="text-xs text-gray-400">{{ providerConciliaciones()?.total ?? 0 }} registros</span>
+          </div>
+
+          <div class="flex flex-wrap items-end gap-2 mb-3">
+            <select class="select select-sm select-bordered w-28" [value]="providerConciliacionesFiltroTipo()"
+              (change)="providerConciliacionesFiltroTipo.set(tipoSel.value); applyProviderFilters()" #tipoSel>
+              <option value="">Todos</option>
+              <option value="almuerzo">Almuerzo</option>
+              <option value="refrigerio">Refrigerio</option>
+            </select>
+            <select class="select select-sm select-bordered w-36" [value]="providerConciliacionesFiltroEstado()"
+              (change)="providerConciliacionesFiltroEstado.set(estSel.value); applyProviderFilters()" #estSel>
+              <option value="">Todos estados</option>
+              <option value="CONCILIADO">Conciliado</option>
+              <option value="DIFERENCIA_MENOR">Dif. menor</option>
+              <option value="DIFERENCIA_CRITICA">Dif. critica</option>
+              <option value="PENDIENTE">Pendiente</option>
+            </select>
+            <input type="date" class="input input-sm input-bordered w-36"
+              [value]="providerConciliacionesFiltroFechaDesde()"
+              (input)="providerConciliacionesFiltroFechaDesde.set(fechaDesde.value)" #fechaDesde />
+            <input type="date" class="input input-sm input-bordered w-36"
+              [value]="providerConciliacionesFiltroFechaHasta()"
+              (input)="providerConciliacionesFiltroFechaHasta.set(fechaHasta.value)" #fechaHasta />
+            <button class="btn btn-sm" (click)="applyProviderFilters()">Filtrar</button>
+            <button class="btn btn-sm btn-ghost" (click)="clearProviderFilters()">Limpiar</button>
+          </div>
+
+          @if (providerConciliacionesLoading()) {
+            <div class="flex justify-center py-8">
+              <span class="loading loading-spinner loading-lg"></span>
             </div>
+          } @else if (providerConciliaciones(); as data) {
+            @if (data.rows.length === 0) {
+              <div class="flex flex-col items-center gap-2 py-10 text-gray-400">
+                <p class="text-sm font-semibold">Sin conciliaciones registradas</p>
+                <p class="text-xs">Registra conciliaciones usando el formulario superior.</p>
+              </div>
+            } @else {
+              <div class="overflow-x-auto">
+                <table class="table table-sm">
+                  <thead>
+                    <tr class="text-xs">
+                      <th>Fecha</th>
+                      <th>Tipo</th>
+                      <th>SIGBA</th>
+                      <th>Proveedor</th>
+                      <th>Dif.</th>
+                      <th>Estado</th>
+                      <th>Admin</th>
+                      <th>Observaciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (row of data.rows; track row.id) {
+                      <tr class="hover:bg-gray-50">
+                        <td class="text-xs whitespace-nowrap">{{ row.fecha }}</td>
+                        <td><span class="badge badge-sm capitalize">{{ row.tipo }}</span></td>
+                        <td class="text-xs text-center font-semibold">{{ row.cantidadSigba }}</td>
+                        <td class="text-xs text-center">{{ row.cantidadProveedor }}</td>
+                        <td class="text-xs text-center font-semibold"
+                          [class.text-green-600]="row.diferencia === 0"
+                          [class.text-red-600]="absValue(row.diferencia) > 2">{{ row.diferencia > 0 ? '+' : '' }}{{ row.diferencia }}</td>
+                        <td>
+                          <span class="badge badge-xs"
+                            [class.badge-success]="row.estado === 'CONCILIADO'"
+                            [class.badge-warning]="row.estado === 'DIFERENCIA_MENOR'"
+                            [class.badge-error]="row.estado === 'DIFERENCIA_CRITICA'"
+                            [class.badge-ghost]="row.estado === 'PENDIENTE'">{{ row.estado }}</span>
+                        </td>
+                        <td class="text-xs">{{ row.adminNombre }}</td>
+                        <td class="text-xs max-w-44 truncate" [title]="row.observaciones || ''">{{ row.observaciones || '—' }}</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+              @if (data.totalPages > 1) {
+                <div class="mt-3 flex items-center justify-center gap-3">
+                  <button class="btn btn-sm" [disabled]="providerConciliacionesPage() <= 1"
+                    (click)="refreshProviderConciliaciones(providerConciliacionesPage() - 1)">Anterior</button>
+                  <span class="text-xs text-gray-500">Pag {{ data.page }} / {{ data.totalPages }}</span>
+                  <button class="btn btn-sm" [disabled]="providerConciliacionesPage() >= data.totalPages"
+                    (click)="refreshProviderConciliaciones(providerConciliacionesPage() + 1)">Siguiente</button>
+                </div>
+              }
+            }
           }
         </section>
       }
@@ -593,6 +778,7 @@
           </div>
           <div class="flex gap-2">
             <button class="btn" (click)="descargarResumen()" [disabled]="loading()">Descargar Excel</button>
+            <button class="btn bg-red-600 text-white hover:bg-red-700" (click)="goScanPage()">ESCANEAR QR</button>
             <button class="btn" (click)="refreshResumen()" [disabled]="loading()">Actualizar</button>
           </div>
         </div>
@@ -1111,8 +1297,10 @@
     </div>
   </div>
 </div>
-}
 
+
+
+}
 <!-- ==================== MODAL CREAR ESTUDIANTE ==================== -->
 @if (showCreateModal()) {
 <div class="modal modal-open">

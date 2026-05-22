@@ -1,14 +1,14 @@
 # SIGBA — Capa Institucional de Asignaciones Administrativas
 
 > **Fecha:** 2026-05-21  
-> **Versión:** v1.0 — Fase 1 completada  
-> **Estado:** OPERATIVA — Sin regresiones en el core  
+> **Versión:** v1.1 — Refactor UX y separación definitiva  
+> **Estado:** OPERATIVA — Módulo independiente, sin regresiones en el core  
 
 ---
 
 ## Resumen
 
-Se implementó la capa institucional completa para asignaciones administrativas, manteniendo el núcleo operacional de bonos congelado según `specs/architecture/bonos-stable-core.md`. La funcionalidad permite asignar bonos administrativamente, consultar historial, auditar quién asignó y por qué, con separación absoluta entre operación y administrativos.
+La capa institucional de asignaciones administrativas está completamente desacoplada del módulo operacional "Bonos del día". El formulario, botones, estados y acciones administrativas residen exclusivamente en el módulo "Asignaciones admin", que funciona como un subsistema independiente con su propio resumen, formulario, historial y auditoría.
 
 ---
 
@@ -44,6 +44,36 @@ Se implementó la capa institucional completa para asignaciones administrativas,
 │                                                           │
 │  admin.routes.js           ← Todas con authenticateAdmin  │
 └──────────────────────────────────────────────────────────┘
+```
+
+### 1.1 Frontend — Separación definitiva de módulos
+
+```
+┌─────────────────────────────────────────────────────────┐
+│               ADMIN DASHBOARD (selectedModule)           │
+├─────────────────────────────────────────────────────────┤
+│                                                          │
+│  ┌─────────────────────┐  ┌───────────────────────────┐ │
+│  │  Bonos del día       │  │  Asignaciones admin       │ │
+│  │  (MÓDULO OPERATIVO) │  │  (MÓDULO INSTITUCIONAL)   │ │
+│  │                      │  │                            │ │
+│  │  ✅ Base             │  │  ✅ Resumen institucional  │ │
+│  │  ✅ Extra            │  │  ✅ Base administrativa    │ │
+│  │  ✅ Reservados       │  │  ✅ Formulario asignación  │ │
+│  │  ✅ Reclamados       │  │  ✅ Historial filtrable    │ │
+│  │  ✅ Expirados        │  │  ✅ Filtros                │ │
+│  │  ✅ Liberar          │  │  ✅ Paginación             │ │
+│  │  ✅ Disponibilidad   │  │  ✅ Auditoría              │ │
+│  │                      │  │                            │ │
+│  │  ❌ SIN formulario   │  │  ❌ SIN métricas operat.   │ │
+│  │     administrativo   │  │  ❌ SIN acciones core      │ │
+│  │  ❌ SIN botones      │  │                            │ │
+│  │     institucionales  │  │                            │ │
+│  └─────────────────────┘  └───────────────────────────┘ │
+│                                                          │
+│  Base administrativa (SOLO LECTURA) permanece en ambos   │
+│  como métrica informativa sin acciones.                  │
+└─────────────────────────────────────────────────────────┘
 ```
 
 **Principio rector:** La capa institucional consume servicios del core operacional sin modificarlos. Todas las operaciones administrativas pasan por el servicio `bonos.admin-assignment.service.js` que YA existía y YA era seguro.
@@ -181,7 +211,9 @@ Cada asignación registra automáticamente:
 
 ---
 
-## 7. Decisiones Técnicas
+## 7. Decisiones Técnicas y UX
+
+### 7.1 Backend
 
 1. **Separación de rutas:** Las nuevas rutas se montan en `/api/admin/bonos` para mantener separación institucional del core en `/api/bonos`.
 
@@ -191,9 +223,29 @@ Cada asignación registra automáticamente:
 
 4. **`LEFT JOIN admins` para historial:** Si la tabla `admins` no existe o el admin fue eliminado, muestra 'Sistema' en vez de fallar.
 
-5. **Mismo formulario frontend reutilizado:** El formulario de asignación ya existía en el módulo "Bonos del día". Se duplicó en el nuevo módulo "Asignaciones admin" para mantener consistencia UX, añadiendo historial y filtros.
+5. **Paginación con límite:** Máximo 100 registros por página para evitar consultas pesadas.
 
-6. **Paginación con límite:** Máximo 100 registros por página para evitar consultas pesadas.
+### 7.2 Frontend — Separación definitiva
+
+6. **Separación total de módulos:** El formulario de asignación, botones y acciones administrativas fueron eliminados del módulo "Bonos del día". Este módulo ahora representa SOLO operación diaria (base, reservas, reclamos, expirados, disponibilidad). La métrica "Base administrativa" permanece como lectura informativa (sin acciones).
+
+7. **Módulo institucional independiente:** "Asignaciones admin" funciona como subsistema con su propio resumen, base administrativa, formulario, historial, filtros y auditoría. No comparte estados con el módulo operacional.
+
+8. **Formulario alineado:** Los 4 campos (Código estudiante, Tipo bono, Código bono, Motivo) usan `lg:grid-cols-4` con ancho uniforme en desktop. Responsive: `grid-cols-1` en mobile, `sm:grid-cols-2` en tablet.
+
+### 7.3 UX Refinements
+
+9. **Loading states:** Spinner en botón de asignación durante saving. Spinner en búsqueda de estudiante. Spinner centrado en carga de historial.
+
+10. **Disabled states:** Todos los inputs del formulario se deshabilitan durante `asignacionSaving`. Botón deshabilitado si no hay estudiante seleccionado.
+
+11. **Mensajes vacíos elegantes:** El historial vacío muestra un icono SVG + texto descriptivo en vez de una celda "Sin datos".
+
+12. **Badges visuales:** Cada fila del historial muestra el tipo como badge (`badge-sm`). Estudiante encontrado muestra badge verde; no encontrado, badge rojo.
+
+13. **Confirmación post-asignación:** Tras asignar exitosamente, el formulario se limpia, la base administrativa se actualiza y el historial se refresca automáticamente a página 1.
+
+14. **Historial enriquecido:** Cada fila muestra: fecha completa, nombre del estudiante + código + programa, tipo como badge, código bono en monoespaciado, admin responsable con ID, motivo completo (sin truncar con hover tooltip).
 
 ---
 
@@ -213,8 +265,8 @@ Cada asignación registra automáticamente:
 | Archivo | Cambio |
 |---------|--------|
 | `frontend/src/app/admin/services/admin-assignment.service.ts` | **Nuevo** — Servicio HTTP para endpoints institucionales |
-| `frontend/src/app/admin/pages/admin-dashboard-page/admin-dashboard-page.ts` | **Modificado** — Añadido módulo 'asignaciones', signals, métodos |
-| `frontend/src/app/admin/pages/admin-dashboard-page/admin-dashboard-page.html` | **Modificado** — Añadido nav button + bloque HTML del módulo |
+| `frontend/src/app/admin/pages/admin-dashboard-page/admin-dashboard-page.ts` | **Modificado** — Módulo 'asignaciones' añadido; formulario admin eliminado de 'bonos'; auto-refresh de historial; señal `asignacionAsignado` |
+| `frontend/src/app/admin/pages/admin-dashboard-page/admin-dashboard-page.html` | **Modificado** — Nav button añadido; formulario admin eliminado de "Bonos del día"; bloque "Asignaciones admin" rediseñado con resumen institucional, formulario alineado (4 cols), filtros inline, historial enriquecido, estados vacíos con iconos, badges, loading/disabled states |
 
 ### Scripts
 

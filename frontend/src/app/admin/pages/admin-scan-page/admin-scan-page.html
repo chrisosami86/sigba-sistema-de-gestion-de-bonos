@@ -1,0 +1,82 @@
+<div class="min-h-screen bg-gray-900 text-white flex flex-col">
+  <header class="flex items-center justify-between gap-3 px-4 py-3 bg-gray-950 border-b border-gray-800">
+    <div class="flex items-center gap-3">
+      <h1 class="text-xl font-bold text-red-500">SIG<span class="text-white">BA</span></h1>
+      <span class="text-sm text-gray-400">Scanner QR</span>
+    </div>
+    <div class="flex gap-2">
+      <button class="btn btn-sm btn-ghost text-white" (click)="goDashboard()">Dashboard</button>
+      <button class="btn btn-sm btn-ghost text-white" (click)="logout()">Salir</button>
+    </div>
+  </header>
+
+  <main class="flex-1 flex flex-col items-center p-4">
+    <div class="w-full max-w-xl flex flex-col gap-4">
+      @if (!cameraReady()) {
+      <div class="alert alert-warning">
+        <span>No se detectaron camaras. Conecta una webcam y recarga la pagina.</span>
+      </div>
+      }
+
+      @if (cameraReady() && cameras.length > 1) {
+      <select class="select select-sm w-full bg-gray-800 text-white border-gray-700"
+        (change)="selectCamera(camSelect.value)" #camSelect>
+        @for (cam of cameras; track cam.id) {
+        <option [value]="cam.id" [selected]="cam.id === cameraId">{{ cam.label }}</option>
+        }
+      </select>
+      }
+
+      @if (status() !== 'scanning') {
+      <button class="btn bg-red-600 text-white hover:bg-red-700 border-0 text-lg py-6" [disabled]="!cameraReady()"
+        (click)="startScanner()">
+        @if (status() === 'idle') { Activar escaner }
+        @if (status() === 'error') { Reintentar }
+        @if (status() === 'success') { Escanear otro }
+        @if (status() === 'loading') { <span class="loading loading-spinner loading-sm"></span> Procesando... }
+      </button>
+      }
+
+      <div class="relative w-full aspect-square max-w-md mx-auto bg-black rounded-box overflow-hidden"
+        [class.hidden]="status() === 'idle'" [class.border-4]="status() === 'scanning'"
+        [class.border-red-500]="status() === 'scanning'" [class.border-gray-700]="status() !== 'scanning'"
+        [class.scanning-border]="status() === 'scanning'">
+
+        <div id="qr-reader" class="w-full h-full"></div>
+
+        @if (status() === 'scanning') {
+        <div class="absolute inset-x-0 bottom-4 flex justify-center pointer-events-none">
+          <span class="px-4 py-2 bg-black/70 text-white text-sm rounded-full border border-white/20">
+            Apunte la camara al QR del estudiante
+          </span>
+        </div>
+        }
+
+        <button class="btn btn-sm btn-ghost absolute top-2 right-2 text-white bg-black/50"
+          (click)="stopScanner()">Detener</button>
+      </div>
+
+      @if (resultMessage()) {
+      <div class="w-full max-w-md mx-auto p-4 rounded-box border text-center" [class.bg-green-900]="!resultError()"
+        [class.border-green-600]="!resultError()" [class.bg-red-900]="resultError()"
+        [class.border-red-600]="resultError()">
+        <p class="text-3xl font-extrabold" [class.text-green-400]="!resultError()" [class.text-red-400]="resultError()">
+          {{ resultMessage() }}</p>
+        @if (resultStudent()) {
+        <p class="text-lg mt-1">{{ resultStudent() }}</p>
+        }
+        @if (resultTipo()) {
+        <span class="badge capitalize mt-1">{{ resultTipo() }}</span>
+        }
+        @if (resultError()) {
+        <p class="text-sm text-gray-300 mt-1 text-left whitespace-pre-line">{{ resultMessage() }}</p>
+        }
+      </div>
+      }
+    </div>
+  </main>
+
+  <footer class="text-center text-xs text-gray-600 py-2">
+    SIGBA Scanner · Operacion hibrida QR + fisico
+  </footer>
+</div>

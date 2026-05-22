@@ -11,6 +11,7 @@ router.get('/estado/:tipo', authenticate, bonosController.getEstadoSistema);
 // Student-only endpoints
 router.post('/solicitar', authenticateStudent, bonosController.requestBono);
 router.get('/student/:studentId', authenticateStudent, bonosController.getStudentBonos);
+router.get('/mis-bonos-activos', authenticateStudent, bonosController.getActiveStudentBonus);
 
 // Admin-only endpoints
 router.get('/admin/resumen-diario', authenticateAdmin, bonosController.getResumenDiario);
@@ -21,5 +22,8 @@ router.patch('/liberar', authenticateAdmin, bonosController.liberarBonos);
 router.patch('/extra', authenticateAdmin, bonosController.cargarBonosExtra);
 router.patch('/base', authenticateAdmin, bonosController.establecerCantidadBase);
 router.patch('/reclamar/:id', authenticateAdmin, bonosController.claimBono);
+
+// QR endpoints
+router.post('/claim-qr', authenticateAdmin, bonosController.claimByQr);
 
 module.exports = router;

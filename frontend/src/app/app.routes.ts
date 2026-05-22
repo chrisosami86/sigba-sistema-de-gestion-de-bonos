@@ -4,6 +4,7 @@ import { DetailsStudentsPage } from './students/pages/details-students-page/deta
 import { studentAuthGuard } from './students/guards/student-auth.guard';
 import { AdminLoginPage } from './admin/pages/admin-login-page/admin-login-page';
 import { AdminDashboardPage } from './admin/pages/admin-dashboard-page/admin-dashboard-page';
+import { AdminScanPage } from './admin/pages/admin-scan-page/admin-scan-page';
 import { adminAuthGuard } from './admin/guards/admin-auth.guard';
 
 export const routes: Routes = [
@@ -27,6 +28,11 @@ export const routes: Routes = [
   {
     path: 'admin',
     component: AdminDashboardPage,
+    canActivate: [adminAuthGuard],
+  },
+  {
+    path: 'admin/scan',
+    component: AdminScanPage,
     canActivate: [adminAuthGuard],
   },
   {

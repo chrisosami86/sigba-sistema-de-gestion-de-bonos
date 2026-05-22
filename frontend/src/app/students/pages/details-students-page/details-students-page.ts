@@ -1,8 +1,9 @@
-import { Component, OnDestroy, computed, inject, signal } from '@angular/core';
+import { Component, OnDestroy, computed, inject, signal, viewChild } from '@angular/core';
 import { Router } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import { FooterComponent } from '../../../shared/components/footer/footer.component';
 import { LogoSIGBA } from '../../../shared/components/logoSIGBA/logoSIGBA';
+import { QrBonoCardComponent } from '../../../shared/components/qr-bono-card/qr-bono-card';
 import { CountdownBonos } from '../../components/countdown-bonos/countdown-bonos';
 import {
   BonoHistorial,
@@ -16,7 +17,7 @@ import { StudentService } from '../../services/student.service';
 
 @Component({
   selector: 'details-students-page',
-  imports: [FooterComponent, LogoSIGBA, CountdownBonos],
+  imports: [FooterComponent, LogoSIGBA, CountdownBonos, QrBonoCardComponent],
   templateUrl: './details-students-page.html',
 })
 export class DetailsStudentsPage implements OnDestroy {
@@ -24,6 +25,8 @@ export class DetailsStudentsPage implements OnDestroy {
   private authService = inject(StudentAuthService);
   private studentService = inject(StudentService);
   private router = inject(Router);
+
+  private qrCard = viewChild(QrBonoCardComponent);
 
   student = this.authService.currentStudent;
   historial = signal<BonoHistorial[]>([]);
@@ -156,6 +159,7 @@ export class DetailsStudentsPage implements OnDestroy {
         this.loadHistorial(studentId);
         this.refreshEstados();
         this.refreshDisponibilidad();
+        this.qrCard()?.refresh();
       },
       error: (err) => {
         this.solicitudError.set(err.error?.message || 'No se pudo solicitar el bono');

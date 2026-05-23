@@ -22,7 +22,7 @@
     <input
       [type]="showPassword() ? 'text' : 'password'"
       class="input join-item w-full"
-      placeholder="Documento registrado"
+      placeholder="Contrasena"
       autocomplete="current-password"
       [value]="password()"
       (input)="password.set(txtPassword.value)"
@@ -118,6 +118,7 @@
     }
 
     <button
+      type="button"
       class="btn bg-red-600 text-white hover:bg-red-700"
       [disabled]="forceLoading()"
       (click)="submitForceChange()"

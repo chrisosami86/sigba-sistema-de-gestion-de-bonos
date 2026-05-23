@@ -104,7 +104,7 @@ const loginStudent = async ({ codigo, password }) => {
 
   const passwordValid = student.password_hash
     ? await bcrypt.compare(String(password), student.password_hash)
-    : String(student.numero_documento) === String(password);
+    : String(student.codigo) === String(password);
 
   if (!passwordValid) {
     throw new Error("Credenciales invalidas");
@@ -296,7 +296,7 @@ const recoverStudentPassword = async ({ correo }) => {
   }
 
   const query = `
-    SELECT codigo, nombre, correo, activo
+    SELECT id, codigo, nombre, correo, activo
     FROM students
     WHERE correo = $1
     LIMIT 1
@@ -316,19 +316,29 @@ const recoverStudentPassword = async ({ correo }) => {
     );
   }
 
+  // Generar contraseña temporal
+  const tempPassword = generateTempPassword();
+  const passwordHash = await bcrypt.hash(tempPassword, SALT_ROUNDS);
+
+  await pool.query(
+    "UPDATE students SET password_hash = $1, must_change_password = true WHERE id = $2",
+    [passwordHash, student.id],
+  );
+
   const mailResult = await sendMail({
     to: student.correo,
     subject: "Recuperacion de contrasena SIGBA",
     html: buildRecoveryEmail({
       name: student.nombre,
-      userLabel: "Codigo",
-      userValue: student.codigo,
-      hint: "Usa tu codigo de estudiante como contrasena inicial. Si ya la cambiaste, contacta a bienestar universitario.",
+      codigo: student.codigo,
+      tempPassword,
     }),
   });
 
   return {
-    correo: student.correo,
+    message: mailResult.sent
+      ? "Se ha enviado una contrasena temporal a tu correo institucional"
+      : "Solicitud recibida, pero el servicio de correo no esta disponible. Contacta a bienestar universitario.",
     ...mailResult,
   };
 };
@@ -343,7 +353,7 @@ const recoverAdminPassword = async ({ correo }) => {
   }
 
   const result = await pool.query(
-    "SELECT nombre, correo, activo FROM admins WHERE correo = $1",
+    "SELECT id, nombre, correo, activo FROM admins WHERE correo = $1",
     [correo],
   );
 
@@ -357,19 +367,29 @@ const recoverAdminPassword = async ({ correo }) => {
     throw new Error("Cuenta de administrador desactivada");
   }
 
+  // Generar contraseña temporal
+  const tempPassword = generateTempPassword();
+  const passwordHash = await bcrypt.hash(tempPassword, SALT_ROUNDS);
+
+  await pool.query(
+    "UPDATE admins SET password_hash = $1, must_change_password = true WHERE id = $2",
+    [passwordHash, admin.id],
+  );
+
   const mailResult = await sendMail({
     to: admin.correo,
     subject: "Recuperacion de contrasena administrador SIGBA",
     html: buildRecoveryEmail({
       name: admin.nombre,
-      userLabel: "Correo",
-      userValue: admin.correo,
-      hint: "Contacta al administrador del sistema si no recuerdas tu contrasena.",
+      codigo: admin.correo,
+      tempPassword,
     }),
   });
 
   return {
-    correo: admin.correo,
+    message: mailResult.sent
+      ? "Se ha enviado una contrasena temporal a tu correo"
+      : "Solicitud recibida, pero el servicio de correo no esta disponible.",
     ...mailResult,
   };
 };
@@ -378,24 +398,42 @@ const recoverAdminPassword = async ({ correo }) => {
 //  HELPERS
 // ============================================================
 
-const buildRecoveryEmail = ({ name, userLabel, userValue, hint }) => {
-  return `
-    <div style="font-family: Arial, sans-serif; color: #111827;">
-      <h2 style="color: #991b1b;">Recuperacion de contrasena SIGBA</h2>
-      <p>Hola ${name},</p>
-      <p>Estos son tus datos de acceso registrados en SIGBA:</p>
-      <table style="border-collapse: collapse;">
-        <tr>
-          <td style="padding: 6px 12px; font-weight: bold;">${userLabel}</td>
-          <td style="padding: 6px 12px;">${userValue}</td>
-        </tr>
-      </table>
-      <p style="margin-top: 12px; padding: 12px; background: #fef3c7; border-radius: 6px;">
-        <strong>Nota:</strong> ${hint}
-      </p>
-      <p>Si no solicitaste esta recuperacion, comunicate con bienestar universitario.</p>
+const generateTempPassword = () => {
+  const digits = String(Math.floor(1000 + Math.random() * 9000));
+  return `SIGBA-${digits}`;
+};
+
+const buildRecoveryEmail = ({ name, codigo, tempPassword }) => {
+  return `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SIGBA — Recuperación de contraseña</title>
+</head>
+<body style="margin:0; padding:0; background:#f3f4f6;">
+  <div style="font-family: Arial, Helvetica, sans-serif; color: #111827; max-width: 480px; margin: 0 auto; padding: 24px;">
+    <h2 style="color: #991b1b;">SIGBA — Recuperación de contraseña</h2>
+    <p>Hola ${name},</p>
+    <p>Se ha generado una <strong>contraseña temporal</strong> para tu cuenta:</p>
+
+    <div style="margin: 16px 0; padding: 16px; background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px;">
+      <p style="margin: 0 0 8px 0; font-size: 14px; color: #166534;">Usuario</p>
+      <p style="margin: 0; font-size: 20px; font-weight: bold; font-family: monospace;">${codigo}</p>
+      <p style="margin: 12px 0 8px 0; font-size: 14px; color: #166534;">Contraseña temporal</p>
+      <p style="margin: 0; font-size: 20px; font-weight: bold; font-family: monospace; letter-spacing: 2px;">${tempPassword}</p>
     </div>
-  `;
+
+    <p style="margin-top: 12px; padding: 12px; background: #fef3c7; border-radius: 6px;">
+      <strong>Importante:</strong> Al iniciar sesión con esta contraseña temporal, el sistema te pedirá que la cambies inmediatamente por una personal.
+    </p>
+
+    <p style="margin-top: 16px; font-size: 13px; color: #6b7280;">
+      Si no solicitaste este cambio de contraseña, comunícate inmediatamente con Bienestar Universitario. Si fuiste tú, por favor ignora este mensaje.
+    </p>
+  </div>
+</body>
+</html>`;
 };
 
 module.exports = {

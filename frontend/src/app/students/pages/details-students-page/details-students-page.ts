@@ -38,6 +38,61 @@ export class DetailsStudentsPage implements OnDestroy {
   loadingSolicitud = signal(false);
   solicitudMessage = signal('');
   solicitudError = signal('');
+
+  // Change password modal
+  showChangePw = signal(false);
+  changePwCurrent = signal('');
+  changePwNew = signal('');
+  changePwConfirm = signal('');
+  changePwLoading = signal(false);
+  changePwMessage = signal('');
+  changePwError = signal('');
+  changePwShow = signal(false);
+
+  submitChangePassword() {
+    const current = this.changePwCurrent().trim();
+    const newPw = this.changePwNew().trim();
+    const confirmPw = this.changePwConfirm().trim();
+
+    if (!current || !newPw || !confirmPw) {
+      this.changePwError.set('Todos los campos son obligatorios');
+      return;
+    }
+    if (newPw.length < 6) {
+      this.changePwError.set('La contrasena debe tener al menos 6 caracteres');
+      return;
+    }
+    if (newPw !== confirmPw) {
+      this.changePwError.set('Las contrasenas no coinciden');
+      return;
+    }
+    if (current === newPw) {
+      this.changePwError.set('La nueva contrasena no puede ser igual a la actual');
+      return;
+    }
+
+    this.changePwLoading.set(true);
+    this.changePwError.set('');
+    this.changePwMessage.set('');
+
+    this.authService.changePassword(current, newPw).subscribe({
+      next: (res) => {
+        this.changePwMessage.set(res.message);
+        this.changePwLoading.set(false);
+        setTimeout(() => {
+          this.showChangePw.set(false);
+          this.changePwCurrent.set('');
+          this.changePwNew.set('');
+          this.changePwConfirm.set('');
+          this.changePwMessage.set('');
+        }, 2000);
+      },
+      error: (err) => {
+        this.changePwError.set(err.error?.message || 'No se pudo cambiar la contrasena');
+        this.changePwLoading.set(false);
+      },
+    });
+  }
   private estadoIntervalId: ReturnType<typeof setInterval>;
 
   tipoDisponible = computed<BonoTipo | null>(() => {

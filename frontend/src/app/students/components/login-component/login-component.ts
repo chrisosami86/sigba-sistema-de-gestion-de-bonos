@@ -26,6 +26,7 @@ export class LoginComponent {
   forceLoading = signal(false);
   forceMessage = signal('');
   forceError = signal('');
+  private loginPassword = '';
 
   login() {
     if (!this.codigo() || !this.password()) {
@@ -41,6 +42,8 @@ export class LoginComponent {
         this.loading.set(false);
 
         if (response.student.must_change_password) {
+          this.loginPassword = this.password();
+          this.password.set('');
           this.showForceChange.set(true);
         } else {
           this.router.navigate(['/details']);
@@ -76,7 +79,7 @@ export class LoginComponent {
     this.forceError.set('');
     this.forceMessage.set('');
 
-    this.authService.changePassword(this.codigo(), newPw).subscribe({
+    this.authService.changePassword(this.loginPassword, newPw).subscribe({
       next: (result) => {
         this.forceMessage.set(result.message);
         this.forceLoading.set(false);

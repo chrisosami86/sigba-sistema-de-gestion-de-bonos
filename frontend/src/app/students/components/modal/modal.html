@@ -24,7 +24,7 @@
       </div>
     }
 
-    <button class="btn bg-red-600 text-white hover:bg-red-800" [disabled]="loading()" (click)="recoverPassword()">
+    <button type="button" class="btn bg-red-600 text-white hover:bg-red-800" [disabled]="loading()" (click)="recoverPassword()">
       @if (loading()) {
         Enviando...
       } @else {

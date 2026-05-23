@@ -28,6 +28,15 @@ export class Modal {
       next: (response) => {
         this.message.set(response.message);
         this.loading.set(false);
+
+        setTimeout(() => {
+          const dialog = document.getElementById('my_modal_2') as HTMLDialogElement;
+          if (dialog) {
+            dialog.close();
+            this.correo.set('');
+            this.message.set('');
+          }
+        }, 2500);
       },
       error: (err) => {
         this.errorMessage.set(err.error?.message || 'No se pudo recuperar la contrasena');

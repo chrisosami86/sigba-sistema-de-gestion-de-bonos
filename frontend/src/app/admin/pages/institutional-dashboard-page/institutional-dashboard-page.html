@@ -1,0 +1,260 @@
+<div class="min-h-screen bg-gray-50 p-4">
+  <!-- HEADER -->
+  <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+    <div class="flex items-center gap-4">
+      <a routerLink="/admin" class="btn btn-sm btn-ghost gap-1">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        Dashboard Legacy
+      </a>
+      <h1 class="text-2xl font-bold">Dashboard Institucional V2</h1>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <input type="date" [ngModel]="fechaInicio()" (ngModelChange)="fechaInicio.set($event)" class="input input-bordered input-sm w-36" />
+      <span class="text-sm text-gray-500">a</span>
+      <input type="date" [ngModel]="fechaFin()" (ngModelChange)="fechaFin.set($event)" class="input input-bordered input-sm w-36" />
+      <button (click)="loadDashboard()" [disabled]="loading()" class="btn btn-primary btn-sm">
+        @if (loading()) { <span class="loading loading-spinner loading-xs"></span> }
+        Actualizar
+      </button>
+    </div>
+  </div>
+
+  @if (error()) {
+    <div class="alert alert-error mb-4"><span>{{ error() }}</span></div>
+  }
+
+  @if (loading() && !data()) {
+    <div class="flex justify-center py-20"><span class="loading loading-spinner loading-lg"></span></div>
+  }
+
+  @if (data(); as d) {
+    <!-- ALERTAS -->
+    @if (d.alertas.length > 0) {
+      <div class="mb-6">
+        <h2 class="text-lg font-bold mb-3">Alertas Institucionales</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+          @for (alerta of d.alertas; track alerta.tipo) {
+            <div class="alert" [class.alert-error]="alerta.severidad === 'ALTA'" [class.alert-warning]="alerta.severidad === 'MEDIA'" [class.alert-info]="alerta.severidad === 'BAJA'">
+              <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" [attr.d]="getAlertaIcon(alerta.tipo)"/></svg>
+              <div>
+                <span [class]="getSeveridadClass(alerta.severidad)">{{ alerta.severidad }}</span>
+                <p class="text-xs mt-1">{{ alerta.mensaje }}</p>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- SECCIÓN 1: Estado Operacional Diario -->
+    <div class="card bg-white shadow mb-6">
+      <div class="card-body p-5">
+        <h2 class="card-title text-lg">Estado Operacional Diario</h2>
+        <p class="text-sm text-gray-500 mb-3">{{ d.operational.fecha }}</p>
+
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
+          <div class="stat bg-green-50 rounded-lg p-3 text-center">
+            <div class="text-2xl font-bold text-green-700">{{ d.operational.reclamados }}</div>
+            <div class="text-xs text-green-600">Reclamados</div>
+          </div>
+          <div class="stat bg-red-50 rounded-lg p-3 text-center">
+            <div class="text-2xl font-bold text-red-700">{{ d.operational.expirados }}</div>
+            <div class="text-xs text-red-600">Expirados</div>
+          </div>
+          <div class="stat bg-amber-50 rounded-lg p-3 text-center">
+            <div class="text-2xl font-bold text-amber-700">{{ d.operational.noUtilizados }}</div>
+            <div class="text-xs text-amber-600">No Utilizados</div>
+          </div>
+          <div class="stat bg-purple-50 rounded-lg p-3 text-center">
+            <div class="text-2xl font-bold text-purple-700">{{ d.operational.administrativos }}</div>
+            <div class="text-xs text-purple-600">Administrativos</div>
+          </div>
+          <div class="stat bg-blue-50 rounded-lg p-3 text-center">
+            <div class="text-2xl font-bold text-blue-700">{{ d.operational.conciliacionesPendientes }}</div>
+            <div class="text-xs text-blue-600">Conc. Pendientes</div>
+          </div>
+          <div class="stat bg-orange-50 rounded-lg p-3 text-center">
+            <div class="text-2xl font-bold text-orange-700">{{ d.operational.diferenciasProveedor }}</div>
+            <div class="text-xs text-orange-600">Dif. Proveedor</div>
+          </div>
+        </div>
+
+        <div class="max-h-64"><canvas id="chart-op-today"></canvas></div>
+      </div>
+    </div>
+
+    <!-- SECCIÓN 2: Subsidio y Asistencia -->
+    <div class="card bg-white shadow mb-6">
+      <div class="card-body p-5">
+        <h2 class="card-title text-lg">Subsidio y Asistencia</h2>
+        <p class="text-sm text-gray-500 mb-3">Aprovechamiento institucional del subsidio</p>
+
+        @if (d.subsidy.byDay.length > 0) {
+          <div class="flex flex-wrap gap-2 mb-4">
+            @for (dayData of d.subsidy.byDay; track dayData.dia) {
+              <button class="btn btn-sm" [class.btn-primary]="selectedSubsidyDay() === dayData.dia" [class.btn-ghost]="selectedSubsidyDay() !== dayData.dia"
+                (click)="onSubsidyDayChange(dayData.dia)">
+                {{ formatDia(dayData.dia) }}
+              </button>
+            }
+          </div>
+        }
+
+        @if (getSelectedSubsidyDayData(); as sd) {
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+            <div class="bg-blue-50 rounded-lg p-3 text-center">
+              <div class="text-xl font-bold text-blue-800">{{ sd.baseSubsidiada }}</div>
+              <div class="text-xs text-blue-600">Base Subsidiada</div>
+            </div>
+            <div class="bg-teal-50 rounded-lg p-3 text-center">
+              <div class="text-xl font-bold text-teal-800">{{ sd.asistenciasEsperadas }}</div>
+              <div class="text-xs text-teal-600">Asist. Esperadas</div>
+            </div>
+            <div class="bg-green-50 rounded-lg p-3 text-center">
+              <div class="text-xl font-bold text-green-800">{{ sd.porcentajeAsistencia }}%</div>
+              <div class="text-xs text-green-600">% Asistencia</div>
+            </div>
+            <div class="bg-red-50 rounded-lg p-3 text-center">
+              <div class="text-xl font-bold text-red-800">{{ sd.porcentajeInasistencia }}%</div>
+              <div class="text-xs text-red-600">% Inasistencia</div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+            <div><h4 class="text-sm font-bold mb-2">Tendencia</h4><div class="max-h-64"><canvas id="chart-subsidy-trend"></canvas></div></div>
+            <div><h4 class="text-sm font-bold mb-2">Programas Criticos</h4><div class="max-h-64"><canvas id="chart-subsidy-programs"></canvas></div></div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div>
+              <h4 class="text-sm font-bold mb-2 text-red-600">Estudiantes Criticos</h4>
+              <div class="overflow-x-auto max-h-64">
+                <table class="table table-xs table-zebra">
+                  <thead><tr><th>Estudiante</th><th>Programa</th><th>Rec.</th><th>% Asist.</th></tr></thead>
+                  <tbody>
+                    @for (e of sd.estudiantesCriticos.slice(0, 10); track e.id) {
+                      <tr>
+                        <td>{{ e.nombre }} ({{ e.codigo }})</td>
+                        <td>{{ e.programa }}</td>
+                        <td>{{ e.reclamados }}/{{ e.diasHabilitados }}</td>
+                        <td><span class="badge badge-sm" [class.badge-error]="e.porcentajeInasistencia >= 50" [class.badge-warning]="e.porcentajeInasistencia < 50 && e.porcentajeInasistencia > 0">{{ e.porcentajeAsistencia }}%</span></td>
+                      </tr>
+                    }
+                    @empty { <tr><td colspan="4" class="text-center text-gray-400">Sin criticos</td></tr> }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div>
+              <h4 class="text-sm font-bold mb-2 text-green-600">Mejor Asistencia</h4>
+              <div class="overflow-x-auto max-h-64">
+                <table class="table table-xs table-zebra">
+                  <thead><tr><th>Estudiante</th><th>Programa</th><th>Rec.</th><th>% Asist.</th></tr></thead>
+                  <tbody>
+                    @for (e of sd.mejorAsistencia; track e.id) {
+                      <tr>
+                        <td>{{ e.nombre }} ({{ e.codigo }})</td>
+                        <td>{{ e.programa }}</td>
+                        <td>{{ e.reclamados }}/{{ e.diasHabilitados }}</td>
+                        <td><span class="badge badge-sm badge-success">{{ e.porcentajeAsistencia }}%</span></td>
+                      </tr>
+                    }
+                    @empty { <tr><td colspan="4" class="text-center text-gray-400">Sin datos</td></tr> }
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- SECCIÓN 3: Operación Proveedor -->
+    <div class="card bg-white shadow mb-6">
+      <div class="card-body p-5">
+        <h2 class="card-title text-lg">Operacion Proveedor</h2>
+        <p class="text-sm text-gray-500 mb-3">Control institucional del proveedor</p>
+
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
+          <div class="bg-green-50 rounded-lg p-3 text-center"><div class="text-xl font-bold text-green-800">{{ d.provider.conciliados }}</div><div class="text-xs text-green-600">Conciliados</div></div>
+          <div class="bg-orange-50 rounded-lg p-3 text-center"><div class="text-xl font-bold text-orange-800">{{ d.provider.pendientes }}</div><div class="text-xs text-orange-600">Pendientes</div></div>
+          <div class="bg-yellow-50 rounded-lg p-3 text-center"><div class="text-xl font-bold text-yellow-800">{{ d.provider.diferenciaMenor }}</div><div class="text-xs text-yellow-600">Dif. Menor</div></div>
+          <div class="bg-red-50 rounded-lg p-3 text-center"><div class="text-xl font-bold text-red-800">{{ d.provider.diferenciaCritica }}</div><div class="text-xs text-red-600">Dif. Critica</div></div>
+          <div class="bg-blue-50 rounded-lg p-3 text-center"><div class="text-xl font-bold text-blue-800">{{ d.provider.porcentajeConciliacion }}%</div><div class="text-xs text-blue-600">% Conciliacion</div></div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div><h4 class="text-sm font-bold mb-2">Tendencia de Diferencias</h4><div class="max-h-64"><canvas id="chart-provider-trend"></canvas></div></div>
+          <div>
+            <h4 class="text-sm font-bold mb-2 text-red-600">Dias Criticos</h4>
+            <div class="overflow-x-auto max-h-64">
+              <table class="table table-xs table-zebra">
+                <thead><tr><th>Fecha</th><th>Tipo</th><th>Diferencia</th><th>Estado</th></tr></thead>
+                <tbody>
+                  @for (dc of d.provider.diasCriticos; track dc.fecha + dc.tipo) {
+                    <tr>
+                      <td>{{ dc.fecha }}</td>
+                      <td><span class="badge badge-sm" [class.badge-primary]="dc.tipo === 'almuerzo'" [class.badge-secondary]="dc.tipo === 'refrigerio'">{{ dc.tipo }}</span></td>
+                      <td>{{ dc.diferencia }}</td>
+                      <td><span class="badge badge-sm badge-error">{{ dc.estado }}</span></td>
+                    </tr>
+                  }
+                  @empty { <tr><td colspan="4" class="text-center text-gray-400">Sin dias criticos</td></tr> }
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECCIÓN 4: Administrativos -->
+    <div class="card bg-white shadow mb-6">
+      <div class="card-body p-5">
+        <h2 class="card-title text-lg">Operacion Administrativa</h2>
+        <p class="text-sm text-gray-500 mb-3">Trazabilidad excepcional</p>
+
+        <div class="text-2xl font-bold text-purple-700 mb-4">{{ d.administrative.totalAdministrativos }} asignaciones administrativas</div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div><h4 class="text-sm font-bold mb-2">Motivos Frecuentes</h4><div class="max-h-56"><canvas id="chart-admin-motives"></canvas></div></div>
+          <div>
+            <h4 class="text-sm font-bold mb-2">Admins con mas asignaciones</h4>
+            <div class="overflow-x-auto max-h-56">
+              <table class="table table-xs table-zebra">
+                <thead><tr><th>Admin</th><th>Total</th></tr></thead>
+                <tbody>
+                  @for (a of d.administrative.adminsRanking; track a.admin) {
+                    <tr><td>{{ a.admin }}</td><td><span class="badge badge-sm badge-primary">{{ a.total }}</span></td></tr>
+                  }
+                  @empty { <tr><td colspan="2" class="text-center text-gray-400">Sin registros</td></tr> }
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECCIÓN 5: Histórico Institucional -->
+    <div class="card bg-white shadow mb-6">
+      <div class="card-body p-5">
+        <h2 class="card-title text-lg">Historico Institucional</h2>
+        <p class="text-sm text-gray-500 mb-3">Evolucion historica operativa</p>
+
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+          <div class="bg-blue-50 rounded-lg p-3 text-center"><div class="text-xl font-bold text-blue-800">{{ d.historical.kpis.eficiencia }}%</div><div class="text-xs text-blue-600">Eficiencia</div></div>
+          <div class="bg-amber-50 rounded-lg p-3 text-center"><div class="text-xl font-bold text-amber-800">{{ d.historical.kpis.desperdicio }}%</div><div class="text-xs text-amber-600">Desperdicio</div></div>
+          <div class="bg-green-50 rounded-lg p-3 text-center"><div class="text-xl font-bold text-green-800">{{ d.historical.kpis.cobertura }}%</div><div class="text-xs text-green-600">Cobertura</div></div>
+          <div class="bg-gray-50 rounded-lg p-3 text-center"><div class="text-xl font-bold text-gray-800">{{ d.historical.kpis.diasConOperacion }}</div><div class="text-xs text-gray-600">Dias con Op.</div></div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+          <div><h4 class="text-sm font-bold mb-2">Tendencia Semanal</h4><div class="max-h-64"><canvas id="chart-historical-weekly"></canvas></div></div>
+          <div><h4 class="text-sm font-bold mb-2">Tendencia Mensual</h4><div class="max-h-64"><canvas id="chart-historical-monthly"></canvas></div></div>
+        </div>
+      </div>
+    </div>
+  }
+</div>

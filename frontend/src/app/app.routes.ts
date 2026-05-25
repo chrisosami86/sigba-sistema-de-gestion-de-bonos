@@ -5,6 +5,7 @@ import { studentAuthGuard } from './students/guards/student-auth.guard';
 import { AdminLoginPage } from './admin/pages/admin-login-page/admin-login-page';
 import { AdminDashboardPage } from './admin/pages/admin-dashboard-page/admin-dashboard-page';
 import { AdminScanPage } from './admin/pages/admin-scan-page/admin-scan-page';
+import { InstitutionalDashboardPage } from './admin/pages/institutional-dashboard-page/institutional-dashboard-page';
 import { adminAuthGuard } from './admin/guards/admin-auth.guard';
 
 export const routes: Routes = [
@@ -33,6 +34,11 @@ export const routes: Routes = [
   {
     path: 'admin/scan',
     component: AdminScanPage,
+    canActivate: [adminAuthGuard],
+  },
+  {
+    path: 'admin/institutional',
+    component: InstitutionalDashboardPage,
     canActivate: [adminAuthGuard],
   },
   {

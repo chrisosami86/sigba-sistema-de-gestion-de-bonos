@@ -7,6 +7,9 @@ const systemController = require('./system.controller');
 // Public health endpoint
 router.get('/health', systemController.getHealth);
 
+// Public operational status endpoint
+router.get('/operational-status', systemController.getOperationalStatus);
+
 // Admin-only system endpoints
 router.get('/time', systemController.getServerTime);
 router.get('/settings', authenticateAdmin, systemController.getSystemSettings);

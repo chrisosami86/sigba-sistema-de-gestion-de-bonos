@@ -154,3 +154,107 @@ Después `students.service.js`, especialmente importaciones Excel y subsidios.
 `admin` y `records` vacíos pueden esperar hasta que exista una decisión clara de organización.
 
 Conclusión: SIGBA no necesita una reescritura. Necesita estabilización quirúrgica, pruebas alrededor de bonos y una modularización progresiva que respete el sistema operativo actual. La arquitectura base es rescatable; el trabajo inteligente es bajar concentración de responsabilidades sin moverle el piso al funcionamiento diario.
+
+---
+
+**19. FASE 2-4: Analytics V2 + Dashboard Institucional (2026-05-25)**
+
+### Nuevos módulos backend: `analytics-v2/`
+
+Módulo completamente desacoplado del core operacional. NO importa `expireBonos()`, `calculateDisponibilidad`, `liberarBonos`, ni `calculateBaseAdministrativa`. Todo basado en snapshots y solo lectura.
+
+**Estructura:**
+```
+backend/src/modules/analytics-v2/
+├── analytics-v2.controller.js   — getInstitutionalDashboard
+├── analytics-v2.routes.js       — GET /api/analytics-v2/dashboard (authenticateAdmin)
+├── analytics-v2.service.js      — Orquestador + cómputo de alertas institucionales
+└── services/
+    ├── subsidy-analytics.service.js      — Asistencia subsidiada, rankings, programas críticos
+    ├── operational-analytics.service.js  — Estado operacional diario (snapshot del día)
+    ├── provider-analytics.service.js     — Conciliación proveedor, tendencias, días críticos
+    ├── administrative-analytics.service.js — Motivos, admins ranking, distribución por periodo
+    └── historical-analytics.service.js   — Tendencias semanales/mensuales, KPIs históricos
+```
+
+**Endpoint:** `GET /api/analytics-v2/dashboard?fechaInicio=&fechaFin=&fechaSnapshot=`
+Respuesta unificada con 6 secciones: operational, subsidy, provider, administrative, historical, alertas.
+
+**Servicios de dominio:**
+- `subsidy-analytics.service.js`: Calcula `inasistencia = dias_esperados - reclamados_validos`, excluye festivos y días no hábiles. Rankings de estudiantes críticos, mejor asistencia, programas críticos.
+- `operational-analytics.service.js`: 6 métricas del día (reclamados, expirados, noUtilizados, administrativos, conciliacionesPendientes, diferenciasProveedor).
+- `provider-analytics.service.js`: Resumen de conciliaciones, tendencia de diferencias, días críticos.
+- `administrative-analytics.service.js`: Total administrativos, motivos frecuentes, ranking de admins.
+- `historical-analytics.service.js`: KPIs globales (eficiencia, desperdicio, cobertura), agregación semanal y mensual.
+- `analytics-v2.service.js` (orquestador): Paraleliza los 5 servicios vía `Promise.all`, computa alertas institucionales (PERIODO_POR_FINALIZAR, ALTA_INASISTENCIA, ESTUDIANTES_CRITICOS, CONCILIACIONES_PENDIENTES).
+
+**Compatibilidad institucional:** Respeta festivos, días hábiles, periodos académicos, modo histórico, confirmaciones de cierre diario. Excluye festivos de conteos de asistencia esperada.
+
+### Nuevo módulo frontend: Dashboard Institucional V2
+
+**Ruta:** `/admin/institutional` (standalone, protegido por `adminAuthGuard`).
+
+**Componente:** `InstitutionalDashboardPage` (standalone).
+- `frontend/src/app/admin/pages/institutional-dashboard-page/institutional-dashboard-page.ts`
+- `frontend/src/app/admin/pages/institutional-dashboard-page/institutional-dashboard-page.html`
+- `frontend/src/app/admin/services/institutional-analytics.service.ts`
+
+**6 secciones del dashboard:**
+1. Estado Operacional Diario — 6 cards + gráfico de barras con datos del snapshot del día
+2. Subsidio y Asistencia — Selector por día, KPIs (base subsidiada, esperadas, % asistencia, % inasistencia), tendencia (línea), programas críticos (barras horizontales), rankings (estudiantes críticos y mejor asistencia)
+3. Operación Proveedor — 5 cards (conciliados, pendientes, dif. menor, dif. crítica, % conciliación), tendencia de diferencias (barras), tabla de días críticos
+4. Operación Administrativa — Total asignaciones, gráfico doughnut de motivos frecuentes, ranking de admins
+5. Histórico Institucional — 4 KPIs (eficiencia, desperdicio, cobertura, días con op.), tendencia semanal (línea), tendencia mensual (barras stacked)
+6. Alertas Institucionales — Cards de alerta codificadas por severidad (ALTA/MEDIA/BAJA)
+
+**Tecnología:** Angular 21 signals + Chart.js (bar, line, doughnut). Sin nuevas librerías. Charts se destruyen y recrean en cada refresh. Selector de día subsidiado re-renderiza solo los gráficos relevantes.
+
+### Coexistencia con Legacy
+
+- El Dashboard Legacy (`/admin`) permanece intacto y funcional.
+- Se agregó navegación dual: botón "Dashboard Institucional" (estilo outline) en el sidebar del dashboard legacy.
+- El Dashboard Institucional V2 tiene link "Dashboard Legacy" en su header para volver.
+- Ambos dashboards comparten el mismo `adminAuthGuard` y funcionan en pestañas/ventanas paralelas.
+
+### Desacople Verificado
+
+El nuevo módulo NO referencia:
+- `expireBonos()`, `calculateDisponibilidad`, `calculateBaseAdministrativa`, `liberarBonos`
+- `reutilizacion`, `cantidad_liberada`, `reutilizables`, `liberados`
+- `ventaLibre`, `desconocida`, métricas híbridas
+- Analytics legacy (`analytics.service.js`)
+
+Todas las consultas son solo lectura sobre `bonos_diarios`, `redenciones`, `conciliaciones_proveedor`, `daily_closure_confirmations`, `system_settings`, `working_days`, `holidays`, `students`, `subsidies`, `subsidy_days`.
+
+### Archivos Modificados Existentes
+
+| Archivo | Cambio |
+|---------|--------|
+| `backend/src/app.js` | +2 líneas (import + mount analyticsV2Routes) |
+| `frontend/src/app/app.routes.ts` | +1 import + ruta `/admin/institutional` |
+| `frontend/src/app/admin/pages/admin-dashboard-page/admin-dashboard-page.ts` | +1 import RouterModule, +RouterModule en imports |
+| `frontend/src/app/admin/pages/admin-dashboard-page/admin-dashboard-page.html` | + botón "Dashboard Institucional" con routerLink en sidebar |
+| `specs/architecture/current-state-audit.md` | Este documento — extendido con sección 19 |
+
+### Archivos Nuevos (8 archivos)
+
+| Backend | Frontend |
+|---------|----------|
+| `analytics-v2/analytics-v2.service.js` | `services/institutional-analytics.service.ts` |
+| `analytics-v2/analytics-v2.controller.js` | `pages/institutional-dashboard-page/institutional-dashboard-page.ts` |
+| `analytics-v2/analytics-v2.routes.js` | `pages/institutional-dashboard-page/institutional-dashboard-page.html` |
+| `analytics-v2/services/subsidy-analytics.service.js` | |
+| `analytics-v2/services/operational-analytics.service.js` | |
+| `analytics-v2/services/provider-analytics.service.js` | |
+| `analytics-v2/services/administrative-analytics.service.js` | |
+| `analytics-v2/services/historical-analytics.service.js` | |
+
+### Próximos Pasos
+
+1. Verificar build frontend (corregir cualquier error de compilación Angular)
+2. Ejecutar smoke tests: endpoint `/api/analytics-v2/dashboard` responde con datos
+3. Validar métricas de subsidio contra datos reales de estudiantes
+4. Verificar que dashboard legacy sigue funcionando idéntico
+5. Ejecutar migración `003_daily_closure_confirmations.sql` si no se ha ejecutado
+6. Fase 5 futura: ocultar dashboard legacy cuando V2 esté validado institucionalmente
+7. Fase 6 futura: eliminar reutilización, liberaciones, analytics híbridos, métricas obsoletas

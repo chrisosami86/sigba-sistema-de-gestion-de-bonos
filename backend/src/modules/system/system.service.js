@@ -7,11 +7,11 @@ const getServerTime = async () => {
 // ── System Settings ──
 
 const getSystemSettings = async () => {
-  const result = await pool.query("SELECT * FROM system_settings WHERE id = 1");
+  const result = await pool.query("SELECT id, periodo_actual, fecha_inicio, fecha_fin, created_at, updated_at FROM system_settings WHERE id = 1");
 
   if (result.rows.length === 0) {
     await pool.query("INSERT INTO system_settings (id, periodo_actual) VALUES (1, '2026-1') ON CONFLICT (id) DO NOTHING");
-    const inserted = await pool.query("SELECT * FROM system_settings WHERE id = 1");
+    const inserted = await pool.query("SELECT id, periodo_actual, fecha_inicio, fecha_fin, created_at, updated_at FROM system_settings WHERE id = 1");
     return inserted.rows[0];
   }
 

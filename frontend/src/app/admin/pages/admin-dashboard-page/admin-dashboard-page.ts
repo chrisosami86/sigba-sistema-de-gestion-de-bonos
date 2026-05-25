@@ -1,5 +1,5 @@
 import { Component, computed, inject, OnInit, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { forkJoin } from 'rxjs';
 import * as XLSX from 'xlsx';
 import {
@@ -35,7 +35,7 @@ import {
   ImportResult,
   type StudentsPage,
 } from '../../services/admin-students-import.service';
-import { SystemService, type SystemSettings, type WorkingDay, type Holiday } from '../../services/system.service';
+import { SystemService, type SystemSettings, type WorkingDay, type Holiday, type OperationalStatus, type DailyClosureResumen, type DailyClosureConfirmacionesResponse } from '../../services/system.service';
 import {
   AdminAnalyticsService,
   type AnalyticsResponse,
@@ -51,7 +51,7 @@ Chart.register(
   Title, Tooltip, Legend, Filler,
 );
 
-type AdminModule = 'dashboard' | 'bonos' | 'resumen' | 'asignaciones' | 'proveedor' | 'base_de_datos' | 'gestion_estudiantes' | 'configuracion';
+type AdminModule = 'dashboard' | 'bonos' | 'resumen' | 'asignaciones' | 'proveedor' | 'base_de_datos' | 'gestion_estudiantes' | 'configuracion' | 'cierre_diario';
 
 const DIAS_SEMANA = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'] as const;
 
@@ -66,7 +66,7 @@ const FORMATO_DIA: Record<string, string> = {
 
 @Component({
   selector: 'admin-dashboard-page',
-  imports: [],
+  imports: [RouterModule],
   templateUrl: './admin-dashboard-page.html',
 })
 export class AdminDashboardPage implements OnInit {
@@ -94,6 +94,7 @@ export class AdminDashboardPage implements OnInit {
   readonly programasCodigos = Object.keys(this.programas);
 
   ngOnInit() {
+    this.checkOperationalStatus();
     this.refreshDisponibilidad();
     this.refreshBaseAdministrativa();
     this.refreshStats();
@@ -264,13 +265,6 @@ export class AdminDashboardPage implements OnInit {
   deletingStudentId = signal<number | null>(null);
   deletingStudentNombre = signal('');
 
-  // -- Configuración --
-  configCurrentPassword = signal('');
-  configNewPassword = signal('');
-  configConfirmPassword = signal('');
-  configSaving = signal(false);
-  showConfigPasswords = signal(false);
-
   // -- Configuración del periodo --
   systemSettings = signal<SystemSettings | null>(null);
   workingDays = signal<WorkingDay[]>([]);
@@ -284,6 +278,32 @@ export class AdminDashboardPage implements OnInit {
   configPeriodoLoading = signal(false);
   configResumenVisible = signal(false);
   configLastUpdate = signal('');
+
+  // ── Estado operacional ──
+
+  operationalStatus = signal<OperationalStatus | null>(null);
+  isHistoricalMode = computed(() => this.operationalStatus()?.isHistoricalMode ?? false);
+  canOperate = computed(() => this.operationalStatus()?.canOperate ?? true);
+
+  // ── Cierre diario ──
+
+  cierreResumen = signal<DailyClosureResumen | null>(null);
+  cierreLoading = signal(false);
+  cierreFecha = signal(new Date().toISOString().slice(0, 10));
+  cierreObservaciones = signal('');
+  cierreSaving = signal(false);
+  cierreConfirmaciones = signal<DailyClosureConfirmacionesResponse | null>(null);
+  cierreConfirmacionesLoading = signal(false);
+  cierreConfirmacionesPage = signal(1);
+
+  // ── Modal cambio de contraseña ──
+
+  showChangePasswordModal = signal(false);
+  changePassCurrent = signal('');
+  changePassNew = signal('');
+  changePassConfirm = signal('');
+  changePassSaving = signal(false);
+  showChangePass = signal(false);
 
   // ── Analytics Dashboard ──
 
@@ -1239,47 +1259,6 @@ export class AdminDashboardPage implements OnInit {
   // ============================================================
   //  Dashboard / Bonos / Resumen (código existente sin cambios)
   // ============================================================
-  //  Configuración
-  // ============================================================
-
-  changePassword() {
-    const current = this.configCurrentPassword().trim();
-    const newPw = this.configNewPassword().trim();
-    const confirm = this.configConfirmPassword().trim();
-
-    if (!current || !newPw || !confirm) {
-      this.setError('Todos los campos son obligatorios');
-      return;
-    }
-
-    if (newPw.length < 6) {
-      this.setError('La nueva contrasena debe tener al menos 6 caracteres');
-      return;
-    }
-
-    if (newPw !== confirm) {
-      this.setError('Las contrasenas no coinciden');
-      return;
-    }
-
-    this.configSaving.set(true);
-    this.setMessage('');
-    this.setError('');
-
-    this.authService.changePassword(current, newPw).subscribe({
-      next: (result) => {
-        this.setMessage(result.message);
-        this.configCurrentPassword.set('');
-        this.configNewPassword.set('');
-        this.configConfirmPassword.set('');
-        this.configSaving.set(false);
-      },
-      error: (err) => {
-        this.setError(err.error?.message || 'No se pudo cambiar la contrasena');
-        this.configSaving.set(false);
-      },
-    });
-  }
 
   // ============================================================
   //  Periodo
@@ -1294,6 +1273,11 @@ export class AdminDashboardPage implements OnInit {
         this.configPeriodo.set(settings.periodo_actual);
         this.configFechaInicio.set(settings.fecha_inicio || '');
         this.configFechaFin.set(settings.fecha_fin || '');
+        if (settings.updated_at) {
+          this.configLastUpdate.set(
+            new Date(settings.updated_at).toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' }),
+          );
+        }
         this.configPeriodoLoading.set(false);
         this.configResumenVisible.set(true);
       },
@@ -1395,6 +1379,126 @@ export class AdminDashboardPage implements OnInit {
       error: (err) => {
         this.setError(err.error?.message || 'Error al guardar configuracion');
         this.configPeriodoSaving.set(false);
+      },
+    });
+  }
+
+  // ============================================================
+  //  Estado operacional & históricos
+  // ============================================================
+
+  checkOperationalStatus() {
+    this.systemService.getOperationalStatus().subscribe({
+      next: (status) => {
+        this.operationalStatus.set(status);
+      },
+    });
+  }
+
+  // ============================================================
+  //  Cierre diario
+  // ============================================================
+
+  loadCierreResumen() {
+    this.cierreLoading.set(true);
+    this.systemService.getDailyClosureResumen(this.cierreFecha()).subscribe({
+      next: (resumen) => {
+        this.cierreResumen.set(resumen);
+        this.cierreLoading.set(false);
+      },
+      error: (err) => {
+        this.setError(err.error?.message || 'Error cargando resumen de cierre');
+        this.cierreLoading.set(false);
+      },
+    });
+  }
+
+  confirmarCierreDiario() {
+    this.cierreSaving.set(true);
+    this.clearMessages();
+    this.systemService.confirmarCierreDiario(this.cierreFecha(), this.cierreObservaciones()).subscribe({
+      next: (result) => {
+        this.setMessage(result.message);
+        this.cierreSaving.set(false);
+        this.cierreObservaciones.set('');
+        this.loadCierreResumen();
+        this.refreshCierreConfirmaciones();
+      },
+      error: (err) => {
+        this.setError(err.error?.message || 'Error al confirmar cierre');
+        this.cierreSaving.set(false);
+      },
+    });
+  }
+
+  refreshCierreConfirmaciones(page = 1) {
+    this.cierreConfirmacionesPage.set(page);
+    this.cierreConfirmacionesLoading.set(true);
+    this.systemService.getConfirmaciones({
+      fechaDesde: '',
+      fechaHasta: '',
+      page,
+      limit: 20,
+    }).subscribe({
+      next: (data) => {
+        this.cierreConfirmaciones.set(data);
+        this.cierreConfirmacionesLoading.set(false);
+      },
+      error: (err) => {
+        this.setError(err.error?.message || 'Error cargando confirmaciones');
+        this.cierreConfirmacionesLoading.set(false);
+      },
+    });
+  }
+
+  // ============================================================
+  //  Modal cambio de contraseña
+  // ============================================================
+
+  openChangePasswordModal() {
+    this.changePassCurrent.set('');
+    this.changePassNew.set('');
+    this.changePassConfirm.set('');
+    this.showChangePass.set(false);
+    this.showChangePasswordModal.set(true);
+  }
+
+  closeChangePasswordModal() {
+    this.showChangePasswordModal.set(false);
+  }
+
+  changeAdminPassword() {
+    const current = this.changePassCurrent().trim();
+    const newPass = this.changePassNew().trim();
+    const confirm = this.changePassConfirm().trim();
+
+    if (!current || !newPass) {
+      this.setError('Todos los campos son obligatorios');
+      return;
+    }
+
+    if (newPass.length < 6) {
+      this.setError('La nueva contrasena debe tener al menos 6 caracteres');
+      return;
+    }
+
+    if (newPass !== confirm) {
+      this.setError('Las contrasenas no coinciden');
+      return;
+    }
+
+    this.changePassSaving.set(true);
+    this.clearMessages();
+
+    this.authService.changePassword(current, newPass).subscribe({
+      next: () => {
+        this.setMessage('Contrasena actualizada correctamente');
+        this.changePassSaving.set(false);
+        this.showChangePasswordModal.set(false);
+      },
+      error: (err) => {
+        this.setError(err.error?.message || 'Error al cambiar contrasena');
+        this.changePassSaving.set(false);
       },
     });
   }

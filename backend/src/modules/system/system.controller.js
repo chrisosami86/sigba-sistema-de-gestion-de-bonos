@@ -1,5 +1,6 @@
 const systemService = require("./system.service");
 const { getStatus: getSchedulerStatus } = require("./scheduler");
+const { canOperateToday, isPastPeriodEnd } = require("./operational-calendar.helper");
 const pool = require("../../config/db");
 
 const getServerTime = async (req, res) => {
@@ -116,6 +117,23 @@ const deleteHoliday = async (req, res) => {
   }
 };
 
+const getOperationalStatus = async (_req, res) => {
+  try {
+    const operational = await canOperateToday();
+    const isHistorical = await isPastPeriodEnd();
+
+    res.json({
+      canOperate: operational.allowed,
+      reason: operational.reason,
+      isHistoricalMode: isHistorical,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error obteniendo estado operacional" });
+  }
+};
+
 module.exports = {
   getServerTime,
   getHealth,
@@ -126,4 +144,5 @@ module.exports = {
   getHolidays,
   createHoliday,
   deleteHoliday,
+  getOperationalStatus,
 };

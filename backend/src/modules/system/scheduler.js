@@ -1,4 +1,6 @@
 const bonosService = require("../bonos/bonos.service");
+const { canOperateToday } = require("./operational-calendar.helper");
+const dailyClosureService = require("./daily-closure.service");
 const { info, error } = require("../../shared/helpers/logger.helper");
 
 const SCHEDULER_INTERVAL_MS = 60_000;
@@ -10,6 +12,8 @@ let lastExpireCount = 0;
 let lastErrorAt = null;
 let lastErrorMessage = null;
 let startTime = null;
+let lastSkippedAt = null;
+let lastSkippedReason = null;
 
 const start = () => {
   if (intervalId) return;
@@ -40,6 +44,15 @@ const runCycle = async () => {
   running = true;
 
   try {
+    const operationalCheck = await canOperateToday();
+
+    if (!operationalCheck.allowed) {
+      lastSkippedAt = new Date().toISOString();
+      lastSkippedReason = operationalCheck.reason;
+      info("[scheduler] skipped non-operational day", { reason: operationalCheck.reason });
+      return;
+    }
+
     const result = await bonosService.expireBonos();
     const expired = Array.isArray(result) ? result.length : 0;
 
@@ -48,6 +61,13 @@ const runCycle = async () => {
 
     if (expired > 0) {
       info("[scheduler] expireBonos ejecutado", { expired });
+    }
+
+    const today = new Date().toISOString().slice(0, 10);
+    try {
+      await dailyClosureService.ensurePendingConfirmation(today);
+    } catch (closureErr) {
+      error("[scheduler] daily-closure ensure", { message: closureErr.message });
     }
   } catch (err) {
     lastErrorAt = new Date().toISOString();
@@ -65,6 +85,8 @@ const getStatus = () => ({
   lastExpireCount,
   lastErrorAt,
   lastErrorMessage,
+  lastSkippedAt,
+  lastSkippedReason,
   intervalMs: SCHEDULER_INTERVAL_MS,
   currentlyRunning: running,
 });

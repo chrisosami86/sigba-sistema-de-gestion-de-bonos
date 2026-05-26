@@ -9,10 +9,12 @@
       <h1 class="text-2xl font-bold">Dashboard Institucional V2</h1>
     </div>
 
-    <div class="flex items-center gap-2">
-      <input type="date" [ngModel]="fechaInicio()" (ngModelChange)="fechaInicio.set($event)" class="input input-bordered input-sm w-36" />
-      <span class="text-sm text-gray-500">a</span>
-      <input type="date" [ngModel]="fechaFin()" (ngModelChange)="fechaFin.set($event)" class="input input-bordered input-sm w-36" />
+    <div class="flex items-center gap-2 flex-wrap">
+      <div class="flex gap-2 items-center">
+        <input type="date" [ngModel]="fechaInicio()" (ngModelChange)="fechaInicio.set($event)" class="input input-bordered input-sm w-36" />
+        <span class="text-sm text-gray-500">a</span>
+        <input type="date" [ngModel]="fechaFin()" (ngModelChange)="fechaFin.set($event)" class="input input-bordered input-sm w-36" />
+      </div>
       <button (click)="loadDashboard()" [disabled]="loading()" class="btn btn-primary btn-sm">
         @if (loading()) { <span class="loading loading-spinner loading-xs"></span> }
         Actualizar

@@ -35,23 +35,55 @@ import {
   ImportResult,
   type StudentsPage,
 } from '../../services/admin-students-import.service';
-import { SystemService, type SystemSettings, type WorkingDay, type Holiday, type OperationalStatus, type DailyClosureResumen, type DailyClosureConfirmacionesResponse } from '../../services/system.service';
+import {
+  SystemService,
+  type SystemSettings,
+  type WorkingDay,
+  type Holiday,
+  type OperationalStatus,
+  type DailyClosureResumen,
+  type DailyClosureConfirmacionesResponse,
+} from '../../services/system.service';
 import {
   AdminAnalyticsService,
   type AnalyticsResponse,
   type AnalyticsFilters,
 } from '../../services/admin-analytics.service';
-import { AdminAssignmentService, type AdminAsignacionesResponse } from '../../services/admin-assignment.service';
-import { ProviderOperationsService, type ProviderResumenResponse, type ProviderConciliacionesResponse } from '../../services/provider-operations.service';
+import {
+  AdminAssignmentService,
+  type AdminAsignacionesResponse,
+} from '../../services/admin-assignment.service';
+import {
+  ProviderOperationsService,
+  type ProviderResumenResponse,
+  type ProviderConciliacionesResponse,
+} from '../../services/provider-operations.service';
 
 Chart.register(
-  BarController, BarElement,
-  LineController, LineElement, PointElement,
-  CategoryScale, LinearScale, TimeScale,
-  Title, Tooltip, Legend, Filler,
+  BarController,
+  BarElement,
+  LineController,
+  LineElement,
+  PointElement,
+  CategoryScale,
+  LinearScale,
+  TimeScale,
+  Title,
+  Tooltip,
+  Legend,
+  Filler,
 );
 
-type AdminModule = 'dashboard' | 'bonos' | 'resumen' | 'asignaciones' | 'proveedor' | 'base_de_datos' | 'gestion_estudiantes' | 'configuracion' | 'cierre_diario';
+type AdminModule =
+  | 'dashboard'
+  | 'bonos'
+  | 'resumen'
+  | 'asignaciones'
+  | 'proveedor'
+  | 'base_de_datos'
+  | 'gestion_estudiantes'
+  | 'configuracion'
+  | 'cierre_diario';
 
 const DIAS_SEMANA = ['lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'] as const;
 
@@ -467,19 +499,17 @@ export class AdminDashboardPage implements OnInit {
     }
 
     this.asignacionSearching.set(true);
-    this.studentsService
-      .getStudents({ codigo, activo: 'true', page: 1, limit: 5 })
-      .subscribe({
-        next: (data) => {
-          const exact = data.rows.find((student) => student.codigo === codigo);
-          this.asignacionStudent.set(exact ?? data.rows[0] ?? null);
-          this.asignacionSearching.set(false);
-        },
-        error: () => {
-          this.setError('No se pudo buscar el estudiante');
-          this.asignacionSearching.set(false);
-        },
-      });
+    this.studentsService.getStudents({ codigo, activo: 'true', page: 1, limit: 5 }).subscribe({
+      next: (data) => {
+        const exact = data.rows.find((student) => student.codigo === codigo);
+        this.asignacionStudent.set(exact ?? data.rows[0] ?? null);
+        this.asignacionSearching.set(false);
+      },
+      error: () => {
+        this.setError('No se pudo buscar el estudiante');
+        this.asignacionSearching.set(false);
+      },
+    });
   }
 
   setAsignacionCodigoBono(value: string) {
@@ -496,7 +526,10 @@ export class AdminDashboardPage implements OnInit {
       this.setError('Ingresa una cantidad extra valida');
       return;
     }
-    this.runAdminAction(() => this.bonosService.cargarExtra(tipo, cantidad), 'Carga extra registrada');
+    this.runAdminAction(
+      () => this.bonosService.cargarExtra(tipo, cantidad),
+      'Carga extra registrada',
+    );
   }
 
   establecerBase(tipo: BonoTipo) {
@@ -505,7 +538,10 @@ export class AdminDashboardPage implements OnInit {
       this.setError('Ingresa una cantidad base valida');
       return;
     }
-    this.runAdminAction(() => this.bonosService.establecerBase(tipo, cantidad), 'Cantidad base actualizada');
+    this.runAdminAction(
+      () => this.bonosService.establecerBase(tipo, cantidad),
+      'Cantidad base actualizada',
+    );
   }
 
   liberarExpirados(tipo: BonoTipo) {
@@ -514,7 +550,10 @@ export class AdminDashboardPage implements OnInit {
       this.setError('Ingresa una cantidad a liberar valida');
       return;
     }
-    this.runAdminAction(() => this.bonosService.liberarExpirados(tipo, cantidad), 'Bonos expirados liberados');
+    this.runAdminAction(
+      () => this.bonosService.liberarExpirados(tipo, cantidad),
+      'Bonos expirados liberados',
+    );
   }
 
   asignarAdministrativamente() {
@@ -573,23 +612,25 @@ export class AdminDashboardPage implements OnInit {
     this.asignacionesLoading.set(true);
     this.asignacionesPage.set(page);
 
-    this.assignmentService.getAsignaciones({
-      tipo: this.asignacionesFiltroTipo() as BonoTipo | '' || '',
-      fechaDesde: this.asignacionesFiltroFechaDesde() || undefined,
-      fechaHasta: this.asignacionesFiltroFechaHasta() || undefined,
-      codigoBono: this.asignacionesFiltroCodigoBono(),
-      page,
-      limit: this.asignacionesLimit(),
-    }).subscribe({
-      next: (data) => {
-        this.asignacionesData.set(data);
-        this.asignacionesLoading.set(false);
-      },
-      error: () => {
-        this.setError('No se pudo consultar el historial administrativo');
-        this.asignacionesLoading.set(false);
-      },
-    });
+    this.assignmentService
+      .getAsignaciones({
+        tipo: (this.asignacionesFiltroTipo() as BonoTipo | '') || '',
+        fechaDesde: this.asignacionesFiltroFechaDesde() || undefined,
+        fechaHasta: this.asignacionesFiltroFechaHasta() || undefined,
+        codigoBono: this.asignacionesFiltroCodigoBono(),
+        page,
+        limit: this.asignacionesLimit(),
+      })
+      .subscribe({
+        next: (data) => {
+          this.asignacionesData.set(data);
+          this.asignacionesLoading.set(false);
+        },
+        error: () => {
+          this.setError('No se pudo consultar el historial administrativo');
+          this.asignacionesLoading.set(false);
+        },
+      });
   }
 
   applyAsignacionesFilters() {
@@ -632,48 +673,52 @@ export class AdminDashboardPage implements OnInit {
     this.providerSaving.set(true);
     this.clearMessages();
 
-    this.providerService.registrarConciliacion({
-      fecha: this.providerFecha(),
-      tipo,
-      cantidadProveedor: cantidad,
-      observaciones: this.providerObservaciones() || undefined,
-    }).subscribe({
-      next: (result) => {
-        this.setMessage(result.message);
-        this.providerCantidad.set('');
-        this.providerObservaciones.set('');
-        this.providerSaving.set(false);
-        this.refreshProviderResumen();
-        this.refreshProviderConciliaciones(1);
-      },
-      error: (err) => {
-        this.setError(err.error?.message || 'No se pudo registrar la conciliacion');
-        this.providerSaving.set(false);
-      },
-    });
+    this.providerService
+      .registrarConciliacion({
+        fecha: this.providerFecha(),
+        tipo,
+        cantidadProveedor: cantidad,
+        observaciones: this.providerObservaciones() || undefined,
+      })
+      .subscribe({
+        next: (result) => {
+          this.setMessage(result.message);
+          this.providerCantidad.set('');
+          this.providerObservaciones.set('');
+          this.providerSaving.set(false);
+          this.refreshProviderResumen();
+          this.refreshProviderConciliaciones(1);
+        },
+        error: (err) => {
+          this.setError(err.error?.message || 'No se pudo registrar la conciliacion');
+          this.providerSaving.set(false);
+        },
+      });
   }
 
   refreshProviderConciliaciones(page = this.providerConciliacionesPage()) {
     this.providerConciliacionesLoading.set(true);
     this.providerConciliacionesPage.set(page);
 
-    this.providerService.getConciliaciones({
-      tipo: this.providerConciliacionesFiltroTipo() as BonoTipo | '' || '',
-      fechaDesde: this.providerConciliacionesFiltroFechaDesde() || undefined,
-      fechaHasta: this.providerConciliacionesFiltroFechaHasta() || undefined,
-      estado: this.providerConciliacionesFiltroEstado() || undefined,
-      page,
-      limit: 10,
-    }).subscribe({
-      next: (data) => {
-        this.providerConciliaciones.set(data);
-        this.providerConciliacionesLoading.set(false);
-      },
-      error: () => {
-        this.setError('No se pudo consultar el historial de conciliaciones');
-        this.providerConciliacionesLoading.set(false);
-      },
-    });
+    this.providerService
+      .getConciliaciones({
+        tipo: (this.providerConciliacionesFiltroTipo() as BonoTipo | '') || '',
+        fechaDesde: this.providerConciliacionesFiltroFechaDesde() || undefined,
+        fechaHasta: this.providerConciliacionesFiltroFechaHasta() || undefined,
+        estado: this.providerConciliacionesFiltroEstado() || undefined,
+        page,
+        limit: 10,
+      })
+      .subscribe({
+        next: (data) => {
+          this.providerConciliaciones.set(data);
+          this.providerConciliacionesLoading.set(false);
+        },
+        error: () => {
+          this.setError('No se pudo consultar el historial de conciliaciones');
+          this.providerConciliacionesLoading.set(false);
+        },
+      });
   }
 
   applyProviderFilters() {
@@ -711,7 +756,7 @@ export class AdminDashboardPage implements OnInit {
     }
 
     const html = `<html><head><meta charset="UTF-8"></head><body>
-      <table border="1">${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}
+      <table border="1">${rows.map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join('')}</tr>`).join('')}
     </table></body></html>`;
     const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -748,7 +793,7 @@ export class AdminDashboardPage implements OnInit {
     });
   }
 
-  descargarResumen() {
+  exportarResumenPDF() {
     this.bonosService
       .getResumenDiario({
         tipo: this.filtroTipo(),
@@ -760,14 +805,84 @@ export class AdminDashboardPage implements OnInit {
       })
       .subscribe({
         next: (resumen) => {
-          const html = this.buildExcelResumen(resumen.rows);
-          const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = `resumen-diario-sigba-${new Date().toISOString().slice(0, 10)}.xls`;
-          link.click();
-          URL.revokeObjectURL(url);
+          const today = new Date();
+          const dateStr = today.toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' });
+          const isoDate = today.toISOString().slice(0, 10);
+
+          const pdf = new jsPDF('p', 'mm', 'a4');
+          let cursorY = 12;
+          const margin = 12;
+
+          pdf.setFontSize(18);
+          pdf.setTextColor(185, 28, 28);
+          pdf.text('SIGBA', margin, cursorY);
+          cursorY += 6;
+
+          pdf.setFontSize(10);
+          pdf.setTextColor(100, 100, 100);
+          pdf.text('Sistema de Gestion de Bonos Alimentarios', margin, cursorY);
+          cursorY += 10;
+
+          pdf.setFontSize(13);
+          pdf.setTextColor(40, 40, 40);
+          pdf.text('Resumen diario SIGBA', margin, cursorY);
+          cursorY += 5;
+
+          pdf.setFontSize(9);
+          pdf.setTextColor(120, 120, 120);
+          pdf.text(dateStr, margin, cursorY);
+          cursorY += 8;
+
+          const sections = [
+            { title: 'Bono almuerzo subsidiados', tipo: 'almuerzo', modalidad: 'subsidiado' },
+            { title: 'Bono almuerzo venta libre', tipo: 'almuerzo', modalidad: 'venta_libre' },
+            { title: 'Bono refrigerio subsidiados', tipo: 'refrigerio', modalidad: 'subsidiado' },
+            { title: 'Bono refrigerio venta libre', tipo: 'refrigerio', modalidad: 'venta_libre' },
+          ];
+
+          const headStyle = { fillColor: [185, 28, 28], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 };
+          const bodyStyle = { fontSize: 7, cellPadding: 2 };
+          const columns = ['Codigo', 'Nombre', 'Beca', 'Programa', 'Estado', 'Hora sol.', 'Hora rec.', 'Cod. bono'];
+
+          for (const section of sections) {
+            const rows = resumen.rows
+              .filter((r) => r.tipo === section.tipo && r.modalidad === section.modalidad)
+              .map((r) => [
+                String(r.codigo ?? ''),
+                String(r.nombre ?? ''),
+                r.tiene_beca ? 'Si' : 'No',
+                `${r.programa_codigo ?? ''} - ${r.programa_nombre ?? ''}`,
+                String(r.estado ?? ''),
+                this.formatTime(r.hora_solicitud),
+                this.formatTime(r.hora_reclamo),
+                String(r.codigo_bono ?? '-'),
+              ]);
+
+            pdf.setFontSize(11);
+            pdf.setTextColor(40, 40, 40);
+            pdf.text(section.title, margin, cursorY);
+            cursorY += 5;
+
+            if (rows.length === 0) {
+              pdf.setFontSize(9);
+              pdf.setTextColor(150, 150, 150);
+              pdf.text('Sin registros', margin, cursorY);
+              cursorY += 8;
+            } else {
+              (autoTable as any)(pdf, {
+                startY: cursorY,
+                head: [columns],
+                body: rows,
+                headStyles: headStyle,
+                styles: bodyStyle,
+                margin: { left: margin, right: margin },
+                theme: 'grid',
+              });
+              cursorY = (pdf as any).lastAutoTable.finalY + 6;
+            }
+          }
+
+          pdf.save('resumen-diario-sigba-' + isoDate + '.pdf');
         },
       });
   }
@@ -781,12 +896,20 @@ export class AdminDashboardPage implements OnInit {
       const normalizedHour = hour % 12 || 12;
       return `${normalizedHour}:${minute} ${period}`;
     }
-    return new Date(value).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: true });
+    return new Date(value).toLocaleTimeString('es-CO', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    });
   }
 
-  absValue(value: number) { return Math.abs(value); }
+  absValue(value: number) {
+    return Math.abs(value);
+  }
 
-  getProviderExportUrl(tipo: string) { return this.providerService.getExportUrl(tipo as 'resumen' | 'conciliaciones'); }
+  getProviderExportUrl(tipo: string) {
+    return this.providerService.getExportUrl(tipo as 'resumen' | 'conciliaciones');
+  }
 
   // ============================================================
   //  Analytics Dashboard
@@ -838,8 +961,12 @@ export class AdminDashboardPage implements OnInit {
   }
 
   aplicarFiltros() {
-    if (this.analyticsFiltroFechaInicio() && this.analyticsFiltroFechaFin()
-      && this.analyticsFiltroTipo() && this.analyticsFiltroDia()) {
+    if (
+      this.analyticsFiltroFechaInicio() &&
+      this.analyticsFiltroFechaFin() &&
+      this.analyticsFiltroTipo() &&
+      this.analyticsFiltroDia()
+    ) {
       this.loadAnalytics();
     }
   }
@@ -895,7 +1022,11 @@ export class AdminDashboardPage implements OnInit {
           tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.raw}` } },
         },
         scales: {
-          y: { beginAtZero: true, ticks: { precision: 0 }, title: { display: true, text: 'Cantidad' } },
+          y: {
+            beginAtZero: true,
+            ticks: { precision: 0 },
+            title: { display: true, text: 'Cantidad' },
+          },
           x: { title: { display: true, text: 'Fecha' } },
         },
       },
@@ -926,10 +1057,25 @@ export class AdminDashboardPage implements OnInit {
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(resumen), 'Resumen');
 
     const inasistencia = [
-      ['Codigo', 'Nombre', 'Programa', 'Dias Hab.', 'Reclamados', 'Inasistencias', '% Asistencia', '% Inasistencia'],
+      [
+        'Codigo',
+        'Nombre',
+        'Programa',
+        'Dias Hab.',
+        'Reclamados',
+        'Inasistencias',
+        '% Asistencia',
+        '% Inasistencia',
+      ],
       ...data.estudiantesInasistencia.map((s) => [
-        s.codigo, s.nombre, s.programa, s.diasHabilitados, s.reclamados, s.inasistencias,
-        `${s.porcentajeAsistencia}%`, `${s.porcentajeInasistencia}%`,
+        s.codigo,
+        s.nombre,
+        s.programa,
+        s.diasHabilitados,
+        s.reclamados,
+        s.inasistencias,
+        `${s.porcentajeAsistencia}%`,
+        `${s.porcentajeInasistencia}%`,
       ]),
     ];
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(inasistencia), 'Inasistencia');
@@ -948,14 +1094,34 @@ export class AdminDashboardPage implements OnInit {
 
     doc.setFontSize(10);
     doc.text(`Indice de Inasistencia: ${data.kpiPrincipal.indiceInasistencia}%`, 14, 32);
-    doc.text(`Asistencias Esperadas: ${data.kpiPrincipal.asistenciasEsperadas} | Reclamados: ${data.kpiPrincipal.reclamadosReales} | Inasistencias: ${data.kpiPrincipal.inasistencias}`, 14, 40);
+    doc.text(
+      `Asistencias Esperadas: ${data.kpiPrincipal.asistenciasEsperadas} | Reclamados: ${data.kpiPrincipal.reclamadosReales} | Inasistencias: ${data.kpiPrincipal.inasistencias}`,
+      14,
+      40,
+    );
     doc.text(`Base Subsidiada: ${data.kpisSecundarios.baseSubsidiada} estudiantes`, 14, 48);
 
     autoTable(doc, {
       startY: 58,
-      head: [['Codigo', 'Nombre', 'Programa', 'Dias Hab.', 'Reclamados', 'Inasistencias', '% Inasistencia']],
+      head: [
+        [
+          'Codigo',
+          'Nombre',
+          'Programa',
+          'Dias Hab.',
+          'Reclamados',
+          'Inasistencias',
+          '% Inasistencia',
+        ],
+      ],
       body: data.estudiantesInasistencia.map((s) => [
-        s.codigo, s.nombre, s.programa, s.diasHabilitados, s.reclamados, s.inasistencias, `${s.porcentajeInasistencia}%`,
+        s.codigo,
+        s.nombre,
+        s.programa,
+        s.diasHabilitados,
+        s.reclamados,
+        s.inasistencias,
+        `${s.porcentajeInasistencia}%`,
       ]),
       styles: { fontSize: 8 },
       headStyles: { fillColor: [220, 38, 38] },
@@ -1001,8 +1167,24 @@ export class AdminDashboardPage implements OnInit {
 
   descargarPlantillaEstudiantes() {
     const rows = [
-      ['codigo', 'tipo_documento', 'numero_documento', 'nombre', 'correo', 'programa_codigo', 'programa_nombre'],
-      ['20231234', 'CC', '12345678', 'Nombre Apellido', 'estudiante@correo.com', '2711', 'Desarrollo de software'],
+      [
+        'codigo',
+        'tipo_documento',
+        'numero_documento',
+        'nombre',
+        'correo',
+        'programa_codigo',
+        'programa_nombre',
+      ],
+      [
+        '20231234',
+        'CC',
+        '12345678',
+        'Nombre Apellido',
+        'estudiante@correo.com',
+        '2711',
+        'Desarrollo de software',
+      ],
     ];
     this.downloadExcelTemplate('plantilla-estudiantes-sigba.xlsx', 'Plantilla estudiantes', rows);
   }
@@ -1275,7 +1457,10 @@ export class AdminDashboardPage implements OnInit {
         this.configFechaFin.set(settings.fecha_fin || '');
         if (settings.updated_at) {
           this.configLastUpdate.set(
-            new Date(settings.updated_at).toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' }),
+            new Date(settings.updated_at).toLocaleString('es-CO', {
+              dateStyle: 'medium',
+              timeStyle: 'short',
+            }),
           );
         }
         this.configPeriodoLoading.set(false);
@@ -1353,34 +1538,36 @@ export class AdminDashboardPage implements OnInit {
     this.setMessage('');
     this.setError('');
 
-    this.systemService.updateSettings({
-      periodo_actual: periodo,
-      fecha_inicio: fechaInicio || null,
-      fecha_fin: fechaFin || null,
-    }).subscribe({
-      next: (settings) => {
-        this.systemSettings.set(settings);
+    this.systemService
+      .updateSettings({
+        periodo_actual: periodo,
+        fecha_inicio: fechaInicio || null,
+        fecha_fin: fechaFin || null,
+      })
+      .subscribe({
+        next: (settings) => {
+          this.systemSettings.set(settings);
 
-        this.systemService.updateWorkingDays(this.workingDays()).subscribe({
-          next: () => {
-            this.configResumenVisible.set(true);
-            this.configLastUpdate.set(
-              new Date().toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' }),
-            );
-            this.setMessage('Configuracion del periodo guardada correctamente');
-            this.configPeriodoSaving.set(false);
-          },
-          error: (err) => {
-            this.setError(err.error?.message || 'Error al guardar dias habiles');
-            this.configPeriodoSaving.set(false);
-          },
-        });
-      },
-      error: (err) => {
-        this.setError(err.error?.message || 'Error al guardar configuracion');
-        this.configPeriodoSaving.set(false);
-      },
-    });
+          this.systemService.updateWorkingDays(this.workingDays()).subscribe({
+            next: () => {
+              this.configResumenVisible.set(true);
+              this.configLastUpdate.set(
+                new Date().toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' }),
+              );
+              this.setMessage('Configuracion del periodo guardada correctamente');
+              this.configPeriodoSaving.set(false);
+            },
+            error: (err) => {
+              this.setError(err.error?.message || 'Error al guardar dias habiles');
+              this.configPeriodoSaving.set(false);
+            },
+          });
+        },
+        error: (err) => {
+          this.setError(err.error?.message || 'Error al guardar configuracion');
+          this.configPeriodoSaving.set(false);
+        },
+      });
   }
 
   // ============================================================
@@ -1416,39 +1603,43 @@ export class AdminDashboardPage implements OnInit {
   confirmarCierreDiario() {
     this.cierreSaving.set(true);
     this.clearMessages();
-    this.systemService.confirmarCierreDiario(this.cierreFecha(), this.cierreObservaciones()).subscribe({
-      next: (result) => {
-        this.setMessage(result.message);
-        this.cierreSaving.set(false);
-        this.cierreObservaciones.set('');
-        this.loadCierreResumen();
-        this.refreshCierreConfirmaciones();
-      },
-      error: (err) => {
-        this.setError(err.error?.message || 'Error al confirmar cierre');
-        this.cierreSaving.set(false);
-      },
-    });
+    this.systemService
+      .confirmarCierreDiario(this.cierreFecha(), this.cierreObservaciones())
+      .subscribe({
+        next: (result) => {
+          this.setMessage(result.message);
+          this.cierreSaving.set(false);
+          this.cierreObservaciones.set('');
+          this.loadCierreResumen();
+          this.refreshCierreConfirmaciones();
+        },
+        error: (err) => {
+          this.setError(err.error?.message || 'Error al confirmar cierre');
+          this.cierreSaving.set(false);
+        },
+      });
   }
 
   refreshCierreConfirmaciones(page = 1) {
     this.cierreConfirmacionesPage.set(page);
     this.cierreConfirmacionesLoading.set(true);
-    this.systemService.getConfirmaciones({
-      fechaDesde: '',
-      fechaHasta: '',
-      page,
-      limit: 20,
-    }).subscribe({
-      next: (data) => {
-        this.cierreConfirmaciones.set(data);
-        this.cierreConfirmacionesLoading.set(false);
-      },
-      error: (err) => {
-        this.setError(err.error?.message || 'Error cargando confirmaciones');
-        this.cierreConfirmacionesLoading.set(false);
-      },
-    });
+    this.systemService
+      .getConfirmaciones({
+        fechaDesde: '',
+        fechaHasta: '',
+        page,
+        limit: 20,
+      })
+      .subscribe({
+        next: (data) => {
+          this.cierreConfirmaciones.set(data);
+          this.cierreConfirmacionesLoading.set(false);
+        },
+        error: (err) => {
+          this.setError(err.error?.message || 'Error cargando confirmaciones');
+          this.cierreConfirmacionesLoading.set(false);
+        },
+      });
   }
 
   // ============================================================
@@ -1508,19 +1699,26 @@ export class AdminDashboardPage implements OnInit {
   // ============================================================
 
   diasSeleccionados(dias: string[]) {
-    return dias.length === 0
-      ? '-'
-      : dias.map((d) => FORMATO_DIA[d] ?? d).join(', ');
+    return dias.length === 0 ? '-' : dias.map((d) => FORMATO_DIA[d] ?? d).join(', ');
   }
 
   private clearMessages() {
-    if (this.messageTimer) { clearTimeout(this.messageTimer); this.messageTimer = null; }
-    if (this.errorTimer) { clearTimeout(this.errorTimer); this.errorTimer = null; }
+    if (this.messageTimer) {
+      clearTimeout(this.messageTimer);
+      this.messageTimer = null;
+    }
+    if (this.errorTimer) {
+      clearTimeout(this.errorTimer);
+      this.errorTimer = null;
+    }
     this.message.set('');
     this.errorMessage.set('');
   }
 
-  private runAdminAction(action: () => ReturnType<BonosService['cargarExtra']>, successMessage: string) {
+  private runAdminAction(
+    action: () => ReturnType<BonosService['cargarExtra']>,
+    successMessage: string,
+  ) {
     this.loading.set(true);
     this.clearMessages();
 
@@ -1563,90 +1761,5 @@ export class AdminDashboardPage implements OnInit {
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
     XLSX.writeFile(workbook, filename);
-  }
-
-  private buildExcelResumen(rows: BonoResumenDiarioRow[]) {
-    const sections = [
-      { title: 'Bono almuerzo subsidiados', tipo: 'almuerzo', modalidad: 'subsidiado' },
-      { title: 'Bono almuerzo venta libre', tipo: 'almuerzo', modalidad: 'venta_libre' },
-      { title: 'Bono refrigerio subsidiados', tipo: 'refrigerio', modalidad: 'subsidiado' },
-      { title: 'Bono refrigerio venta libre', tipo: 'refrigerio', modalidad: 'venta_libre' },
-    ];
-
-    const escapeHtml = (value: unknown) => {
-      return String(value ?? '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
-    };
-
-    const sectionTables = sections
-      .map((section) => {
-        const sectionRows = rows.filter(
-          (row) => row.tipo === section.tipo && row.modalidad === section.modalidad,
-        );
-
-        const body = sectionRows.length
-          ? sectionRows
-              .map(
-                (row) => `
-                  <tr>
-                    <td>${escapeHtml(row.codigo)}</td>
-                    <td>${escapeHtml(row.nombre)}</td>
-                    <td>${escapeHtml(row.tiene_beca ? 'Si' : 'No')}</td>
-                    <td>${escapeHtml(`${row.programa_codigo} - ${row.programa_nombre}`)}</td>
-                    <td>${escapeHtml(row.estado)}</td>
-                    <td>${escapeHtml(this.formatTime(row.hora_solicitud))}</td>
-                    <td>${escapeHtml(this.formatTime(row.hora_reclamo))}</td>
-                    <td>${escapeHtml(row.codigo_bono ?? '-')}</td>
-                  </tr>
-                `,
-              )
-              .join('')
-          : '<tr><td colspan="8">Sin registros</td></tr>';
-
-        return `
-          <h2>${escapeHtml(section.title)}</h2>
-          <table>
-            <thead>
-              <tr>
-                <th>Codigo estudiante</th>
-                <th>Nombre</th>
-                <th>Beca</th>
-                <th>Programa academico</th>
-                <th>Estado del bono</th>
-                <th>Hora solicitud</th>
-                <th>Hora reclamo</th>
-                <th>Codigo bono</th>
-              </tr>
-            </thead>
-            <tbody>${body}</tbody>
-          </table>
-        `;
-      })
-      .join('<br />');
-
-    return `
-      <html>
-        <head>
-          <meta charset="UTF-8" />
-          <style>
-            body { font-family: Arial, sans-serif; }
-            h1 { color: #991b1b; }
-            h2 { margin-top: 24px; color: #111827; }
-            table { border-collapse: collapse; width: 100%; margin-bottom: 12px; }
-            th { background: #991b1b; color: #ffffff; font-weight: bold; }
-            th, td { border: 1px solid #d1d5db; padding: 8px; text-align: left; }
-            td { mso-number-format: "\\@"; }
-          </style>
-        </head>
-        <body>
-          <h1>Resumen diario SIGBA</h1>
-          <p>Fecha de descarga: ${escapeHtml(new Date().toLocaleDateString('es-CO'))}</p>
-          ${sectionTables}
-        </body>
-      </html>
-    `;
   }
 }

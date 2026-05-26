@@ -86,10 +86,10 @@
         <div>
           <p class="text-sm font-bold text-amber-800">Periodo academico cerrado</p>
           <p class="text-xs text-amber-700">SIGBA se encuentra en modo historico hasta configurar un nuevo periodo.</p>
-        </div>
-      </div>
     </div>
-    }
+  </div>
+</div>
+}
 
     <section class="p-4">
       @if (loading()) {
@@ -161,9 +161,9 @@
               <button class="btn btn-sm bg-red-600 text-white hover:bg-red-700" (click)="aplicarFiltros()" [disabled]="analyticsLoading()">Aplicar</button>
               <button class="btn btn-sm" (click)="exportarAnalyticsExcel()" [disabled]="!analyticsData()">Excel</button>
               <button class="btn btn-sm" (click)="exportarAnalyticsPDF()" [disabled]="!analyticsData()">PDF</button>
-            </div>
-          </div>
-        </div>
+    </div>
+  </div>
+</div>
 
         @if (analyticsLoading()) {
           <div class="mt-6 flex items-center justify-center py-12">
@@ -827,7 +827,7 @@
             <p class="text-sm text-gray-600">Reservas, expiraciones y reclamos registrados hoy.</p>
           </div>
           <div class="flex gap-2 flex-wrap">
-            <button class="btn" (click)="descargarResumen()" [disabled]="loading()">Descargar Excel</button>
+            <button class="btn" (click)="exportarResumenPDF()" [disabled]="loading()">Descargar PDF</button>
             <button class="btn bg-red-600 text-white hover:bg-red-700"
               (click)="goScanPage()"
               [disabled]="!canOperate()"

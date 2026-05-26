@@ -1,16 +1,16 @@
 const { google } = require('googleapis');
 
 let auth = null;
-let sheetId = null;
 
 const getAuth = () => {
   if (auth) return auth;
 
   const credentialsJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON;
-  sheetId = process.env.SHEET_ID;
 
-  if (!credentialsJson || !sheetId) {
-    throw new Error('Google Sheets no configurado: faltan variables de entorno (GOOGLE_APPLICATION_CREDENTIALS_JSON o SHEET_ID)');
+  if (!credentialsJson) {
+    throw new Error(
+      'Google Sheets no configurado: falta GOOGLE_APPLICATION_CREDENTIALS_JSON'
+    );
   }
 
   let credentials;
@@ -18,7 +18,9 @@ const getAuth = () => {
   try {
     credentials = JSON.parse(credentialsJson);
   } catch {
-    throw new Error('GOOGLE_APPLICATION_CREDENTIALS_JSON no es un JSON valido');
+    throw new Error(
+      'GOOGLE_APPLICATION_CREDENTIALS_JSON no es un JSON valido'
+    );
   }
 
   auth = new google.auth.GoogleAuth({
@@ -29,9 +31,48 @@ const getAuth = () => {
   return auth;
 };
 
+// ============================================================
+// TEMPORAL TRANSITIONAL LOGIC
+// Determina la hoja según horario operacional.
+// Esto será eliminado cuando Google Sheets deje de usarse.
+// ============================================================
+
+const resolveSheetIdBySchedule = () => {
+  const now = new Date();
+
+  const totalMinutes =
+    now.getHours() * 60 + now.getMinutes();
+
+  // ------------------------------------------------------------
+  // Subsidiado
+  // Almuerzo: 08:00 - 10:16
+  // Refrigerio: 17:00 - 18:29
+  // ------------------------------------------------------------
+
+  const isSubsidizedRange =
+    (totalMinutes >= 480 && totalMinutes <= 616) ||
+    (totalMinutes >= 1020 && totalMinutes <= 1109);
+
+  return isSubsidizedRange
+    ? process.env.SHEET_ID_SUBSIDIADOS
+    : process.env.SHEET_ID_VENTA_LIBRE;
+};
+
 const appendRedencion = async (data) => {
   const client = getAuth();
-  const sheets = google.sheets({ version: 'v4', auth: client });
+
+  const sheets = google.sheets({
+    version: 'v4',
+    auth: client,
+  });
+
+  const sheetId = resolveSheetIdBySchedule();
+
+  if (!sheetId) {
+    throw new Error(
+      'No se encontro SHEET_ID para el horario actual'
+    );
+  }
 
   const values = [[
     data.fechaHora,
@@ -54,7 +95,11 @@ const appendRedencion = async (data) => {
 
     return true;
   } catch (error) {
-    console.error('Error al enviar a Google Sheets:', error.message);
+    console.error(
+      'Error al enviar a Google Sheets:',
+      error.message
+    );
+
     throw error;
   }
 };

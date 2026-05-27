@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@getbrevo/brevo':
+        specifier: ^5.0.4
+        version: 5.0.4
       bcryptjs:
         specifier: ^3.0.3
         version: 3.0.3
@@ -40,6 +43,10 @@ importers:
         version: 0.18.5
 
 packages:
+
+  '@getbrevo/brevo@5.0.4':
+    resolution: {integrity: sha512-wN4mHE6O0Pb/d/Dh3E4MAm2zCHbLLUcFF8/wgwTeMPy9KzHBYLu7S/nsJbzd0AWL09MHn8vwue8ULL9YOzluOQ==}
+    engines: {node: '>=18.0.0'}
 
   accepts@2.0.0:
     resolution: {integrity: sha512-5cvg6CtKwfgdmVqY1WIiXKc3Q1bkRqGLi+2W/6ao+6Y7gu/RCwRuAhGEzh5B4KlszSuTLgZYuqFqo5bImjNKng==}
@@ -580,6 +587,8 @@ packages:
     engines: {node: '>=0.4'}
 
 snapshots:
+
+  '@getbrevo/brevo@5.0.4': {}
 
   accepts@2.0.0:
     dependencies:

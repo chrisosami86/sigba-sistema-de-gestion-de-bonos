@@ -1,29 +1,35 @@
-const nodemailer = require("nodemailer");
+const { BrevoClient } = require('@getbrevo/brevo');
+
+const brevo = new BrevoClient({
+  apiKey: process.env.BREVO_API_KEY,
+});
 
 const sendMail = async ({ to, subject, html }) => {
-  const transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT || 587),
-    secure: process.env.SMTP_SECURE === "true",
-
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASSWORD,
-    },
-  });
-
   try {
-    await transporter.sendMail({
-      from: process.env.SMTP_FROM || "SIGBA <noreply@sigba.local>",
-      to,
+    await brevo.transactionalEmails.sendTransacEmail({
+      sender: {
+        name: 'SIGBA',
+        email: process.env.SMTP_FROM || 'chrisosami86@gmail.com',
+      },
+
+      to: [
+        {
+          email: to,
+        },
+      ],
+
       subject,
-      html,
+      htmlContent: html,
     });
 
     return { sent: true };
   } catch (err) {
-    console.error("[mailer] sendMail failed:", err.message);
-    return { sent: false, reason: err.message };
+    console.error('[mailer] sendMail failed:', err);
+
+    return {
+      sent: false,
+      reason: err.message,
+    };
   }
 };
 

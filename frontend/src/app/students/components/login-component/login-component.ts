@@ -30,7 +30,7 @@ export class LoginComponent {
 
   login() {
     if (!this.codigo() || !this.password()) {
-      this.errorMessage.set('Ingresa codigo y contrasena');
+      this.errorMessage.set('Ingresa código y contraseña');
       return;
     }
 
@@ -50,7 +50,7 @@ export class LoginComponent {
         }
       },
       error: (err) => {
-        this.errorMessage.set(err.error?.message || 'No se pudo iniciar sesion');
+        this.errorMessage.set(err.error?.message || 'No se pudo iniciar sesión');
         this.loading.set(false);
       },
     });
@@ -66,12 +66,12 @@ export class LoginComponent {
     }
 
     if (newPw.length < 6) {
-      this.forceError.set('La contrasena debe tener al menos 6 caracteres');
+      this.forceError.set('La contraseña debe tener al menos 6 caracteres');
       return;
     }
 
     if (newPw !== confirmPw) {
-      this.forceError.set('Las contrasenas no coinciden');
+      this.forceError.set('Las contraseñas no coinciden');
       return;
     }
 
@@ -90,7 +90,7 @@ export class LoginComponent {
         }, 2000);
       },
       error: (err) => {
-        this.forceError.set(err.error?.message || 'No se pudo cambiar la contrasena');
+        this.forceError.set(err.error?.message || 'No se pudo cambiar la contraseña');
         this.forceLoading.set(false);
       },
     });

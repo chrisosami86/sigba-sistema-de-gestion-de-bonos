@@ -6,9 +6,10 @@
  */
 
 const pool = require("../../../config/db");
+const { getBogotaDate } = require("../../../shared/helpers/timezone.helper");
 
 const getOperationalSnapshot = async (fecha) => {
-  const dateStr = fecha || new Date().toISOString().slice(0, 10);
+  const dateStr = fecha || getBogotaDate();
 
   const [reclamados, expirados, noUtilizados, administrativos, conciliaciones] = await Promise.all([
     pool.query(

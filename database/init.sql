@@ -4,6 +4,19 @@
 --          confirmaciones de cierre diario.
 -- Ejecutar contra una base PostgreSQL vacia:
 --   psql -U postgres -d sigba_db -f init.sql
+--
+-- ZONA HORARIA: Todo SIGBA opera bajo America/Bogota.
+-- - Backend:  process.env.TZ = 'America/Bogota' (server.js)
+-- - Database: timezone=America/Bogota (db.js connection options)
+-- - Frontend: el navegador convierte automaticamente a hora local.
+--
+-- NOTA PARA FUTURAS TABLAS:
+--   Toda nueva columna con fecha operacional debe usar:
+--     TIMESTAMP WITH TIME ZONE (o TIMESTAMPTZ)
+--   en lugar de TIMESTAMP sin zona horaria.
+--   NO migrar tablas existentes en produccion — mantienen
+--   compatibilidad con el modelo actual que interpreta todo
+--   como America/Bogota via configuracion de conexion.
 -- ============================================================
 
 -- 1. Tabla de estudiantes (entidad principal)

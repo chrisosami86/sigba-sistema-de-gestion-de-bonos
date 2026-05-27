@@ -1,4 +1,5 @@
 const pool = require("../../config/db");
+const { formatBogotaDate } = require("../../shared/helpers/timezone.helper");
 
 const DIAS_SEMANA = [
   "domingo",
@@ -32,7 +33,7 @@ const isAcademicPeriodActive = async (date = new Date()) => {
     return false;
   }
 
-  const dateStr = date.toISOString().slice(0, 10);
+  const dateStr = formatBogotaDate(date);
   const inicio = new Date(fecha_inicio);
   const fin = new Date(fecha_fin);
 
@@ -58,7 +59,7 @@ const isOperationalDay = async (date = new Date()) => {
     return { isOperational: false, reason: "DIA_NO_HABIL" };
   }
 
-  const dateStr = date.toISOString().slice(0, 10);
+  const dateStr = formatBogotaDate(date);
 
   const holidayResult = await pool.query(
     "SELECT id FROM holidays WHERE fecha = $1::date",
@@ -101,7 +102,7 @@ const isPastPeriodEnd = async (date = new Date()) => {
     return false;
   }
 
-  const dateStr = date.toISOString().slice(0, 10);
+  const dateStr = formatBogotaDate(date);
   const fin = new Date(fecha_fin);
   const target = new Date(dateStr + "T00:00:00");
 

@@ -2,6 +2,7 @@ const bonosService = require("../bonos/bonos.service");
 const { canOperateToday } = require("./operational-calendar.helper");
 const dailyClosureService = require("./daily-closure.service");
 const { info, error } = require("../../shared/helpers/logger.helper");
+const { getBogotaDate, getBogotaDateTime } = require("../../shared/helpers/timezone.helper");
 
 const SCHEDULER_INTERVAL_MS = 60_000;
 let intervalId = null;
@@ -44,6 +45,14 @@ const runCycle = async () => {
   running = true;
 
   try {
+    const cycleNow = new Date();
+    info("[scheduler.tz]", {
+      iso: cycleNow.toISOString(),
+      local: cycleNow.toString(),
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      bogotaDate: getBogotaDate(),
+    });
+
     const operationalCheck = await canOperateToday();
 
     if (!operationalCheck.allowed) {
@@ -63,7 +72,7 @@ const runCycle = async () => {
       info("[scheduler] expireBonos ejecutado", { expired });
     }
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = getBogotaDate();
     try {
       await dailyClosureService.ensurePendingConfirmation(today);
     } catch (closureErr) {

@@ -1,6 +1,7 @@
 
 const pool = require("../../config/db");
 const { getModalidadExpression } = require("../../shared/helpers/modalidad.helper");
+const { formatBogotaDate, getBogotaDate } = require("../../shared/helpers/timezone.helper");
 
 const VALID_TIPOS = ["almuerzo", "refrigerio"];
 const VALID_DIAS = ["lunes", "martes", "miercoles", "jueves", "viernes"];
@@ -35,11 +36,10 @@ const getAnalytics = async (filters = {}) => {
     if (!fechaInicio) {
       const now = new Date();
       now.setDate(1);
-      fechaInicio = now.toISOString().slice(0, 10);
+      fechaInicio = formatBogotaDate(now);
     }
     if (!fechaFin) {
-      const now = new Date();
-      fechaFin = now.toISOString().slice(0, 10);
+      fechaFin = getBogotaDate();
     }
   }
 

@@ -1,5 +1,6 @@
 const pool = require("../../config/db");
 const { info, error } = require("../../shared/helpers/logger.helper");
+const { getBogotaDate } = require("../../shared/helpers/timezone.helper");
 
 const VALID_BONO_TYPES = ["almuerzo", "refrigerio"];
 
@@ -22,7 +23,7 @@ const determinarEstado = (diferencia) => {
 // ─────────────────────────────────────
 
 const getResumenProveedor = async (fecha) => {
-  const targetDate = fecha || new Date().toISOString().slice(0, 10);
+  const targetDate = fecha || getBogotaDate();
   const resultado = {};
 
   for (const tipo of VALID_BONO_TYPES) {

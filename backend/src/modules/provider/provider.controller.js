@@ -1,5 +1,6 @@
 const providerService = require("./provider.service");
 const exportService = require("./provider-export.service");
+const { getBogotaDate } = require("../../shared/helpers/timezone.helper");
 
 const getResumen = async (req, res) => {
   try {
@@ -15,7 +16,7 @@ const registrarConciliacion = async (req, res) => {
   try {
     const { fecha, tipo, cantidadProveedor, observaciones } = req.body;
 
-    const fechaValida = fecha || new Date().toISOString().slice(0, 10);
+    const fechaValida = fecha || getBogotaDate();
 
     const conciliacion = await providerService.registrarConciliacion({
       fecha: fechaValida,
@@ -63,7 +64,7 @@ const exportarResumen = async (req, res) => {
     const wb = await exportService.exportarResumenProveedor(fecha);
     const buffer = require("xlsx").write(wb, { type: "buffer", bookType: "xlsx" });
 
-    const filename = `resumen-proveedor-sigba-${fecha || new Date().toISOString().slice(0, 10)}.xlsx`;
+    const filename = `resumen-proveedor-sigba-${fecha || getBogotaDate()}.xlsx`;
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
     res.send(buffer);
@@ -77,7 +78,7 @@ const exportarConciliaciones = async (_req, res) => {
     const wb = await exportService.exportarConciliaciones();
     const buffer = require("xlsx").write(wb, { type: "buffer", bookType: "xlsx" });
 
-    const filename = `conciliaciones-proveedor-sigba-${new Date().toISOString().slice(0, 10)}.xlsx`;
+    const filename = `conciliaciones-proveedor-sigba-${getBogotaDate()}.xlsx`;
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
     res.send(buffer);

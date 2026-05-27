@@ -6,6 +6,7 @@
  */
 
 const pool = require("../../config/db");
+const { getBogotaDate } = require("../../shared/helpers/timezone.helper");
 const { getOperationalSnapshot } = require("./services/operational-analytics.service");
 const { getSubsidyAnalytics } = require("./services/subsidy-analytics.service");
 const { getProviderAnalytics } = require("./services/provider-analytics.service");
@@ -19,7 +20,7 @@ const getDashboard = async (query = {}) => {
     fechaSnapshot,
   } = query;
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getBogotaDate();
   const inicio = fechaInicio || today;
   const fin = fechaFin || today;
   const snapshotDate = fechaSnapshot || today;

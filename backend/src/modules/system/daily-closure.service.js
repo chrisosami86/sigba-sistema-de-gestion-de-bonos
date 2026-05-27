@@ -1,6 +1,7 @@
 const pool = require("../../config/db");
 const { info, error } = require("../../shared/helpers/logger.helper");
 const providerService = require("../provider/provider.service");
+const { getBogotaDate } = require("../../shared/helpers/timezone.helper");
 
 const VALID_BONO_TYPES = ["almuerzo", "refrigerio"];
 
@@ -35,7 +36,7 @@ const ensurePendingConfirmation = async (fecha) => {
 };
 
 const getResumenCierre = async (fecha) => {
-  const targetDate = fecha || new Date().toISOString().slice(0, 10);
+  const targetDate = fecha || getBogotaDate();
   const resultado = {};
 
   for (const tipo of VALID_BONO_TYPES) {
@@ -106,7 +107,7 @@ const getResumenCierre = async (fecha) => {
 };
 
 const confirmarCierre = async (fecha, adminId, adminNombre, observaciones) => {
-  const targetDate = fecha || new Date().toISOString().slice(0, 10);
+  const targetDate = fecha || getBogotaDate();
 
   const existing = await pool.query(
     "SELECT id, estado FROM daily_closure_confirmations WHERE fecha_operacion = $1",

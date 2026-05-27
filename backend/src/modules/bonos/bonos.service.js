@@ -2,6 +2,7 @@ const pool = require("../../config/db");
 const { getModalidadExpression } = require("../../shared/helpers/modalidad.helper");
 const { isWorkingDay } = require("../../shared/helpers/workingDay.helper");
 const { log, info, error } = require("../../shared/helpers/logger.helper");
+const { getBogotaDate, getBogotaDateTime } = require("../../shared/helpers/timezone.helper");
 
 const VALID_BONO_TYPES = ["almuerzo", "refrigerio"];
 
@@ -49,6 +50,14 @@ const DIAS_SEMANA = [
 const requestBono = async (studentId, tipo) => {
   validateTipo(tipo);
   validateStudentId(studentId);
+
+  const now = new Date();
+  info("[bonos.requestBono.tz]", {
+    iso: now.toISOString(),
+    local: now.toString(),
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    bogotaDate: getBogotaDate(),
+  });
 
   const workingDayCheck = await isWorkingDay();
   if (!workingDayCheck.isWorking) {
@@ -135,6 +144,14 @@ const requestBono = async (studentId, tipo) => {
 // ─────────────────────────────────────
 
 const claimBono = async (redencionId, codigoBono) => {
+  const now = new Date();
+  info("[bonos.claimBono.tz]", {
+    iso: now.toISOString(),
+    local: now.toString(),
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    bogotaDate: getBogotaDate(),
+  });
+
   if (codigoBono === undefined || codigoBono === null || String(codigoBono).trim() === '') {
     throw new Error("Debe ingresar el codigo del bono");
   }
@@ -799,6 +816,14 @@ const EXPIRE_THROTTLE_MS = 30_000;
 let lastExpireRun = 0;
 
 const expireBonos = async () => {
+  const timeNow = new Date();
+  info("[bonos.expireBonos.tz]", {
+    iso: timeNow.toISOString(),
+    local: timeNow.toString(),
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    bogotaDate: getBogotaDate(),
+  });
+
   const now = Date.now();
   if (now - lastExpireRun < EXPIRE_THROTTLE_MS) {
     return [];

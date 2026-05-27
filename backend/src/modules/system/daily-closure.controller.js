@@ -1,4 +1,5 @@
 const dailyClosureService = require("./daily-closure.service");
+const { getBogotaDate } = require("../../shared/helpers/timezone.helper");
 
 const getResumenCierre = async (req, res) => {
   try {
@@ -14,7 +15,7 @@ const confirmarCierre = async (req, res) => {
   try {
     const { fecha, observaciones } = req.body;
 
-    const fechaValida = fecha || new Date().toISOString().slice(0, 10);
+    const fechaValida = fecha || getBogotaDate();
 
     const confirmacion = await dailyClosureService.confirmarCierre(
       fechaValida,

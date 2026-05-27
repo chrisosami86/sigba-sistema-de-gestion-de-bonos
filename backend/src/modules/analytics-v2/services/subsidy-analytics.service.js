@@ -6,6 +6,7 @@
  */
 
 const pool = require("../../../config/db");
+const { getBogotaDate } = require("../../../shared/helpers/timezone.helper");
 
 const VALID_DIAS = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"];
 const WEEKDAY_TO_DOW = { lunes: 1, martes: 2, miercoles: 3, jueves: 4, viernes: 5, sabado: 6, domingo: 0 };
@@ -59,7 +60,7 @@ const getBaseSubsidiada = async (dia) => {
 };
 
 const getSubsidyAnalytics = async (fechaInicio, fechaFin) => {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getBogotaDate();
   const inicio = fechaInicio || today;
   const fin = fechaFin || today;
 

@@ -6,9 +6,10 @@
  */
 
 const pool = require("../../../config/db");
+const { getBogotaDate } = require("../../../shared/helpers/timezone.helper");
 
 const getAdministrativeAnalytics = async (fechaInicio, fechaFin) => {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getBogotaDate();
   const inicio = fechaInicio || today;
   const fin = fechaFin || today;
 

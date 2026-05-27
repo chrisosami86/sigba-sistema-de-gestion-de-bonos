@@ -22,8 +22,8 @@ ON CONFLICT (dia) DO NOTHING;
 
 -- Configuracion base de bonos (almuerzo y refrigerio)
 INSERT INTO config_bonos (tipo, cantidad_base, activo) VALUES
-  ('almuerzo', 150, true),
-  ('refrigerio', 150, true)
+  ('almuerzo', 110, true),
+  ('refrigerio', 30, true)
 ON CONFLICT (tipo) DO NOTHING;
 
 -- NOTA: El administrador inicial se crea automaticamente al iniciar

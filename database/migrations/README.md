@@ -28,6 +28,12 @@ Cambios historicos que YA estan reflejados en `init.sql`:
 
 **YA INCORPORADA en init.sql.** No es necesario ejecutarla en instalaciones nuevas.
 
+### 003_daily_closure_confirmations.sql
+
+- Tabla `daily_closure_confirmations` con sus indices y CHECK de estado
+
+**YA INCORPORADA en init.sql.** No es necesario ejecutarla en instalaciones nuevas.
+
 ## Como aplicar sobre BD existente
 
 Si la BD ya fue creada con una version anterior de `init.sql`, ejecutar unicamente las migraciones
@@ -35,6 +41,7 @@ pendientes en orden numerico:
 
 ```bash
 psql -U sigba_user -d sigba_db -f database/migrations/002_provider_conciliations.sql
+psql -U sigba_user -d sigba_db -f database/migrations/003_daily_closure_confirmations.sql
 ```
 
 Usar `CREATE TABLE IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS` garantiza idempotencia.

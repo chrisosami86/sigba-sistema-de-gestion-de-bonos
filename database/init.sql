@@ -1,6 +1,7 @@
 -- ============================================================
--- SIGBA — Esquema inicial completo
--- Generado desde la base de datos real en produccion
+-- SIGBA — Esquema inicial completo (Fase 1-4B)
+-- Incluye: tablas base, constraints, indices, conciliaciones proveedor,
+--          confirmaciones de cierre diario.
 -- Ejecutar contra una base PostgreSQL vacia:
 --   psql -U postgres -d sigba_db -f init.sql
 -- ============================================================
@@ -57,10 +58,10 @@ CREATE TABLE bonos_diarios (
   cantidad_liberada     INTEGER NOT NULL DEFAULT 0,
   cantidad_no_utilizada INTEGER DEFAULT 0,
   created_at            TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at            TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  updated_at            TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT unique_config_bono_fecha UNIQUE (config_bono_id, fecha)
 );
 
-CREATE UNIQUE INDEX unique_bono_por_dia ON bonos_diarios (config_bono_id, fecha);
 CREATE INDEX idx_bonos_diarios_fecha ON bonos_diarios (fecha);
 
 -- 6. Redenciones (registro de cada bono solicitado/reclamado)
@@ -84,6 +85,7 @@ CREATE TABLE redenciones (
 
 CREATE INDEX idx_redenciones_student ON redenciones (student_id);
 CREATE INDEX idx_redenciones_estado ON redenciones (estado);
+ALTER TABLE redenciones ADD CONSTRAINT unique_student_bono_diario UNIQUE (student_id, bono_diario_id);
 
 -- 7. Administradores
 CREATE TABLE admins (
@@ -147,3 +149,21 @@ CREATE INDEX idx_conciliaciones_tipo
 
 CREATE UNIQUE INDEX unique_conciliacion_dia_tipo
   ON conciliaciones_proveedor (fecha, tipo);
+
+-- 12. Confirmaciones de cierre diario (Fase 4B)
+CREATE TABLE daily_closure_confirmations (
+  id                SERIAL PRIMARY KEY,
+  fecha_operacion   DATE NOT NULL,
+  confirmado_por    INTEGER REFERENCES admins(id),
+  confirmado_at     TIMESTAMP,
+  estado            VARCHAR(30) NOT NULL DEFAULT 'PENDIENTE_CONFIRMACION'
+                    CHECK (estado IN ('PENDIENTE_CONFIRMACION', 'CONFIRMADO')),
+  observaciones     TEXT,
+  created_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX unique_closure_confirmation_fecha
+  ON daily_closure_confirmations (fecha_operacion);
+
+CREATE INDEX idx_closure_confirmation_estado
+  ON daily_closure_confirmations (estado);

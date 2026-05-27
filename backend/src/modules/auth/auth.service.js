@@ -327,7 +327,7 @@ const recoverStudentPassword = async ({ correo }) => {
 
   const mailResult = await sendMail({
     to: student.correo,
-    subject: "Recuperacion de contraseña SIGBA",
+    subject: "Recuperación de contraseña SIGBA",
     html: buildRecoveryEmail({
       name: student.nombre,
       codigo: student.codigo,
@@ -378,7 +378,7 @@ const recoverAdminPassword = async ({ correo }) => {
 
   const mailResult = await sendMail({
     to: admin.correo,
-    subject: "Recuperacion de contraseña administrador SIGBA",
+    subject: "Recuperación de contraseña administrador SIGBA",
     html: buildRecoveryEmail({
       name: admin.nombre,
       codigo: admin.correo,

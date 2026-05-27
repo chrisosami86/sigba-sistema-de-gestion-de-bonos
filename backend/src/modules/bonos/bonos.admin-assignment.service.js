@@ -1,6 +1,7 @@
 const pool = require("../../config/db");
 const { isWorkingDay } = require("../../shared/helpers/workingDay.helper");
 const { log } = require("../../shared/helpers/logger.helper");
+const { BOGOTA } = require("../../shared/helpers/sql-timezone.helper");
 
 const TIPO_ASIGNACION_ADMINISTRATIVA = "ADMINISTRATIVA";
 const VALID_BONO_TYPES = ["almuerzo", "refrigerio"];
@@ -179,7 +180,7 @@ const getLockedBonoDiario = async (client, tipo) => {
     JOIN config_bonos cb
       ON cb.id = bd.config_bono_id
     WHERE cb.tipo = $1
-      AND bd.fecha = CURRENT_DATE
+      AND bd.fecha = ${BOGOTA.date}
     FOR UPDATE
   `;
 
@@ -199,7 +200,7 @@ const getBonoDiarioByTipo = async (tipo) => {
     JOIN config_bonos cb
       ON cb.id = bd.config_bono_id
     WHERE cb.tipo = $1
-      AND bd.fecha = CURRENT_DATE
+      AND bd.fecha = ${BOGOTA.date}
   `;
 
   const result = await pool.query(query, [tipo]);
@@ -242,7 +243,7 @@ const studentAlreadyConsumedToday = async (client, studentId) => {
     JOIN bonos_diarios bd
       ON bd.id = r.bono_diario_id
     WHERE r.student_id = $1
-      AND bd.fecha = CURRENT_DATE
+      AND bd.fecha = ${BOGOTA.date}
       AND r.estado IN ('reservado', 'reclamado')
     LIMIT 1
     FOR UPDATE
@@ -315,7 +316,7 @@ const createAdminRedencion = async (client, data) => {
       admin_id,
       motivo_asignacion
     )
-    VALUES ($1, $2, 'reclamado', NOW(), $3, $4, $5, $6)
+    VALUES ($1, $2, 'reclamado', ${BOGOTA.timestamp}, $3, $4, $5, $6)
     RETURNING *
   `;
 

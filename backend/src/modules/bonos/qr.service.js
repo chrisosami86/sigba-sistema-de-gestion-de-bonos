@@ -1,5 +1,6 @@
 const pool = require("../../config/db");
 const { info, error } = require("../../shared/helpers/logger.helper");
+const { BOGOTA } = require("../../shared/helpers/sql-timezone.helper");
 
 const VALID_BONO_TYPES = ["almuerzo", "refrigerio"];
 const CODIGO_MIN = 1;
@@ -22,7 +23,7 @@ const getActiveBonus = async (studentId) => {
     JOIN bonos_diarios bd ON bd.id = r.bono_diario_id
     JOIN config_bonos cb ON cb.id = bd.config_bono_id
     WHERE r.student_id = $1
-      AND bd.fecha = CURRENT_DATE
+      AND bd.fecha = ${BOGOTA.date}
       AND r.estado = 'reservado'
     ORDER BY r.id DESC
     LIMIT 1
@@ -68,7 +69,7 @@ const generateUniqueCode = async (tipo) => {
       `SELECT 1 FROM redenciones r
        JOIN bonos_diarios bd ON bd.id = r.bono_diario_id
        JOIN config_bonos cb ON cb.id = bd.config_bono_id
-       WHERE cb.tipo = $1 AND bd.fecha = CURRENT_DATE AND r.codigo_bono = $2
+       WHERE cb.tipo = $1 AND bd.fecha = ${BOGOTA.date} AND r.codigo_bono = $2
        LIMIT 1`,
       [tipo, code],
     );
@@ -97,7 +98,7 @@ const resolveByCode = async (codigoBono, tipo) => {
     JOIN bonos_diarios bd ON bd.id = r.bono_diario_id
     JOIN config_bonos cb ON cb.id = bd.config_bono_id
     WHERE cb.tipo = $1
-      AND bd.fecha = CURRENT_DATE
+      AND bd.fecha = ${BOGOTA.date}
       AND r.codigo_bono = $2
     LIMIT 1
   `;

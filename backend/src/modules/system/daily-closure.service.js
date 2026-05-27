@@ -2,6 +2,7 @@ const pool = require("../../config/db");
 const { info, error } = require("../../shared/helpers/logger.helper");
 const providerService = require("../provider/provider.service");
 const { getBogotaDate } = require("../../shared/helpers/timezone.helper");
+const { BOGOTA } = require("../../shared/helpers/sql-timezone.helper");
 
 const VALID_BONO_TYPES = ["almuerzo", "refrigerio"];
 
@@ -129,7 +130,7 @@ const confirmarCierre = async (fecha, adminId, adminNombre, observaciones) => {
       `UPDATE daily_closure_confirmations
        SET estado = 'CONFIRMADO',
            confirmado_por = $1,
-           confirmado_at = NOW(),
+            confirmado_at = ${BOGOTA.timestamp},
            observaciones = $2
        WHERE fecha_operacion = $3
        RETURNING *`,

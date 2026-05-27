@@ -3,6 +3,7 @@ const { getModalidadExpression } = require("../../shared/helpers/modalidad.helpe
 const { isWorkingDay } = require("../../shared/helpers/workingDay.helper");
 const { log, info, error } = require("../../shared/helpers/logger.helper");
 const { getBogotaDate, getBogotaDateTime } = require("../../shared/helpers/timezone.helper");
+const { BOGOTA } = require("../../shared/helpers/sql-timezone.helper");
 
 const VALID_BONO_TYPES = ["almuerzo", "refrigerio"];
 
@@ -201,7 +202,7 @@ const claimBono = async (redencionId, codigoBono) => {
       UPDATE redenciones
       SET
         estado = 'reclamado',
-        hora_reclamo = NOW(),
+        hora_reclamo = ${BOGOTA.timestamp},
         codigo_bono = $2,
         updated_at = NOW()
       WHERE id = $1
@@ -341,7 +342,7 @@ const getResumenDiario = async (filters = {}) => {
   const limit = Math.min(Math.max(Number(filters.limit) || 10, 1), 1000);
   const offset = (page - 1) * limit;
   const values = [];
-  const conditions = ["bd.fecha = CURRENT_DATE"];
+  const conditions = [`bd.fecha = ${BOGOTA.date}`];
 
   if (filters.tipo) {
     validateTipo(filters.tipo);
@@ -448,7 +449,7 @@ const getStatsDiarias = async () => {
       ON bd.id = r.bono_diario_id
     JOIN config_bonos cb
       ON cb.id = bd.config_bono_id
-    WHERE bd.fecha = CURRENT_DATE
+    WHERE bd.fecha = ${BOGOTA.date}
     GROUP BY cb.tipo, r.estado, modalidad
   `;
 
@@ -490,7 +491,7 @@ const getStatsDiarias = async () => {
   const noUtilQuery = `
     SELECT COALESCE(SUM(cantidad_no_utilizada), 0)::int AS total
     FROM bonos_diarios
-    WHERE fecha = CURRENT_DATE
+    WHERE fecha = ${BOGOTA.date}
   `;
   const noUtilResult = await pool.query(noUtilQuery);
   stats.noUtilizados = Number(noUtilResult.rows[0].total);
@@ -663,7 +664,7 @@ const getOrCreateBonoDiario = async (tipo, client = pool) => {
     SELECT *
     FROM bonos_diarios
     WHERE config_bono_id = $1
-    AND fecha = CURRENT_DATE
+    AND fecha = ${BOGOTA.date}
     FOR UPDATE
   `;
 
@@ -680,7 +681,7 @@ const getOrCreateBonoDiario = async (tipo, client = pool) => {
       fecha,
       cantidad_base
     )
-    VALUES ($1, CURRENT_DATE, $2)
+    VALUES ($1, ${BOGOTA.date}, $2)
     ON CONFLICT (config_bono_id, fecha) DO NOTHING
     RETURNING *
   `;
@@ -710,7 +711,7 @@ const studentAlreadyHasBono = async (client, studentId) => {
     JOIN bonos_diarios bd
       ON bd.id = r.bono_diario_id
     WHERE r.student_id = $1
-    AND bd.fecha = CURRENT_DATE
+    AND bd.fecha = ${BOGOTA.date}
     AND r.estado IN ('reservado', 'reclamado')
     LIMIT 1
   `;
@@ -850,7 +851,7 @@ const expireBonos = async () => {
         estado = 'expirado',
         updated_at = NOW()
       WHERE estado = 'reservado'
-      AND expiracion_at < NOW()
+      AND expiracion_at < ${BOGOTA.timestamp}
       RETURNING *
     `);
 
@@ -888,7 +889,7 @@ const expireBonosInTransaction = async (client) => {
       estado = 'expirado',
       updated_at = NOW()
     WHERE estado = 'reservado'
-    AND expiracion_at < NOW()
+    AND expiracion_at < ${BOGOTA.timestamp}
   `;
 
   await client.query(expireQuery);
@@ -923,7 +924,7 @@ const cerrarOperacionDiaria = async (tipo) => {
   const bonoDiarioQuery = `
     SELECT bd.* FROM bonos_diarios bd
     JOIN config_bonos cb ON cb.id = bd.config_bono_id
-    WHERE cb.tipo = $1 AND bd.fecha = CURRENT_DATE
+    WHERE cb.tipo = $1 AND bd.fecha = ${BOGOTA.date}
   `;
   const bonoResult = await pool.query(bonoDiarioQuery, [tipo]);
 
@@ -967,7 +968,7 @@ const cerrarOperacionDiariaInterna = async (tipo, client) => {
   const bonoDiarioQuery = `
     SELECT bd.* FROM bonos_diarios bd
     JOIN config_bonos cb ON cb.id = bd.config_bono_id
-    WHERE cb.tipo = $1 AND bd.fecha = CURRENT_DATE
+    WHERE cb.tipo = $1 AND bd.fecha = ${BOGOTA.date}
   `;
   const bonoResult = await client.query(bonoDiarioQuery, [tipo]);
 

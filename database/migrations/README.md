@@ -34,6 +34,12 @@ Cambios historicos que YA estan reflejados en `init.sql`:
 
 **YA INCORPORADA en init.sql.** No es necesario ejecutarla en instalaciones nuevas.
 
+### 004_normalize_bogota_timestamp_defaults.sql
+
+- Ajusta defaults de columnas `TIMESTAMP` existentes para usar `NOW() AT TIME ZONE 'America/Bogota'`
+- No modifica datos existentes, tipos de columnas ni contratos API
+- Refuerza que `hora_solicitud`, `created_at` y `updated_at` no dependan de timezone de sesion
+
 ## Como aplicar sobre BD existente
 
 Si la BD ya fue creada con una version anterior de `init.sql`, ejecutar unicamente las migraciones
@@ -42,6 +48,7 @@ pendientes en orden numerico:
 ```bash
 psql -U sigba_user -d sigba_db -f database/migrations/002_provider_conciliations.sql
 psql -U sigba_user -d sigba_db -f database/migrations/003_daily_closure_confirmations.sql
+psql -U sigba_user -d sigba_db -f database/migrations/004_normalize_bogota_timestamp_defaults.sql
 ```
 
 Usar `CREATE TABLE IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS` garantiza idempotencia.

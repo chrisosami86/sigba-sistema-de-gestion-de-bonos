@@ -57,8 +57,8 @@ CREATE TABLE config_bonos (
   tipo            VARCHAR(20) NOT NULL UNIQUE,
   cantidad_base   INTEGER NOT NULL,
   activo          BOOLEAN NOT NULL DEFAULT true,
-  created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  created_at      TIMESTAMP DEFAULT (NOW() AT TIME ZONE 'America/Bogota'),
+  updated_at      TIMESTAMP DEFAULT (NOW() AT TIME ZONE 'America/Bogota')
 );
 
 -- 5. Bonos diarios (pool diario por tipo)
@@ -70,8 +70,8 @@ CREATE TABLE bonos_diarios (
   cantidad_extra        INTEGER NOT NULL DEFAULT 0,
   cantidad_liberada     INTEGER NOT NULL DEFAULT 0,
   cantidad_no_utilizada INTEGER DEFAULT 0,
-  created_at            TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at            TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  created_at            TIMESTAMP DEFAULT (NOW() AT TIME ZONE 'America/Bogota'),
+  updated_at            TIMESTAMP DEFAULT (NOW() AT TIME ZONE 'America/Bogota'),
   CONSTRAINT unique_config_bono_fecha UNIQUE (config_bono_id, fecha)
 );
 
@@ -83,7 +83,7 @@ CREATE TABLE redenciones (
   student_id            INTEGER NOT NULL REFERENCES students(id),
   bono_diario_id        INTEGER NOT NULL REFERENCES bonos_diarios(id),
   estado                VARCHAR(20) NOT NULL,
-  hora_solicitud        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  hora_solicitud        TIMESTAMP NOT NULL DEFAULT (NOW() AT TIME ZONE 'America/Bogota'),
   hora_reclamo          TIMESTAMP,
   expiracion_at         TIMESTAMP,
   codigo_bono           INTEGER,
@@ -92,8 +92,8 @@ CREATE TABLE redenciones (
   tipo_asignacion       VARCHAR(30) NOT NULL DEFAULT 'OPERATIVA',
   admin_id              INTEGER,
   motivo_asignacion     TEXT,
-  created_at            TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at            TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  created_at            TIMESTAMP DEFAULT (NOW() AT TIME ZONE 'America/Bogota'),
+  updated_at            TIMESTAMP DEFAULT (NOW() AT TIME ZONE 'America/Bogota')
 );
 
 CREATE INDEX idx_redenciones_student ON redenciones (student_id);
@@ -110,8 +110,8 @@ CREATE TABLE admins (
   must_change_password  BOOLEAN DEFAULT true,
   last_login            TIMESTAMP,
   activo                BOOLEAN DEFAULT true,
-  created_at            TIMESTAMP DEFAULT NOW(),
-  updated_at            TIMESTAMP DEFAULT NOW()
+  created_at            TIMESTAMP DEFAULT (NOW() AT TIME ZONE 'America/Bogota'),
+  updated_at            TIMESTAMP DEFAULT (NOW() AT TIME ZONE 'America/Bogota')
 );
 
 -- 8. Configuracion del sistema
@@ -120,8 +120,8 @@ CREATE TABLE system_settings (
   periodo_actual  VARCHAR(10) NOT NULL,
   fecha_inicio    DATE,
   fecha_fin       DATE,
-  created_at      TIMESTAMP DEFAULT NOW(),
-  updated_at      TIMESTAMP DEFAULT NOW()
+  created_at      TIMESTAMP DEFAULT (NOW() AT TIME ZONE 'America/Bogota'),
+  updated_at      TIMESTAMP DEFAULT (NOW() AT TIME ZONE 'America/Bogota')
 );
 
 -- 9. Dias habiles de operacion
@@ -150,8 +150,8 @@ CREATE TABLE conciliaciones_proveedor (
                       CHECK (estado IN ('CONCILIADO', 'DIFERENCIA_MENOR', 'DIFERENCIA_CRITICA', 'PENDIENTE')),
   observaciones       TEXT,
   admin_id            INTEGER REFERENCES admins(id),
-  created_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+  created_at          TIMESTAMP NOT NULL DEFAULT (NOW() AT TIME ZONE 'America/Bogota'),
+  updated_at          TIMESTAMP NOT NULL DEFAULT (NOW() AT TIME ZONE 'America/Bogota')
 );
 
 CREATE INDEX idx_conciliaciones_fecha
@@ -172,7 +172,7 @@ CREATE TABLE daily_closure_confirmations (
   estado            VARCHAR(30) NOT NULL DEFAULT 'PENDIENTE_CONFIRMACION'
                     CHECK (estado IN ('PENDIENTE_CONFIRMACION', 'CONFIRMADO')),
   observaciones     TEXT,
-  created_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+  created_at        TIMESTAMP NOT NULL DEFAULT (NOW() AT TIME ZONE 'America/Bogota')
 );
 
 CREATE UNIQUE INDEX unique_closure_confirmation_fecha

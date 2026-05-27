@@ -1,5 +1,6 @@
 const XLSX = require("xlsx");
 const providerService = require("./provider.service");
+const { formatBogotaDateTime } = require("../../shared/helpers/timezone.helper");
 
 const exportarResumenProveedor = async (fecha) => {
   const resumen = await providerService.getResumenProveedor(fecha);
@@ -53,7 +54,7 @@ const exportarConciliaciones = async () => {
     "Estado": r.estado,
     "Admin": r.adminNombre,
     "Observaciones": r.observaciones || "",
-    "Registrado": r.createdAt ? new Date(r.createdAt).toLocaleString("es-CO") : "",
+    "Registrado": r.createdAt ? formatBogotaDateTime(r.createdAt).replace("T", " ") : "",
   }));
 
   const ws = XLSX.utils.json_to_sheet(rows);

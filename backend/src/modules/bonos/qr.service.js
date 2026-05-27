@@ -16,6 +16,7 @@ const getActiveBonus = async (studentId) => {
       r.id,
       r.estado,
       r.expiracion_at AS "expiracionAt",
+      r.expiracion_at < ${BOGOTA.timestamp} AS "isExpired",
       r.codigo_bono AS "codigoBono",
       cb.tipo,
       bd.fecha
@@ -36,7 +37,7 @@ const getActiveBonus = async (studentId) => {
   const bono = result.rows[0];
 
   // Verificar que no esté expirado
-  if (bono.expiracionAt && new Date(bono.expiracionAt) < new Date()) {
+  if (bono.isExpired) {
     return null;
   }
 
@@ -44,7 +45,7 @@ const getActiveBonus = async (studentId) => {
   if (!bono.codigoBono) {
     const codigo = await generateUniqueCode(bono.tipo);
     await pool.query(
-      `UPDATE redenciones SET codigo_bono = $1, updated_at = NOW() WHERE id = $2`,
+      `UPDATE redenciones SET codigo_bono = $1, updated_at = ${BOGOTA.timestamp} WHERE id = $2`,
       [codigo, bono.id],
     );
     bono.codigoBono = codigo;

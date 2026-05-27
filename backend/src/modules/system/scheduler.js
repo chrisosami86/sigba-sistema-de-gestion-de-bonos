@@ -2,7 +2,7 @@ const bonosService = require("../bonos/bonos.service");
 const { canOperateToday } = require("./operational-calendar.helper");
 const dailyClosureService = require("./daily-closure.service");
 const { info, error } = require("../../shared/helpers/logger.helper");
-const { getBogotaDate, getBogotaDateTime } = require("../../shared/helpers/timezone.helper");
+const { getBogotaDate, getBogotaDateTime, getBogotaNow } = require("../../shared/helpers/timezone.helper");
 
 const SCHEDULER_INTERVAL_MS = 60_000;
 let intervalId = null;
@@ -20,7 +20,7 @@ const start = () => {
   if (intervalId) return;
 
   active = true;
-  startTime = new Date().toISOString();
+  startTime = getBogotaDateTime();
 
   info("[scheduler] start", { intervalMs: SCHEDULER_INTERVAL_MS });
 
@@ -45,9 +45,9 @@ const runCycle = async () => {
   running = true;
 
   try {
-    const cycleNow = new Date();
+    const cycleNow = getBogotaNow();
     info("[scheduler.tz]", {
-      iso: cycleNow.toISOString(),
+      bogotaDateTime: getBogotaDateTime(),
       local: cycleNow.toString(),
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       bogotaDate: getBogotaDate(),
@@ -56,7 +56,7 @@ const runCycle = async () => {
     const operationalCheck = await canOperateToday();
 
     if (!operationalCheck.allowed) {
-      lastSkippedAt = new Date().toISOString();
+      lastSkippedAt = getBogotaDateTime();
       lastSkippedReason = operationalCheck.reason;
       info("[scheduler] skipped non-operational day", { reason: operationalCheck.reason });
       return;
@@ -65,7 +65,7 @@ const runCycle = async () => {
     const result = await bonosService.expireBonos();
     const expired = Array.isArray(result) ? result.length : 0;
 
-    lastCycleAt = new Date().toISOString();
+    lastCycleAt = getBogotaDateTime();
     lastExpireCount = expired;
 
     if (expired > 0) {
@@ -79,7 +79,7 @@ const runCycle = async () => {
       error("[scheduler] daily-closure ensure", { message: closureErr.message });
     }
   } catch (err) {
-    lastErrorAt = new Date().toISOString();
+    lastErrorAt = getBogotaDateTime();
     lastErrorMessage = err.message;
     error("[scheduler] error", { message: err.message });
   } finally {

@@ -6,7 +6,8 @@
  */
 
 const pool = require("../../config/db");
-const { getBogotaDate } = require("../../shared/helpers/timezone.helper");
+const { getBogotaDate, getBogotaDateTime } = require("../../shared/helpers/timezone.helper");
+const { BOGOTA } = require("../../shared/helpers/sql-timezone.helper");
 const { getOperationalSnapshot } = require("./services/operational-analytics.service");
 const { getSubsidyAnalytics } = require("./services/subsidy-analytics.service");
 const { getProviderAnalytics } = require("./services/provider-analytics.service");
@@ -42,7 +43,7 @@ const getDashboard = async (query = {}) => {
   const alertas = await computeAlerts(operational, subsidy, provider, administrative, historical);
 
   return {
-    timestamp: new Date().toISOString(),
+    timestamp: getBogotaDateTime(),
     fechaInicio: inicio,
     fechaFin: fin,
     operational,
@@ -57,16 +58,18 @@ const getDashboard = async (query = {}) => {
 const computeAlerts = async (operational, subsidy, provider, administrative, historical) => {
   const alerts = [];
 
-  const settings = await pool.query("SELECT fecha_fin FROM system_settings WHERE id = 1");
+  const settings = await pool.query(
+    `SELECT fecha_fin::text AS fecha_fin, (fecha_fin - ${BOGOTA.date})::int AS days_left
+     FROM system_settings
+     WHERE id = 1 AND fecha_fin IS NOT NULL`
+  );
   const fechaFin = settings.rows[0]?.fecha_fin;
   if (fechaFin) {
-    const fin = new Date(fechaFin);
-    const today = new Date();
-    const daysLeft = Math.ceil((fin - today) / (1000 * 60 * 60 * 24));
+    const daysLeft = Number(settings.rows[0].days_left);
     if (daysLeft <= 7 && daysLeft >= 0) {
       alerts.push({
         tipo: "PERIODO_POR_FINALIZAR",
-        mensaje: `El periodo academico finaliza en ${daysLeft} dia(s) (${fechaFin instanceof Date ? fechaFin.toISOString().slice(0, 10) : String(fechaFin).slice(0, 10)}).`,
+        mensaje: `El periodo academico finaliza en ${daysLeft} dia(s) (${fechaFin}).`,
         severidad: daysLeft <= 1 ? "ALTA" : "MEDIA",
       });
     }

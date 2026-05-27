@@ -6,20 +6,21 @@
  */
 
 const pool = require("../../../config/db");
-const { getBogotaDate } = require("../../../shared/helpers/timezone.helper");
+const {
+  addDaysToDateString,
+  getBogotaDate,
+  getDayNameFromDateString,
+} = require("../../../shared/helpers/timezone.helper");
 
 const VALID_DIAS = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"];
 const WEEKDAY_TO_DOW = { lunes: 1, martes: 2, miercoles: 3, jueves: 4, viernes: 5, sabado: 6, domingo: 0 };
 
 const getValidDates = async (fechaInicio, fechaFin) => {
   const holidayResult = await pool.query(
-    "SELECT fecha FROM holidays WHERE fecha BETWEEN $1::date AND $2::date",
+    "SELECT fecha::text AS fecha FROM holidays WHERE fecha BETWEEN $1::date AND $2::date",
     [fechaInicio, fechaFin]
   );
-  const holidaySet = new Set(holidayResult.rows.map(r => {
-    const d = r.fecha instanceof Date ? r.fecha : new Date(r.fecha);
-    return d.toISOString().slice(0, 10);
-  }));
+  const holidaySet = new Set(holidayResult.rows.map(r => r.fecha));
 
   const workingDaysResult = await pool.query("SELECT dia FROM working_days WHERE activo = true");
   const activeDays = new Set(workingDaysResult.rows.map(r => r.dia));
@@ -29,13 +30,9 @@ const getValidDates = async (fechaInicio, fechaFin) => {
     validDatesByDay[dia] = [];
   }
 
-  const start = new Date(fechaInicio + "T00:00:00");
-  const end = new Date(fechaFin + "T00:00:00");
-
-  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-    const dateStr = d.toISOString().slice(0, 10);
+  for (let dateStr = fechaInicio; dateStr <= fechaFin; dateStr = addDaysToDateString(dateStr, 1)) {
     if (holidaySet.has(dateStr)) continue;
-    const dayName = VALID_DIAS[d.getDay()];
+    const dayName = getDayNameFromDateString(dateStr);
     if (activeDays.has(dayName)) {
       validDatesByDay[dayName].push(dateStr);
     }
@@ -100,7 +97,7 @@ const getSubsidyAnalytics = async (fechaInicio, fechaFin) => {
            AND r.estado = 'reclamado'
          GROUP BY bd.fecha
        )
-       SELECT d::date AS fecha, COALESCE(c.reclamados, 0)::int AS reclamados,
+       SELECT to_char(d::date, 'YYYY-MM-DD') AS fecha, COALESCE(c.reclamados, 0)::int AS reclamados,
               GREATEST(${base} - COALESCE(c.reclamados, 0), 0)::int AS inasistencias
        FROM unnest($2::date[]) AS d
        LEFT JOIN claims c ON c.fecha = d::date
@@ -109,7 +106,7 @@ const getSubsidyAnalytics = async (fechaInicio, fechaFin) => {
     );
 
     const chartData = chartResult.rows.map(r => ({
-      fecha: r.fecha instanceof Date ? r.fecha.toISOString().slice(0, 10) : String(r.fecha).slice(0, 10),
+      fecha: r.fecha,
       reclamados: Number(r.reclamados),
       inasistencias: Number(r.inasistencias),
     }));

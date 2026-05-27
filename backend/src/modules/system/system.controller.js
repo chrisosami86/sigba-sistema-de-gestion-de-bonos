@@ -2,6 +2,7 @@ const systemService = require("./system.service");
 const { getStatus: getSchedulerStatus } = require("./scheduler");
 const { canOperateToday, isPastPeriodEnd } = require("./operational-calendar.helper");
 const pool = require("../../config/db");
+const { getBogotaDateTime } = require("../../shared/helpers/timezone.helper");
 
 const getServerTime = async (req, res) => {
   try {
@@ -28,7 +29,7 @@ const getHealth = async (req, res) => {
       uptime,
       db: dbStatus,
       scheduler: getSchedulerStatus(),
-      timestamp: new Date().toISOString(),
+      timestamp: getBogotaDateTime(),
     });
   } catch (error) {
     res.status(500).json({ status: "error", message: error.message });
@@ -126,7 +127,7 @@ const getOperationalStatus = async (_req, res) => {
       canOperate: operational.allowed,
       reason: operational.reason,
       isHistoricalMode: isHistorical,
-      timestamp: new Date().toISOString(),
+      timestamp: getBogotaDateTime(),
     });
   } catch (error) {
     console.error(error);

@@ -1,6 +1,7 @@
 const pool = require("../../config/db");
 const { info, error } = require("../../shared/helpers/logger.helper");
 const { getBogotaDate } = require("../../shared/helpers/timezone.helper");
+const { BOGOTA } = require("../../shared/helpers/sql-timezone.helper");
 
 const VALID_BONO_TYPES = ["almuerzo", "refrigerio"];
 
@@ -151,7 +152,7 @@ const registrarConciliacion = async ({
         estado = EXCLUDED.estado,
         observaciones = EXCLUDED.observaciones,
         admin_id = EXCLUDED.admin_id,
-        updated_at = NOW()
+        updated_at = ${BOGOTA.timestamp}
       RETURNING *
     `;
 
@@ -244,7 +245,7 @@ const getConciliaciones = async ({
   const dataQuery = `
     SELECT
       cp.id,
-      cp.fecha,
+      cp.fecha::text AS fecha,
       cp.tipo,
       cp.cantidad_sigba AS "cantidadSigba",
       cp.cantidad_proveedor AS "cantidadProveedor",
@@ -281,7 +282,7 @@ const getConciliacionById = async (id) => {
   const query = `
     SELECT
       cp.id,
-      cp.fecha,
+      cp.fecha::text AS fecha,
       cp.tipo,
       cp.cantidad_sigba AS "cantidadSigba",
       cp.cantidad_proveedor AS "cantidadProveedor",

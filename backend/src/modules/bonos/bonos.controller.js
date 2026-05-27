@@ -3,6 +3,8 @@ const adminAssignmentService = require("./bonos.admin-assignment.service");
 const qrService = require("./qr.service");
 const googleSheetsService = require("../googleSheets/googleSheets.service");
 const pool = require("../../config/db");
+const { getBogotaDateTime } = require("../../shared/helpers/timezone.helper");
+const { BOGOTA } = require("../../shared/helpers/sql-timezone.helper");
 
 const requestBono = async (req, res) => {
   try {
@@ -397,7 +399,7 @@ const sincronizarRedencionGoogle = async (bono) => {
     const tipoBonoResult = await getTipoBonoFromRedencion(bono.id);
 
     await googleSheetsService.appendRedencion({
-      fechaHora: new Date().toLocaleString('es-CO', { timeZone: 'America/Bogota' }),
+      fechaHora: getBogotaDateTime().replace('T', ' '),
       codigo: studentData.codigo,
       documento: studentData.numero_documento,
       nombre: studentData.nombre,
@@ -408,7 +410,7 @@ const sincronizarRedencionGoogle = async (bono) => {
     });
 
     await pool.query(
-      `UPDATE redenciones SET sincronizado_google = true, fecha_sincronizacion = NOW() WHERE id = $1`,
+      `UPDATE redenciones SET sincronizado_google = true, fecha_sincronizacion = ${BOGOTA.timestamp} WHERE id = $1`,
       [bono.id],
     );
 

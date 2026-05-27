@@ -27,14 +27,14 @@ const getProviderAnalytics = async (fechaInicio, fechaFin) => {
       [inicio, fin]
     ),
     pool.query(
-      `SELECT fecha, tipo, diferencia, estado
+      `SELECT fecha::text AS fecha, tipo, diferencia, estado
        FROM conciliaciones_proveedor
        WHERE fecha BETWEEN $1::date AND $2::date
        ORDER BY fecha`,
       [inicio, fin]
     ),
     pool.query(
-      `SELECT fecha, tipo, diferencia, estado, observaciones
+      `SELECT fecha::text AS fecha, tipo, diferencia, estado, observaciones
        FROM conciliaciones_proveedor
        WHERE fecha BETWEEN $1::date AND $2::date
          AND estado = 'DIFERENCIA_CRITICA'
@@ -49,7 +49,7 @@ const getProviderAnalytics = async (fechaInicio, fechaFin) => {
   const chartData = [];
   const byDate = {};
   for (const row of tendencia.rows) {
-    const fecha = row.fecha instanceof Date ? row.fecha.toISOString().slice(0, 10) : String(row.fecha).slice(0, 10);
+    const fecha = row.fecha;
     if (!byDate[fecha]) byDate[fecha] = { fecha, diferencias: 0, criticas: 0 };
     byDate[fecha].diferencias += Number(row.diferencia) || 0;
     if (row.estado === 'DIFERENCIA_CRITICA') byDate[fecha].criticas++;
@@ -70,7 +70,7 @@ const getProviderAnalytics = async (fechaInicio, fechaFin) => {
       : 0,
     chartData,
     diasCriticos: criticos.rows.map(r => ({
-      fecha: r.fecha instanceof Date ? r.fecha.toISOString().slice(0, 10) : String(r.fecha).slice(0, 10),
+      fecha: r.fecha,
       tipo: r.tipo,
       diferencia: Number(r.diferencia),
       estado: r.estado,

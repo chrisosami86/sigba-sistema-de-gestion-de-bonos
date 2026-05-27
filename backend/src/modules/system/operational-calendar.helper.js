@@ -1,5 +1,9 @@
 const pool = require("../../config/db");
-const { formatBogotaDate } = require("../../shared/helpers/timezone.helper");
+const {
+  formatBogotaDate,
+  getDayNameFromDateString,
+  getBogotaNow,
+} = require("../../shared/helpers/timezone.helper");
 
 const DIAS_SEMANA = [
   "domingo",
@@ -18,37 +22,28 @@ const normalizeDia = (dia) => {
     .replace(/[\u0300-\u036f]/g, "");
 };
 
-const isAcademicPeriodActive = async (date = new Date()) => {
+const isAcademicPeriodActive = async (date = getBogotaNow()) => {
+  const dateStr = formatBogotaDate(date);
   const result = await pool.query(
-    "SELECT fecha_inicio, fecha_fin FROM system_settings WHERE id = 1"
+    `SELECT ($1::date BETWEEN fecha_inicio AND fecha_fin) AS active
+     FROM system_settings
+     WHERE id = 1
+       AND fecha_inicio IS NOT NULL
+       AND fecha_fin IS NOT NULL`,
+    [dateStr]
   );
 
-  if (result.rows.length === 0) {
-    return false;
-  }
-
-  const { fecha_inicio, fecha_fin } = result.rows[0];
-
-  if (!fecha_inicio || !fecha_fin) {
-    return false;
-  }
-
-  const dateStr = formatBogotaDate(date);
-  const inicio = new Date(fecha_inicio);
-  const fin = new Date(fecha_fin);
-
-  const target = new Date(dateStr + "T00:00:00");
-
-  return target >= inicio && target <= fin;
+  return Boolean(result.rows[0]?.active);
 };
 
-const isOperationalDay = async (date = new Date()) => {
+const isOperationalDay = async (date = getBogotaNow()) => {
   const periodActive = await isAcademicPeriodActive(date);
   if (!periodActive) {
     return { isOperational: false, reason: "PERIODO_CERRADO" };
   }
 
-  const diaSemana = DIAS_SEMANA[date.getDay()];
+  const dateStr = formatBogotaDate(date);
+  const diaSemana = getDayNameFromDateString(dateStr);
 
   const workingResult = await pool.query(
     "SELECT activo FROM working_days WHERE dia = $1",
@@ -58,8 +53,6 @@ const isOperationalDay = async (date = new Date()) => {
   if (workingResult.rows.length === 0 || !workingResult.rows[0].activo) {
     return { isOperational: false, reason: "DIA_NO_HABIL" };
   }
-
-  const dateStr = formatBogotaDate(date);
 
   const holidayResult = await pool.query(
     "SELECT id FROM holidays WHERE fecha = $1::date",
@@ -73,7 +66,7 @@ const isOperationalDay = async (date = new Date()) => {
   return { isOperational: true, reason: null };
 };
 
-const canOperateToday = async (date = new Date()) => {
+const canOperateToday = async (date = getBogotaNow()) => {
   const periodActive = await isAcademicPeriodActive(date);
   if (!periodActive) {
     return { allowed: false, reason: "PERIODO_CERRADO" };
@@ -87,26 +80,17 @@ const canOperateToday = async (date = new Date()) => {
   return { allowed: true, reason: null };
 };
 
-const isPastPeriodEnd = async (date = new Date()) => {
+const isPastPeriodEnd = async (date = getBogotaNow()) => {
+  const dateStr = formatBogotaDate(date);
   const result = await pool.query(
-    "SELECT fecha_fin FROM system_settings WHERE id = 1"
+    `SELECT ($1::date > fecha_fin) AS past
+     FROM system_settings
+     WHERE id = 1
+       AND fecha_fin IS NOT NULL`,
+    [dateStr]
   );
 
-  if (result.rows.length === 0) {
-    return false;
-  }
-
-  const { fecha_fin } = result.rows[0];
-
-  if (!fecha_fin) {
-    return false;
-  }
-
-  const dateStr = formatBogotaDate(date);
-  const fin = new Date(fecha_fin);
-  const target = new Date(dateStr + "T00:00:00");
-
-  return target > fin;
+  return Boolean(result.rows[0]?.past);
 };
 
 const requireOperationalDay = async (req, res, next) => {

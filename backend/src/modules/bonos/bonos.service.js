@@ -2,7 +2,13 @@ const pool = require("../../config/db");
 const { getModalidadExpression } = require("../../shared/helpers/modalidad.helper");
 const { isWorkingDay } = require("../../shared/helpers/workingDay.helper");
 const { log, info, error } = require("../../shared/helpers/logger.helper");
-const { getBogotaDate, getBogotaDateTime } = require("../../shared/helpers/timezone.helper");
+const {
+  getBogotaDate,
+  getBogotaDateTime,
+  getBogotaNow,
+  getCurrentBogotaMinutes,
+  getDayNameFromDateString,
+} = require("../../shared/helpers/timezone.helper");
 const { BOGOTA } = require("../../shared/helpers/sql-timezone.helper");
 
 const VALID_BONO_TYPES = ["almuerzo", "refrigerio"];
@@ -52,9 +58,9 @@ const requestBono = async (studentId, tipo) => {
   validateTipo(tipo);
   validateStudentId(studentId);
 
-  const now = new Date();
+  const now = getBogotaNow();
   info("[bonos.requestBono.tz]", {
-    iso: now.toISOString(),
+    bogotaDateTime: getBogotaDateTime(),
     local: now.toString(),
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     bogotaDate: getBogotaDate(),
@@ -108,9 +114,16 @@ const requestBono = async (studentId, tipo) => {
         student_id,
         bono_diario_id,
         estado,
+        hora_solicitud,
         expiracion_at
       )
-      VALUES ($1, $2, $3, $4)
+      VALUES (
+        $1,
+        $2,
+        $3,
+        ${BOGOTA.timestamp},
+        date_trunc('day', ${BOGOTA.timestamp}) + make_interval(hours => $4, mins => $5)
+      )
       RETURNING *
     `;
 
@@ -118,7 +131,8 @@ const requestBono = async (studentId, tipo) => {
       studentId,
       bonoDiario.id,
       "reservado",
-      expiracion,
+      expiracion.hours,
+      expiracion.minutes,
     ]);
 
     await client.query("COMMIT");
@@ -145,9 +159,9 @@ const requestBono = async (studentId, tipo) => {
 // ─────────────────────────────────────
 
 const claimBono = async (redencionId, codigoBono) => {
-  const now = new Date();
+  const now = getBogotaNow();
   info("[bonos.claimBono.tz]", {
-    iso: now.toISOString(),
+    bogotaDateTime: getBogotaDateTime(),
     local: now.toString(),
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     bogotaDate: getBogotaDate(),
@@ -170,7 +184,8 @@ const claimBono = async (redencionId, codigoBono) => {
 
     // Bloquear la redención específica con FOR UPDATE
     const searchQuery = `
-      SELECT *
+      SELECT *,
+             expiracion_at < ${BOGOTA.timestamp} AS is_expired
       FROM redenciones
       WHERE id = $1
       FOR UPDATE
@@ -188,10 +203,10 @@ const claimBono = async (redencionId, codigoBono) => {
       throw new Error("El bono no puede reclamarse");
     }
 
-    if (new Date(redencion.expiracion_at) < new Date()) {
+    if (redencion.is_expired) {
       // Expirar dentro de la transacción
       await client.query(
-        `UPDATE redenciones SET estado = 'expirado', updated_at = NOW()
+        `UPDATE redenciones SET estado = 'expirado', updated_at = ${BOGOTA.timestamp}
          WHERE id = $1 AND estado = 'reservado'`,
         [redencionId],
       );
@@ -204,7 +219,7 @@ const claimBono = async (redencionId, codigoBono) => {
         estado = 'reclamado',
         hora_reclamo = ${BOGOTA.timestamp},
         codigo_bono = $2,
-        updated_at = NOW()
+        updated_at = ${BOGOTA.timestamp}
       WHERE id = $1
       RETURNING *
     `;
@@ -263,8 +278,7 @@ const getEstadoSistema = async (tipo) => {
     };
   }
 
-  const now = new Date();
-  const horaActual = now.getHours() * 60 + now.getMinutes();
+  const horaActual = getCurrentBogotaMinutes();
   const horario = HORARIOS[tipo];
 
   if (
@@ -540,7 +554,7 @@ const liberarBonos = async (tipo, cantidad) => {
       UPDATE bonos_diarios
       SET
         cantidad_liberada = cantidad_liberada + $1,
-        updated_at = NOW()
+        updated_at = ${BOGOTA.timestamp}
       WHERE id = $2
       RETURNING *
     `;
@@ -577,7 +591,7 @@ const cargarBonosExtra = async (tipo, cantidad) => {
       UPDATE bonos_diarios
       SET
         cantidad_extra = cantidad_extra + $1,
-        updated_at = NOW()
+        updated_at = ${BOGOTA.timestamp}
       WHERE id = $2
       RETURNING *
     `;
@@ -614,7 +628,7 @@ const establecerCantidadBase = async (tipo, cantidad) => {
       UPDATE bonos_diarios
       SET
         cantidad_base = $1,
-        updated_at = NOW()
+        updated_at = ${BOGOTA.timestamp}
       WHERE id = $2
       RETURNING *
     `;
@@ -726,7 +740,7 @@ const studentAlreadyHasBono = async (client, studentId) => {
 // ─────────────────────────────────────
 
 const validateSubsidio = async (client, studentId) => {
-  const diaActual = DIAS_SEMANA[new Date().getDay()];
+  const diaActual = getDayNameFromDateString(getBogotaDate());
 
   const query = `
     SELECT sd.dia
@@ -817,9 +831,9 @@ const EXPIRE_THROTTLE_MS = 30_000;
 let lastExpireRun = 0;
 
 const expireBonos = async () => {
-  const timeNow = new Date();
+  const timeNow = getBogotaNow();
   info("[bonos.expireBonos.tz]", {
-    iso: timeNow.toISOString(),
+    bogotaDateTime: getBogotaDateTime(),
     local: timeNow.toString(),
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     bogotaDate: getBogotaDate(),
@@ -849,7 +863,7 @@ const expireBonos = async () => {
       UPDATE redenciones
       SET
         estado = 'expirado',
-        updated_at = NOW()
+        updated_at = ${BOGOTA.timestamp}
       WHERE estado = 'reservado'
       AND expiracion_at < ${BOGOTA.timestamp}
       RETURNING *
@@ -887,7 +901,7 @@ const expireBonosInTransaction = async (client) => {
     UPDATE redenciones
     SET
       estado = 'expirado',
-      updated_at = NOW()
+      updated_at = ${BOGOTA.timestamp}
     WHERE estado = 'reservado'
     AND expiracion_at < ${BOGOTA.timestamp}
   `;
@@ -899,19 +913,10 @@ const expireBonosInTransaction = async (client) => {
 // getClosingTime / isPastClosing
 // ─────────────────────────────────────
 
-const getClosingTime = (tipo) => {
-  const now = new Date();
-  const closing = new Date(now);
-  const horario = HORARIOS[tipo];
-
-  closing.setHours(horario.ventaLibre.expiracion.hours, horario.ventaLibre.expiracion.minutes, 0, 0);
-
-  return closing;
-};
-
 const isPastClosing = (tipo) => {
-  const closing = getClosingTime(tipo);
-  return new Date() >= closing;
+  const horario = HORARIOS[tipo];
+  const cierre = horario.ventaLibre.expiracion.hours * 60 + horario.ventaLibre.expiracion.minutes;
+  return getCurrentBogotaMinutes() >= cierre;
 };
 
 // ─────────────────────────────────────
@@ -945,7 +950,7 @@ const cerrarOperacionDiaria = async (tipo) => {
   const noUtilizada = Math.max(0, totalOperativo - totalReservados);
 
   await pool.query(
-    `UPDATE bonos_diarios SET cantidad_no_utilizada = $1, updated_at = NOW() WHERE id = $2`,
+    `UPDATE bonos_diarios SET cantidad_no_utilizada = $1, updated_at = ${BOGOTA.timestamp} WHERE id = $2`,
     [noUtilizada, bonoDiario.id],
   );
 
@@ -998,7 +1003,7 @@ const cerrarOperacionDiariaInterna = async (tipo, client) => {
 
   if (cambiara) {
     await client.query(
-      `UPDATE bonos_diarios SET cantidad_no_utilizada = $1, updated_at = NOW() WHERE id = $2`,
+      `UPDATE bonos_diarios SET cantidad_no_utilizada = $1, updated_at = ${BOGOTA.timestamp} WHERE id = $2`,
       [noUtilizada, bonoDiario.id],
     );
   }
@@ -1013,10 +1018,7 @@ const getExpiracion = (tipo, modalidad) => {
     ? HORARIOS[tipo].subsidiado
     : HORARIOS[tipo].ventaLibre;
 
-  const expiracion = new Date();
-  expiracion.setHours(horario.expiracion.hours, horario.expiracion.minutes, 0, 0);
-
-  return expiracion;
+  return horario.expiracion;
 };
 
 // ─────────────────────────────────────

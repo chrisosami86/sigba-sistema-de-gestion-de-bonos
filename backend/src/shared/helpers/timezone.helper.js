@@ -55,10 +55,64 @@ const formatBogotaDateTime = (date) => {
   return `${yyyy}-${mm}-${dd}T${hh}:${mi}:${ss}`;
 };
 
+const parseDateParts = (dateStr) => {
+  const match = String(dateStr).slice(0, 10).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) {
+    throw new Error(`Fecha invalida: ${dateStr}`);
+  }
+
+  return {
+    year: Number(match[1]),
+    month: Number(match[2]),
+    day: Number(match[3]),
+  };
+};
+
+const formatDateParts = ({ year, month, day }) => {
+  return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+};
+
+const addDaysToDateString = (dateStr, days) => {
+  const { year, month, day } = parseDateParts(dateStr);
+  const utc = new Date(Date.UTC(year, month - 1, day + Number(days)));
+
+  return formatDateParts({
+    year: utc.getUTCFullYear(),
+    month: utc.getUTCMonth() + 1,
+    day: utc.getUTCDate(),
+  });
+};
+
+const getDayNameFromDateString = (dateStr) => {
+  const { year, month, day } = parseDateParts(dateStr);
+  const utc = new Date(Date.UTC(year, month - 1, day));
+  const days = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+
+  return days[utc.getUTCDay()];
+};
+
+const getCurrentBogotaMinutes = () => {
+  const now = getBogotaNow();
+  return now.getHours() * 60 + now.getMinutes();
+};
+
+const getWeekStartDate = (dateStr) => {
+  const { year, month, day } = parseDateParts(dateStr);
+  const utc = new Date(Date.UTC(year, month - 1, day));
+  const dow = utc.getUTCDay();
+  const offset = dow === 0 ? -6 : 1 - dow;
+
+  return addDaysToDateString(dateStr, offset);
+};
+
 module.exports = {
   getBogotaNow,
   getBogotaDate,
   getBogotaDateTime,
   formatBogotaDate,
   formatBogotaDateTime,
+  addDaysToDateString,
+  getDayNameFromDateString,
+  getCurrentBogotaMinutes,
+  getWeekStartDate,
 };

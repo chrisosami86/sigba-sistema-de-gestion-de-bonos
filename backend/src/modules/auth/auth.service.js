@@ -2,6 +2,7 @@ const pool = require("../../config/db");
 const bcrypt = require("bcryptjs");
 const { signToken } = require("../../config/jwt");
 const { sendMail } = require("../../config/mailer");
+const { BOGOTA } = require("../../shared/helpers/sql-timezone.helper");
 
 const SALT_ROUNDS = 8;
 
@@ -111,7 +112,7 @@ const loginStudent = async ({ codigo, password }) => {
   }
 
   await pool.query(
-    "UPDATE students SET last_login = NOW() WHERE id = $1",
+    `UPDATE students SET last_login = ${BOGOTA.timestamp} WHERE id = $1`,
     [student.id],
   );
 
@@ -217,7 +218,7 @@ const loginAdmin = async ({ correo, password }) => {
   }
 
   await pool.query(
-    "UPDATE admins SET last_login = NOW() WHERE id = $1",
+    `UPDATE admins SET last_login = ${BOGOTA.timestamp} WHERE id = $1`,
     [admin.id],
   );
 

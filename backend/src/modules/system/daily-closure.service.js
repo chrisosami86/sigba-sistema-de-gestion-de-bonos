@@ -94,7 +94,7 @@ const getResumenCierre = async (fecha) => {
   }
 
   const confirmacion = await pool.query(
-    `SELECT id, estado, confirmado_por, confirmado_at, observaciones, created_at
+    `SELECT id, fecha_operacion::text AS fecha_operacion, estado, confirmado_por, confirmado_at, observaciones, created_at
      FROM daily_closure_confirmations
      WHERE fecha_operacion = $1`,
     [targetDate]
@@ -191,7 +191,7 @@ const getConfirmaciones = async ({ fechaDesde, fechaHasta, estado, page = 1, lim
   const dataQuery = `
     SELECT
       dcc.id,
-      dcc.fecha_operacion AS "fechaOperacion",
+      dcc.fecha_operacion::text AS "fechaOperacion",
       dcc.estado,
       dcc.confirmado_por AS "confirmadoPor",
       COALESCE(a.nombre, 'Sistema') AS "confirmadoPorNombre",

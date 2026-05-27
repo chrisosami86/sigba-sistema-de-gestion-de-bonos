@@ -1,7 +1,12 @@
 
 const pool = require("../../config/db");
 const { getModalidadExpression } = require("../../shared/helpers/modalidad.helper");
-const { formatBogotaDate, getBogotaDate } = require("../../shared/helpers/timezone.helper");
+const {
+  addDaysToDateString,
+  formatBogotaDate,
+  getBogotaDate,
+  getDayNameFromDateString,
+} = require("../../shared/helpers/timezone.helper");
 
 const VALID_TIPOS = ["almuerzo", "refrigerio"];
 const VALID_DIAS = ["lunes", "martes", "miercoles", "jueves", "viernes"];
@@ -27,16 +32,14 @@ const getAnalytics = async (filters = {}) => {
 
   if (!fechaInicio || !fechaFin) {
     const settingsResult = await pool.query(
-      "SELECT periodo_actual, fecha_inicio, fecha_fin FROM system_settings WHERE id = 1"
+      "SELECT periodo_actual, fecha_inicio::text AS fecha_inicio, fecha_fin::text AS fecha_fin FROM system_settings WHERE id = 1"
     );
     const settings = settingsResult.rows[0] || null;
     if (!fechaInicio) fechaInicio = settings?.fecha_inicio || null;
     if (!fechaFin) fechaFin = settings?.fecha_fin || null;
 
     if (!fechaInicio) {
-      const now = new Date();
-      now.setDate(1);
-      fechaInicio = formatBogotaDate(now);
+      fechaInicio = `${getBogotaDate().slice(0, 8)}01`;
     }
     if (!fechaFin) {
       fechaFin = getBogotaDate();
@@ -48,35 +51,21 @@ const getAnalytics = async (filters = {}) => {
   }
 
   const holidaysResult = await pool.query(
-    "SELECT fecha FROM holidays WHERE fecha BETWEEN $1::date AND $2::date",
+    "SELECT fecha::text AS fecha FROM holidays WHERE fecha BETWEEN $1::date AND $2::date",
     [fechaInicio, fechaFin]
   );
-  const holidayDates = new Set(
-    holidaysResult.rows.map((r) => {
-      const d = r.fecha instanceof Date ? r.fecha : new Date(r.fecha);
-      return d.toISOString().slice(0, 10);
-    })
-  );
+  const holidayDates = new Set(holidaysResult.rows.map((r) => r.fecha));
 
   const validDates = [];
-  const start = new Date(fechaInicio + "T00:00:00");
-  const end = new Date(fechaFin + "T00:00:00");
-  const targetDow = WEEKDAY_TO_DOW[dia];
 
-  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-    if (d.getDay() === targetDow) {
-      const dateStr = d.toISOString().slice(0, 10);
-      if (!holidayDates.has(dateStr)) {
-        validDates.push(dateStr);
-      }
+  for (let dateStr = fechaInicio; dateStr <= fechaFin; dateStr = addDaysToDateString(dateStr, 1)) {
+    if (getDayNameFromDateString(dateStr) === dia && !holidayDates.has(dateStr)) {
+      validDates.push(dateStr);
     }
   }
 
   const diasEncontrados = validDates.length;
-  const festivosExcluidos = holidaysResult.rows.filter((r) => {
-    const d = r.fecha instanceof Date ? r.fecha : new Date(r.fecha);
-    return d.getDay() === targetDow;
-  }).length;
+  const festivosExcluidos = holidaysResult.rows.filter((r) => getDayNameFromDateString(r.fecha) === dia).length;
 
   const baseSubsidiadaQuery = `
     SELECT COUNT(DISTINCT s.id)::int AS total
@@ -127,7 +116,7 @@ const getAnalytics = async (filters = {}) => {
         GROUP BY bd.fecha
       )
       SELECT
-        d::date AS fecha,
+        to_char(d::date, 'YYYY-MM-DD') AS fecha,
         COALESCE(cpd.reclamados, 0)::int AS reclamados,
         GREATEST(${baseSubsidiada} - COALESCE(cpd.reclamados, 0), 0)::int AS inasistencias
       FROM unnest($2::date[]) AS d
@@ -139,7 +128,7 @@ const getAnalytics = async (filters = {}) => {
     const chartResult = await pool.query(chartQuery, chartValues);
 
     chartData = chartResult.rows.map((r) => ({
-      fecha: r.fecha instanceof Date ? r.fecha.toISOString().slice(0, 10) : String(r.fecha).slice(0, 10),
+      fecha: r.fecha,
       reclamados: Number(r.reclamados),
       inasistencias: Number(r.inasistencias),
     }));

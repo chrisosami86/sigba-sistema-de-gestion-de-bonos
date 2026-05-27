@@ -47,7 +47,7 @@ const getAdministrativeAnalytics = async (fechaInicio, fechaFin) => {
       [inicio, fin]
     ),
     pool.query(
-      `SELECT bd.fecha, COUNT(*)::int AS total
+      `SELECT bd.fecha::text AS fecha, COUNT(*)::int AS total
        FROM redenciones r
        JOIN bonos_diarios bd ON bd.id = r.bono_diario_id
        WHERE r.tipo_asignacion = 'ADMINISTRATIVA'
@@ -69,7 +69,7 @@ const getAdministrativeAnalytics = async (fechaInicio, fechaFin) => {
       total: Number(r.total),
     })),
     porPeriodo: porPeriodo.rows.map(r => ({
-      fecha: r.fecha instanceof Date ? r.fecha.toISOString().slice(0, 10) : String(r.fecha).slice(0, 10),
+      fecha: r.fecha,
       total: Number(r.total),
     })),
   };

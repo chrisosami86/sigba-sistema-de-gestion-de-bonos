@@ -1,5 +1,9 @@
 const pool = require("../../config/db");
-const { formatBogotaDate } = require("./timezone.helper");
+const {
+  formatBogotaDate,
+  getDayNameFromDateString,
+  getBogotaNow,
+} = require("./timezone.helper");
 
 const DIAS_SEMANA = [
   "domingo",
@@ -18,8 +22,9 @@ const normalizeDia = (dia) => {
     .replace(/[\u0300-\u036f]/g, "");
 };
 
-const isWorkingDay = async (date = new Date()) => {
-  const diaSemana = DIAS_SEMANA[date.getDay()];
+const isWorkingDay = async (date = getBogotaNow()) => {
+  const dateStr = formatBogotaDate(date);
+  const diaSemana = getDayNameFromDateString(dateStr);
 
   const workingResult = await pool.query(
     "SELECT activo FROM working_days WHERE dia = $1",
@@ -29,8 +34,6 @@ const isWorkingDay = async (date = new Date()) => {
   if (workingResult.rows.length === 0 || !workingResult.rows[0].activo) {
     return { isWorking: false, reason: `El dia ${diaSemana} no es un dia habil` };
   }
-
-  const dateStr = formatBogotaDate(date);
 
   const holidayResult = await pool.query(
     "SELECT id FROM holidays WHERE fecha = $1::date",

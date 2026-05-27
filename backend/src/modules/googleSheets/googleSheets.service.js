@@ -1,4 +1,5 @@
 const { google } = require('googleapis');
+const { getCurrentBogotaMinutes } = require('../../shared/helpers/timezone.helper');
 
 let auth = null;
 
@@ -38,10 +39,7 @@ const getAuth = () => {
 // ============================================================
 
 const resolveSheetIdBySchedule = () => {
-  const now = new Date();
-
-  const totalMinutes =
-    now.getHours() * 60 + now.getMinutes();
+  const totalMinutes = getCurrentBogotaMinutes();
 
   // ------------------------------------------------------------
   // Subsidiado

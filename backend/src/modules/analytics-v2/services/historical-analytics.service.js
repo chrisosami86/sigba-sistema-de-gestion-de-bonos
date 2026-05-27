@@ -6,7 +6,10 @@
  */
 
 const pool = require("../../../config/db");
-const { getBogotaDate } = require("../../../shared/helpers/timezone.helper");
+const {
+  getBogotaDate,
+  getWeekStartDate,
+} = require("../../../shared/helpers/timezone.helper");
 
 const getHistoricalAnalytics = async (fechaInicio, fechaFin) => {
   const today = getBogotaDate();
@@ -15,7 +18,7 @@ const getHistoricalAnalytics = async (fechaInicio, fechaFin) => {
 
   const dailyData = await pool.query(
     `SELECT
-       bd.fecha,
+       bd.fecha::text AS fecha,
        SUM(bd.cantidad_base + bd.cantidad_extra)::int AS total_operativo,
        COALESCE(SUM(bd.cantidad_no_utilizada), 0)::int AS no_utilizados,
        COALESCE(r.reclamados, 0)::int AS reclamados,
@@ -64,7 +67,7 @@ const getHistoricalAnalytics = async (fechaInicio, fechaFin) => {
     const coverage = denominator > 0 ? Number(((rec / denominator) * 100).toFixed(1)) : 0;
 
     return {
-      fecha: r.fecha instanceof Date ? r.fecha.toISOString().slice(0, 10) : String(r.fecha).slice(0, 10),
+      fecha: r.fecha,
       totalOperativo: tot,
       reclamados: rec,
       expirados: exp,
@@ -107,10 +110,7 @@ const getHistoricalAnalytics = async (fechaInicio, fechaFin) => {
 const aggregateByWeek = (daily) => {
   const weeks = {};
   for (const d of daily) {
-    const date = new Date(d.fecha + "T00:00:00");
-    const weekStart = new Date(date);
-    weekStart.setDate(date.getDate() - date.getDay() + 1);
-    const key = weekStart.toISOString().slice(0, 10);
+    const key = getWeekStartDate(d.fecha);
     if (!weeks[key]) weeks[key] = { semana: key, totalOp: 0, recl: 0, exp: 0, noUt: 0, adm: 0, days: 0 };
     weeks[key].totalOp += d.totalOperativo;
     weeks[key].recl += d.reclamados;

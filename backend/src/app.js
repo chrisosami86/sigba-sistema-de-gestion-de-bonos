@@ -4,7 +4,13 @@ const pool = require('./config/db');
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+  origin: [
+    'http://localhost:4200',
+    'https://sigbaunivalleyumbo.vercel.app'
+  ],
+  credentials: true
+}));
 app.use(express.json());
 
 

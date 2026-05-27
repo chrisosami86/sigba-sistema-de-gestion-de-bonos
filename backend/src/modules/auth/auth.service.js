@@ -48,7 +48,7 @@ const ensureDefaultAdmin = async () => {
 
 const loginStudent = async ({ codigo, password }) => {
   if (!codigo || !password) {
-    throw new Error("Codigo y contrasena son obligatorios");
+    throw new Error("Codigo y contraseña son obligatorios");
   }
 
   const query = `
@@ -145,15 +145,15 @@ const loginStudent = async ({ codigo, password }) => {
 
 const changeStudentPassword = async (studentId, { currentPassword, newPassword }) => {
   if (!currentPassword || !newPassword) {
-    throw new Error("Contrasena actual y nueva son obligatorias");
+    throw new Error("Contraseña actual y nueva son obligatorias");
   }
 
   if (newPassword.length < 6) {
-    throw new Error("La nueva contrasena debe tener al menos 6 caracteres");
+    throw new Error("La nueva contraseña debe tener al menos 6 caracteres");
   }
 
   if (String(currentPassword) === String(newPassword)) {
-    throw new Error("La nueva contrasena no puede ser igual a la actual");
+    throw new Error("La nueva contraseña no puede ser igual a la actual");
   }
 
   const result = await pool.query(
@@ -172,7 +172,7 @@ const changeStudentPassword = async (studentId, { currentPassword, newPassword }
     : String(student.codigo) === String(currentPassword);
 
   if (!passwordValid) {
-    throw new Error("Contrasena actual incorrecta");
+    throw new Error("Contraseña actual incorrecta");
   }
 
   const passwordHash = await bcrypt.hash(String(newPassword), SALT_ROUNDS);
@@ -182,7 +182,7 @@ const changeStudentPassword = async (studentId, { currentPassword, newPassword }
     [passwordHash, studentId],
   );
 
-  return { message: "Contrasena actualizada correctamente" };
+  return { message: "Contraseña actualizada correctamente" };
 };
 
 // ============================================================
@@ -191,7 +191,7 @@ const changeStudentPassword = async (studentId, { currentPassword, newPassword }
 
 const loginAdmin = async ({ correo, password }) => {
   if (!correo || !password) {
-    throw new Error("Correo y contrasena son obligatorios");
+    throw new Error("Correo y contraseña son obligatorios");
   }
 
   const result = await pool.query(
@@ -248,15 +248,15 @@ const loginAdmin = async ({ correo, password }) => {
 
 const changeAdminPassword = async (adminId, { currentPassword, newPassword }) => {
   if (!currentPassword || !newPassword) {
-    throw new Error("Contrasena actual y nueva son obligatorias");
+    throw new Error("Contraseña actual y nueva son obligatorias");
   }
 
   if (newPassword.length < 6) {
-    throw new Error("La nueva contrasena debe tener al menos 6 caracteres");
+    throw new Error("La nueva contraseña debe tener al menos 6 caracteres");
   }
 
   if (String(currentPassword) === String(newPassword)) {
-    throw new Error("La nueva contrasena no puede ser igual a la actual");
+    throw new Error("La nueva contraseña no puede ser igual a la actual");
   }
 
   const result = await pool.query(
@@ -273,7 +273,7 @@ const changeAdminPassword = async (adminId, { currentPassword, newPassword }) =>
   const passwordValid = await bcrypt.compare(String(currentPassword), admin.password_hash);
 
   if (!passwordValid) {
-    throw new Error("Contrasena actual incorrecta");
+    throw new Error("Contraseña actual incorrecta");
   }
 
   const passwordHash = await bcrypt.hash(String(newPassword), SALT_ROUNDS);
@@ -283,7 +283,7 @@ const changeAdminPassword = async (adminId, { currentPassword, newPassword }) =>
     [passwordHash, adminId],
   );
 
-  return { message: "Contrasena actualizada correctamente" };
+  return { message: "Contraseña actualizada correctamente" };
 };
 
 // ============================================================
@@ -327,7 +327,7 @@ const recoverStudentPassword = async ({ correo }) => {
 
   const mailResult = await sendMail({
     to: student.correo,
-    subject: "Recuperacion de contrasena SIGBA",
+    subject: "Recuperacion de contraseña SIGBA",
     html: buildRecoveryEmail({
       name: student.nombre,
       codigo: student.codigo,
@@ -337,7 +337,7 @@ const recoverStudentPassword = async ({ correo }) => {
 
   return {
     message: mailResult.sent
-      ? "Se ha enviado una contrasena temporal a tu correo institucional"
+      ? "Se ha enviado una contraseña temporal a tu correo institucional"
       : "Solicitud recibida, pero el servicio de correo no esta disponible. Contacta a bienestar universitario.",
     ...mailResult,
   };
@@ -378,7 +378,7 @@ const recoverAdminPassword = async ({ correo }) => {
 
   const mailResult = await sendMail({
     to: admin.correo,
-    subject: "Recuperacion de contrasena administrador SIGBA",
+    subject: "Recuperacion de contraseña administrador SIGBA",
     html: buildRecoveryEmail({
       name: admin.nombre,
       codigo: admin.correo,
@@ -388,7 +388,7 @@ const recoverAdminPassword = async ({ correo }) => {
 
   return {
     message: mailResult.sent
-      ? "Se ha enviado una contrasena temporal a tu correo"
+      ? "Se ha enviado una contraseña temporal a tu correo"
       : "Solicitud recibida, pero el servicio de correo no esta disponible.",
     ...mailResult,
   };

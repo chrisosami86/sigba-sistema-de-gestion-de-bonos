@@ -92,6 +92,7 @@ CREATE TABLE redenciones (
   tipo_asignacion       VARCHAR(30) NOT NULL DEFAULT 'OPERATIVA',
   admin_id              INTEGER,
   motivo_asignacion     TEXT,
+  modalidad_operacional VARCHAR(30),
   created_at            TIMESTAMP DEFAULT (NOW() AT TIME ZONE 'America/Bogota'),
   updated_at            TIMESTAMP DEFAULT (NOW() AT TIME ZONE 'America/Bogota')
 );

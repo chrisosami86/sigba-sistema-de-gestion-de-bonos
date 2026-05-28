@@ -314,9 +314,10 @@ const createAdminRedencion = async (client, data) => {
       codigo_bono,
       tipo_asignacion,
       admin_id,
-      motivo_asignacion
+      motivo_asignacion,
+      modalidad_operacional
     )
-    VALUES ($1, $2, 'reclamado', ${BOGOTA.timestamp}, $3, $4, $5, $6)
+    VALUES ($1, $2, 'reclamado', ${BOGOTA.timestamp}, $3, $4, $5, $6, 'administrativo')
     RETURNING *
   `;
 

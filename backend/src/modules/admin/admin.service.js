@@ -151,6 +151,7 @@ const getAsignaciones = async ({
       r.admin_id AS "adminId",
       COALESCE(a.nombre, 'Sistema') AS "adminNombre",
       r.motivo_asignacion AS "motivo",
+      r.modalidad_operacional AS "modalidadOperacional",
       r.created_at AS "createdAt"
     FROM redenciones r
     JOIN bonos_diarios bd ON bd.id = r.bono_diario_id
@@ -199,6 +200,7 @@ const getAsignacionById = async (id) => {
       COALESCE(a.nombre, 'Sistema') AS "adminNombre",
       a.correo AS "adminCorreo",
       r.motivo_asignacion AS "motivo",
+      r.modalidad_operacional AS "modalidadOperacional",
       r.created_at AS "createdAt",
       r.updated_at AS "updatedAt",
       bd.cantidad_base AS "cantidadBase",

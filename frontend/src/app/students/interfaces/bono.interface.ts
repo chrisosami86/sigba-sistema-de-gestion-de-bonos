@@ -57,6 +57,7 @@ export interface BonoResumenDiarioRow {
   admin_id?: number | null;
   motivo_asignacion?: string | null;
   modalidad: 'subsidiado' | 'venta_libre' | 'desconocida';
+  modalidad_operacional?: string | null;
   hora_solicitud: string;
   hora_reclamo: string | null;
   expiracion_at: string | null;

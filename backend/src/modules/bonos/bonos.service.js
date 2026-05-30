@@ -109,20 +109,24 @@ const requestBono = async (studentId, tipo) => {
 
     const expiracion = getExpiracion(tipo, estadoSistema.estado);
 
+    const modalidadOperacional = estadoSistema.estado === "subsidiado" ? "subsidiado" : "venta_libre";
+
     const insertQuery = `
       INSERT INTO redenciones (
         student_id,
         bono_diario_id,
         estado,
         hora_solicitud,
-        expiracion_at
+        expiracion_at,
+        modalidad_operacional
       )
       VALUES (
         $1,
         $2,
         $3,
         ${BOGOTA.timestamp},
-        date_trunc('day', ${BOGOTA.timestamp}) + make_interval(hours => $4, mins => $5)
+        date_trunc('day', ${BOGOTA.timestamp}) + make_interval(hours => $4, mins => $5),
+        $6
       )
       RETURNING *
     `;
@@ -133,6 +137,7 @@ const requestBono = async (studentId, tipo) => {
       "reservado",
       expiracion.hours,
       expiracion.minutes,
+      modalidadOperacional,
     ]);
 
     await client.query("COMMIT");
@@ -399,6 +404,7 @@ const getResumenDiario = async (filters = {}) => {
       r.expiracion_at,
       r.codigo_bono,
       r.sincronizado_google,
+      r.modalidad_operacional,
       ${modalidadExpression} AS modalidad
     FROM redenciones r
     JOIN students s

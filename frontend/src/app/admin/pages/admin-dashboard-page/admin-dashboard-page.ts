@@ -842,7 +842,7 @@ export class AdminDashboardPage implements OnInit {
 
           const headStyle = { fillColor: [185, 28, 28], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 };
           const bodyStyle = { fontSize: 7, cellPadding: 2 };
-          const columns = ['Codigo', 'Nombre', 'Beca', 'Programa', 'Estado', 'Hora sol.', 'Hora rec.', 'Cod. bono'];
+          const columns = ['Codigo', 'Nombre', 'Beca', 'Programa', 'Franja', 'Modalidad', 'Estado', 'Hora sol.', 'Hora rec.', 'Cod. bono'];
 
           for (const section of sections) {
             const rows = resumen.rows
@@ -852,6 +852,8 @@ export class AdminDashboardPage implements OnInit {
                 String(r.nombre ?? ''),
                 r.tiene_beca ? 'Si' : 'No',
                 `${r.programa_codigo ?? ''} - ${r.programa_nombre ?? ''}`,
+                r.modalidad === 'venta_libre' ? 'Venta libre' : r.modalidad,
+                r.modalidad_operacional ?? 'Legacy',
                 String(r.estado ?? ''),
                 this.formatTime(r.hora_solicitud),
                 this.formatTime(r.hora_reclamo),

@@ -24,7 +24,7 @@ const getDashboard = async (query = {}) => {
   const today = getBogotaDate();
   const inicio = fechaInicio || today;
   const fin = fechaFin || today;
-  const snapshotDate = fechaSnapshot || today;
+  const snapshotDate = fechaSnapshot || inicio;
 
   const [
     operational,

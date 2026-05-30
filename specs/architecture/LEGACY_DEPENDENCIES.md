@@ -557,3 +557,15 @@ NO a:
 1. reutilización dinámica,
 2. cálculos híbridos,
 3. dashboards operacionales improvisados.
+
+
+# LIMPIEZA LEGACY BONOS DEL DÍA
+
+- Revisar reservados
+- Revisar pendientes
+- Revisar reutilizables
+- Revisar liberados
+- Verificar uso en analytics
+- Verificar uso en cierres
+- Verificar uso en provider
+- Verificar uso en modalidad_operacional

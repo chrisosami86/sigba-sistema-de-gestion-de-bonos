@@ -404,6 +404,7 @@ const getResumenDiario = async (filters = {}) => {
       r.expiracion_at,
       r.codigo_bono,
       r.sincronizado_google,
+      r.modalidad_operacional,
       ${modalidadExpression} AS modalidad
     FROM redenciones r
     JOIN students s

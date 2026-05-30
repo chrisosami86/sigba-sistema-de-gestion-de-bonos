@@ -19,6 +19,7 @@ export interface AdminAsignacionRow {
   adminId: number | null;
   adminNombre: string;
   motivo: string;
+  modalidadOperacional?: string | null;
   createdAt: string;
 }
 

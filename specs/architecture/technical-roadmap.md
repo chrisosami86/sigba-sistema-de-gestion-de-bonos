@@ -113,48 +113,44 @@ SIN:
 # FASE 1 — Estabilización Operativa
 
 ## Prioridad: CRÍTICA
+## Estado: PARCIALMENTE COMPLETADA ✅
 
 Objetivo:
 Garantizar consistencia operativa del sistema actual.
 
 ---
+## Completado
 
-## Incluye
-
-### Concurrencia y race conditions
-
-* bloqueo correcto de cupos
-* transacciones seguras
+### Concurrencia y race conditions ✅
+* bloqueo correcto de cupos (FOR UPDATE)
+* transacciones seguras (READ COMMITTED)
 * validaciones concurrentes
-* prevención de sobreasignación
+* prevención de sobreasignación (unique_student_bono_diario)
+
+### Horarios y expiraciones ✅
+* validación correcta de días hábiles
+* expiraciones automáticas (scheduler 60s, advisory lock 42)
+* cierre correcto de franjas (calcularNoUtilizada)
+* consistencia de estados (expireBonos idempotente)
+
+### Zona horaria ✅ (Fases TZ1 + TZ2)
+* `getBogotaDate()` reemplaza `toISOString().slice(0,10)`
+* `BOGOTA.date` / `BOGOTA.timestamp` reemplazan `CURRENT_DATE` / `NOW()`
+* Timezone unificado: America/Bogota en Node.js y PostgreSQL
+
+### Docker e infraestructura ✅
+* init.sql estable
+* migraciones consistentes (001-005)
+* bootstrap reproducible
+* timezone unificado
+
+## Pendiente
 
 ### Sincronización reactiva
-
 * polling inteligente
 * actualización automática de franjas
 * sincronización entre pestañas
 * actualización inmediata de disponibilidad
-
-### Horarios y expiraciones
-
-* validación correcta de días hábiles
-* expiraciones automáticas
-* cierre correcto de franjas
-* consistencia de estados
-
-### Configuración persistente
-
-* cantidades diarias
-* horarios
-* festivos
-* periodos
-
-### Docker e infraestructura
-
-* init.sql estable
-* migraciones consistentes
-* bootstrap reproducible
-* timezone unificado
 
 ---
 
@@ -297,31 +293,30 @@ Backend:
 # FASE 4 — Reutilización Administrativa
 
 ## Prioridad: MEDIA
+## Estado: COMPLETADA ✅
 
 Objetivo:
 Implementar reutilización manual institucional.
 
 ---
-
-## Incluye
+## Completado ✅
 
 ### Bolsa reutilizable
-
-* trazabilidad
+* trazabilidad (calculateBaseAdministrativa)
 * conteo histórico
 * cierre diario
 
 ### Asignación administrativa
-
 * búsqueda estudiante
 * tipo bono
 * motivo administrativo
-* auditoría
+* auditoría (admin_id, motivo_asignacion, created_at)
 
 ### Franja administrativa
-
 * separada de subsidio
 * separada de venta libre
+* visible en frontend (sección Asignaciones Admin)
+* `modalidad_operacional = 'administrativo'`
 
 ---
 
@@ -455,6 +450,71 @@ Preparar SIGBA para crecimiento futuro estable.
 * onboarding
 * despliegue
 * mantenimiento
+
+---
+
+# Fases Completadas (Post-Roadmap Original)
+
+## FASE TZ1 — Normalización Zona Horaria Node.js (2026-05-27) ✅
+
+**Objetivo:** Corregir `toISOString().slice(0,10)` que devolvía fecha UTC en vez de Colombia.
+
+**Entregables:**
+- `backend/src/shared/helpers/timezone.helper.js` — `getBogotaDate()`, `formatBogotaDate(date)`
+- 15 archivos backend migrados de `toISOString().slice(0,10)` a helper
+- Logs temporales de timezone en `requestBono`, `claimBono`, `expireBonos`, `scheduler`
+
+**Resultado:** Backend usa exclusivamente fecha Colombia para lógica operacional.
+
+## FASE TZ2 — Normalización Zona Horaria PostgreSQL (2026-05-27) ✅
+
+**Objetivo:** Reemplazar `CURRENT_DATE` y `NOW()` operacional por `AT TIME ZONE 'America/Bogota'` explícito.
+
+**Entregables:**
+- `backend/src/shared/helpers/sql-timezone.helper.js` — `BOGOTA.date`, `BOGOTA.timestamp`
+- 14 `CURRENT_DATE` → `${BOGOTA.date}`, 6 `NOW()` → `${BOGOTA.timestamp}`
+- `init.sql` actualizado con nota de zona horaria
+
+**Resultado:** PostgreSQL y Node.js usan la misma referencia temporal explícita.
+
+## FASE M1 — Modalidad Operacional: Columna + Backfill (2026-05-29) ✅
+
+**Objetivo:** Agregar `modalidad_operacional` sin cambiar lógica.
+
+**Entregables:**
+- Migración `005_add_modalidad_operacional.sql`
+- Backfill histórico con misma lógica de `getModalidadExpression()`
+- `requestBono()` y `createAdminRedencion()` persisten la clasificación
+
+## FASE M2 — Modalidad Operacional: Consumo (2026-05-30) ✅
+
+**Objetivo:** `getModalidadExpression()` prioriza `modalidad_operacional` con fallback legacy.
+
+**Entregables:**
+- `modalidad.helper.js` actualizado con doble CASE
+- `administrativo` → `venta_libre` (compatibilidad temporal)
+
+## FASE M3 — Modalidad Operacional: Frontend (2026-05-31) ✅
+
+**Objetivo:** Exponer `modalidad_operacional` en UI sin romper `franja` legacy.
+
+**Entregables:**
+- Columna `Modalidad` en Resumen Diario y Asignaciones Admin
+- Interfaces TypeScript actualizadas
+- Exportación PDF con ambas columnas
+
+## FIX — Operational Snapshot (2026-06-01) ✅
+
+**Bug:** Estado Operacional Diario siempre mostraba fecha actual, ignorando filtro del usuario.
+
+**Fix:** `snapshotDate = fechaSnapshot || inicio` en `analytics-v2.service.js:27`
+
+## DOC — Actualización Documental (2026-06-01) ✅
+
+**Entregables:**
+- `CURRENT_PROJECT_STATUS.md`, `daily-operational-cycle.md`
+- `source-of-truth.md`, `formal-testing.md` completados
+- `invariants.md`, `operational-rules.md`, `critical-flows.md`, `bonos-stable-core.md` actualizados
 
 ---
 

@@ -276,6 +276,46 @@ NO pueden realizarse asignaciones administrativas.
 
 ---
 
+# Modalidad Operacional
+
+## Clasificación Oficial
+
+SIGBA clasifica cada redención en una de tres modalidades operacionales:
+
+* **subsidiado** — Reserva realizada en franja subsidiada (almuerzo 08:00-10:15, refrigerio 17:00-18:29)
+* **venta_libre** — Reserva realizada en franja venta libre (almuerzo 11:30-12:05, refrigerio 18:30-22:00)
+* **administrativo** — Asignación manual por administrador (fuera de franjas, consume expirados + no utilizados)
+
+## Persistencia
+
+La columna `redenciones.modalidad_operacional` almacena la clasificación explícita:
+
+* `requestBono()` persiste `subsidiado` o `venta_libre` según `getEstadoSistema()`
+* `createAdminRedencion()` persiste `administrativo`
+
+## Lectura
+
+`getModalidadExpression()` (modalidad.helper.js) implementa dos niveles:
+
+1. **Prioridad**: Si `modalidad_operacional IS NOT NULL` → usar ese valor
+   - Excepción: `administrativo` → reportar como `venta_libre` (compatibilidad temporal)
+2. **Fallback**: Si `modalidad_operacional IS NULL` → CASE legacy por `hora_solicitud::time`
+
+## Históricos
+
+* Registros anteriores a la migración 005 tienen `modalidad_operacional = NULL`
+* El backfill de la migración 005 clasifica usando la misma lógica del helper
+* Casos no inferibles quedan `NULL` → el fallback legacy los clasifica en runtime
+
+## Transición Futura
+
+En fases posteriores:
+* `modalidad_operacional` reemplazará completamente la inferencia por horario
+* El CASE legacy se retirará de `getModalidadExpression()`
+* `administrativo` se expondrá como modalidad independiente en dashboards
+
+---
+
 # Reutilización
 
 La reutilización automática queda oficialmente eliminada.
@@ -536,7 +576,21 @@ El frontend:
 
 Timezone institucional:
 
-## Colombia
+## Colombia (`America/Bogota`)
+
+### Implementación
+
+* **Node.js**: `process.env.TZ = 'America/Bogota'` en `server.js` antes de cualquier require
+* **Helper JS**: `timezone.helper.js` — `getBogotaDate()`, `formatBogotaDate(date)` usan métodos locales
+* **Helper SQL**: `sql-timezone.helper.js` — `BOGOTA.date` = `(NOW() AT TIME ZONE 'America/Bogota')::date`, `BOGOTA.timestamp`
+* **PostgreSQL**: Conexión con `options: '-c timezone=America/Bogota'` + `AT TIME ZONE` explícito
+
+### Reglas
+
+* `toISOString()` PROHIBIDO en lógica operacional (solo logs/auditoría)
+* `CURRENT_DATE` PROHIBIDO en queries operacionales
+* `NOW()` PROHIBIDO en queries operacionales (solo `updated_at`, `last_login`)
+* Toda comparación de fechas usa `AT TIME ZONE 'America/Bogota'` explícito
 
 ---
 

@@ -631,12 +631,14 @@ Las siguientes áreas evolucionan de forma independiente, sin tocar el core:
 
 | Archivo | LOC | Rol |
 |---------|-----|-----|
-| `backend/src/modules/bonos/bonos.service.js` | 1043 | Núcleo operacional completo |
-| `backend/src/modules/bonos/bonos.admin-assignment.service.js` | 404 | Asignaciones administrativas |
-| `backend/src/modules/system/scheduler.js` | 72 | Scheduler de expiración |
-| `backend/src/modules/system/system.controller.js` | 129 | Health endpoint + config |
+| `backend/src/modules/bonos/bonos.service.js` | 1076 | Núcleo operacional completo |
+| `backend/src/modules/bonos/bonos.admin-assignment.service.js` | 406 | Asignaciones administrativas |
+| `backend/src/modules/system/scheduler.js` | 110 | Scheduler de expiración |
+| `backend/src/modules/system/system.controller.js` | 148 | Health endpoint + config |
 | `backend/src/modules/system/system.routes.js` | 20 | Rutas (incluye `/health`) |
 | `backend/src/shared/helpers/logger.helper.js` | 16 | Logger con flag DEBUG |
+| `backend/src/shared/helpers/timezone.helper.js` | 56 | Fechas Bogotá (getBogotaDate, formatBogotaDate) |
+| `backend/src/shared/helpers/sql-timezone.helper.js` | 24 | SQL explícito AT TIME ZONE 'America/Bogota' |
 | `backend/src/shared/helpers/modalidad.helper.js` | — | Helper de modalidad (franjas) |
 | `backend/src/shared/helpers/workingDay.helper.js` | — | Días hábiles/festivos |
 | `backend/src/config/db.js` | — | Pool PostgreSQL + timezone |
@@ -644,9 +646,13 @@ Las siguientes áreas evolucionan de forma independiente, sin tocar el core:
 | Documento | Contenido |
 |-----------|-----------|
 | `specs/architecture/bonos-stable-core.md` | Este documento — referencia oficial |
-| `specs/architecture/invariants.md` | Invariantes I1-I10 |
-| `specs/architecture/critical-flows.md` | Flujos críticos detallados |
+| `specs/architecture/invariants.md` | Invariantes (dominio, modalidad, timezone, datos) |
+| `specs/architecture/critical-flows.md` | Flujos críticos detallados (con modalidad_operacional) |
 | `specs/architecture/operational-rules.md` | Reglas operativas institucionales |
+| `specs/architecture/daily-operational-cycle.md` | Ciclo operacional diario completo |
+| `specs/architecture/source-of-truth.md` | Fuentes oficiales por dominio |
+| `specs/architecture/formal-testing.md` | Estrategia de pruebas (60+ tests) |
+| `specs/architecture/CURRENT_PROJECT_STATUS.md` | Estado actual del proyecto |
 | `specs/architecture/expireBonos-audit.md` | Auditoría completa de expireBonos |
 | `specs/architecture/cierre-operacional-audit.md` | Auditoría del cierre operacional |
 | `specs/architecture/cierre-operacional-fix.md` | Corrección de capacidad fantasma |

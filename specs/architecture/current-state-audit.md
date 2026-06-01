@@ -258,3 +258,59 @@ Todas las consultas son solo lectura sobre `bonos_diarios`, `redenciones`, `conc
 5. Ejecutar migración `003_daily_closure_confirmations.sql` si no se ha ejecutado
 6. Fase 5 futura: ocultar dashboard legacy cuando V2 esté validado institucionalmente
 7. Fase 6 futura: eliminar reutilización, liberaciones, analytics híbridos, métricas obsoletas
+
+---
+
+**20. ESTABILIZACIÓN POST-AUDITORÍA (2026-05-27 → 2026-06-01)**
+
+### 20.1 Normalización de Zona Horaria (2 fases)
+
+**Fase 1 — Node.js:** Helper `timezone.helper.js` con `getBogotaDate()`, `formatBogotaDate()`. Reemplazo de `new Date().toISOString().slice(0,10)` en 15 archivos. Uso de métodos locales (`getFullYear`, `getMonth`, `getDate`) que respetan `process.env.TZ = 'America/Bogota'`.
+
+**Fase 2 — PostgreSQL:** Helper `sql-timezone.helper.js` con `BOGOTA.date` y `BOGOTA.timestamp`. Reemplazo de 14 `CURRENT_DATE` y 6 `NOW()` operacionales por expresiones explícitas `AT TIME ZONE 'America/Bogota'`. Archivos: `bonos.service.js`, `qr.service.js`, `bonos.admin-assignment.service.js`, `daily-closure.service.js`.
+
+**Archivos modificados:** 16 backend + `init.sql` actualizado con nota timezone.
+
+### 20.2 Modalidad Operacional (3 fases)
+
+**Fase 1 — Columna + Backfill:** Migración `005_add_modalidad_operacional.sql`. Columna `modalidad_operacional VARCHAR(30)` en `redenciones`. Backfill histórico con misma lógica de `getModalidadExpression()`. `init.sql` actualizado. `requestBono()` y `createAdminRedencion()` persisten la clasificación.
+
+**Fase 2 — Consumo:** `getModalidadExpression()` modificado: prioriza `modalidad_operacional` con fallback al CASE legacy. `administrativo` mapeado temporalmente a `venta_libre`. Sin cambios en comportamiento.
+
+**Fase 3 — Frontend:** Columna `Modalidad` expuesta en Resumen Diario y Asignaciones Admin. Interfaces TypeScript actualizadas (`BonoResumenDiarioRow`, `AdminAsignacionRow`). Exportación PDF incluye ambas columnas (Franja + Modalidad). `modalidad_operacional` en SELECT de `getResumenDiario()` y `admin.service.js`.
+
+**Archivos modificados:** 5 backend + 4 frontend + 1 migración + init.sql.
+
+### 20.3 Bug Fix: Operational Snapshot
+
+`analytics-v2.service.js:27`: `snapshotDate` ahora usa `fechaInicio` como fallback (antes usaba `today` ignorando el filtro del usuario). El Dashboard Institucional V2 ahora respeta la fecha seleccionada en Estado Operacional Diario.
+
+### 20.4 Documentación
+
+**Nuevos specs:**
+- `CURRENT_PROJECT_STATUS.md` — Estado completo del proyecto
+- `daily-operational-cycle.md` — Ciclo operacional diario completo
+- `source-of-truth.md` — Completado (antes vacío)
+- `formal-testing.md` — Completado con 60+ tests y checklist pre-merge
+
+**Actualizados:**
+- `invariants.md` — +invariantes de modalidad y timezone
+- `operational-rules.md` — +sección Modalidad Operacional, +timezone explícito
+- `current-state-audit.md` — Esta sección 20
+- `technical-roadmap.md` — Pendiente de actualizar
+- `critical-flows.md` — Pendiente de actualizar
+- `bonos-stable-core.md` — Pendiente de actualizar
+
+### 20.5 Archivos Grandes (Actualizado)
+
+| Archivo | LOC | Cambio desde auditoría |
+|---------|-----|----------------------|
+| `admin-dashboard-page.ts` | 1765 | +689 (crecimiento por analytics charts) |
+| `admin-dashboard-page.html` | 1651 | +695 (crecimiento por secciones nuevas) |
+| `bonos.service.js` | 1076 | +33 (timezone + modalidad_operacional) |
+| `students.service.js` | 624 | Sin cambios |
+| `analytics.service.js` | 405 | Sin cambios significativos |
+
+### 20.6 Estado General
+
+El sistema está **operativamente estable**. Las 3 fases de modalidad y 2 fases de timezone se completaron sin regresiones. La documentación ahora refleja el estado real del código. El backlog priorizado está documentado en `CURRENT_PROJECT_STATUS.md`.

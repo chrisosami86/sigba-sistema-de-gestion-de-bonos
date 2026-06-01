@@ -39,6 +39,8 @@ Estos flujos representan:
 
 * crear redención
 * estado = RESERVADO
+* modalidad_operacional = 'subsidiado'
+* hora_solicitud = timestamp America/Bogota
 * descontar disponibilidad
 * asignar expiracion_at
 
@@ -90,6 +92,8 @@ Horario oficial alcanzado.
 
 * subsidiados pueden participar
 * NO genera asistencia subsidiada
+* modalidad_operacional = 'venta_libre'
+* hora_solicitud = timestamp America/Bogota
 
 ---
 
@@ -124,6 +128,8 @@ Fin de franja operativa.
 * crear redención
 * estado = RECLAMADO
 * tipo_asignacion = ADMINISTRATIVA
+* modalidad_operacional = 'administrativo'
+* hora_reclamo = timestamp America/Bogota
 * consumir base administrativa
 
 ---

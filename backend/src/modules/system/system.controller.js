@@ -27,12 +27,12 @@ const getHealth = async (req, res) => {
     res.json({
       status: "ok",
       uptime,
-      db: dbStatus,
+      database: dbStatus === "ok" ? "connected" : "disconnected",
       scheduler: getSchedulerStatus(),
       timestamp: getBogotaDateTime(),
     });
   } catch (error) {
-    res.status(500).json({ status: "error", message: error.message });
+    res.status(500).json({ status: "error", database: "disconnected" });
   }
 };
 

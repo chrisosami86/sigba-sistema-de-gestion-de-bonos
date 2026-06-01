@@ -9,7 +9,6 @@
     type="text"
     inputmode="numeric"
     class="input w-full"
-    autofocus
     placeholder="Codigo institucional"
     autocomplete="username"
     [value]="codigo()"
@@ -22,7 +21,7 @@
     <input
       [type]="showPassword() ? 'text' : 'password'"
       class="input join-item w-full"
-      placeholder="Contrasena"
+      placeholder="Contraseña"
       autocomplete="current-password"
       [value]="password()"
       (input)="password.set(txtPassword.value)"

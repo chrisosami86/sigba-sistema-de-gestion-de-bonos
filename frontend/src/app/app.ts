@@ -11,7 +11,7 @@ import { environment } from '../environments/environment';
 export class App implements OnInit {
   showSplash = signal(true);
 
-  private readonly MIN_SPLASH_MS = 5000;
+  private readonly MIN_SPLASH_MS = 10000;
   private readonly HEALTH_URL = `${environment.API_URL}/api/system/health`;
 
   ngOnInit() {

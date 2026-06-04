@@ -3,8 +3,8 @@
     <div class="flex flex-col items-center gap-4 md:w-1/2">
       <logo-sigba />
       <div class="text-center">
-        <h1 class="text-3xl font-bold">Administrador SIGBA</h1>
-        <p class="mt-2 text-gray-600">Gestion de bonos del dia, cargas extra y liberacion de expirados.</p>
+        <h1 class="text-3xl font-bold">Administrador SIG<span class="text-red-600">BA</span></h1>
+        <p class="mt-2 text-gray-600">Gestión de bonos del día, cargas extra y asignaciones manuales.</p>
       </div>
     </div>
 
@@ -14,7 +14,7 @@
     >
       <legend class="fieldset-legend">Ingreso administrador</legend>
 
-      <label class="label">Correo electronico</label>
+      <label class="label">Correo electrónico</label>
       <input
         type="text"
         inputmode="email"
@@ -26,18 +26,18 @@
         #txtCorreo
       />
 
-      <label class="label">Contrasena</label>
+      <label class="label">Contraseña</label>
       <div class="join w-full">
         <input
           [type]="showPassword() ? 'text' : 'password'"
           class="input join-item w-full"
-          placeholder="Contrasena"
+          placeholder="Contraseña"
           autocomplete="current-password"
           [value]="password()"
           (input)="password.set(txtPassword.value)"
           #txtPassword
         />
-        <button type="button" class="btn join-item" (click)="showPassword.set(!showPassword())">
+        <button type="button" class="btn join-item bg-gray-400 hover:bg-gray-500 hover:text-white" (click)="showPassword.set(!showPassword())">
           @if (showPassword()) {
             Ocultar
           } @else {
@@ -66,7 +66,7 @@
 
       <div class="divider">o</div>
 
-      <label class="label">Recuperar contrasena</label>
+      <label class="label">Recuperar contraseña</label>
       <input
         type="email"
         class="input w-full"
@@ -92,7 +92,7 @@
         @if (recoveryLoading()) {
           Enviando...
         } @else {
-          Enviar recuperacion
+          Enviar recuperación
         }
       </button>
 
@@ -107,17 +107,17 @@
 @if (showForceChange()) {
 <div class="modal modal-open">
   <div class="modal-box flex flex-col gap-4">
-    <h3 class="text-xl font-bold">Cambio de contrasena obligatorio</h3>
+    <h3 class="text-xl font-bold">Cambio de contraseña obligatorio</h3>
     <p class="text-sm text-gray-600">
-      Es tu primer inicio de sesion como administrador. Por seguridad, debes cambiar tu contrasena antes de continuar.
+      Es tu primer inicio de sesión como administrador. Por seguridad, debes cambiar tu contraseña antes de continuar.
     </p>
 
     <div>
-      <label class="label text-sm font-semibold">Contrasena actual</label>
+      <label class="label text-sm font-semibold">Contraseña actual</label>
       <input
         [type]="forceShowPasswords() ? 'text' : 'password'"
         class="input w-full"
-        placeholder="Contrasena actual"
+        placeholder="Contraseña actual"
         [value]="forceCurrentPassword()"
         (input)="forceCurrentPassword.set(fCurrentPw.value)"
         #fCurrentPw
@@ -125,12 +125,12 @@
     </div>
 
     <div>
-      <label class="label text-sm font-semibold">Nueva contrasena</label>
+      <label class="label text-sm font-semibold">Nueva contraseña</label>
       <div class="join w-full">
         <input
           [type]="forceShowPasswords() ? 'text' : 'password'"
           class="input join-item w-full"
-          placeholder="Minimo 6 caracteres"
+          placeholder="Mínimo 6 caracteres"
           autocomplete="new-password"
           [value]="forceNewPassword()"
           (input)="forceNewPassword.set(fNewPw.value)"
@@ -143,11 +143,11 @@
     </div>
 
     <div>
-      <label class="label text-sm font-semibold">Confirmar nueva contrasena</label>
+      <label class="label text-sm font-semibold">Confirmar nueva contraseña</label>
       <input
         [type]="forceShowPasswords() ? 'text' : 'password'"
         class="input w-full"
-        placeholder="Repite la nueva contrasena"
+        placeholder="Repite la nueva contraseña"
         autocomplete="new-password"
         [value]="forceConfirmPassword()"
         (input)="forceConfirmPassword.set(fConfirmPw.value)"
@@ -171,7 +171,7 @@
       @if (forceLoading()) {
         Cambiando...
       } @else {
-        Cambiar contrasena
+        Cambiar contraseña
       }
     </button>
   </div>

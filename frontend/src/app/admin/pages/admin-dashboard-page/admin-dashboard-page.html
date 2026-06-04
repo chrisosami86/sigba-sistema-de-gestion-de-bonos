@@ -32,11 +32,11 @@
       <button class="btn justify-start"
         [class.btn-error]="selectedModule() === 'asignaciones'"
         [class.text-white]="selectedModule() === 'asignaciones'"
-        (click)="selectedModule.set('asignaciones'); refreshBaseAdministrativa(); refreshAsignaciones(); sidebarOpen.set(false)">Asignaciones admin</button>
+        (click)="selectedModule.set('asignaciones'); refreshBaseAdministrativa(); refreshAsignaciones(); sidebarOpen.set(false)">Asignaciones administrativas</button>
       <button class="btn justify-start"
         [class.btn-error]="selectedModule() === 'proveedor'"
         [class.text-white]="selectedModule() === 'proveedor'"
-        (click)="selectedModule.set('proveedor'); refreshProviderResumen(); sidebarOpen.set(false)">Oper. proveedor</button>
+        (click)="selectedModule.set('proveedor'); refreshProviderResumen(); sidebarOpen.set(false)">Operación proveedor</button>
       <button class="btn justify-start"
         [class.btn-error]="selectedModule() === 'gestion_estudiantes'"
         [class.text-white]="selectedModule() === 'gestion_estudiantes'"
@@ -67,7 +67,7 @@
           </svg>
         </button>
         <div>
-          <p class="text-sm font-semibold text-gray-500">Bienestar universitario</p>
+          <p class="text-sm font-semibold text-gray-500">Bienestar Universitario</p>
           <h2 class="text-2xl font-bold">{{ admin()?.nombre }}</h2>
           <p class="text-sm text-gray-600 hidden xl:block">{{ admin()?.correo }}</p>
           <p class="text-sm text-gray-600"> {{ admin()?.telefono }}</p>
@@ -84,8 +84,8 @@
       <div class="flex items-center gap-2">
         <svg class="w-5 h-5 text-amber-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
         <div>
-          <p class="text-sm font-bold text-amber-800">Periodo academico cerrado</p>
-          <p class="text-xs text-amber-700">SIGBA se encuentra en modo historico hasta configurar un nuevo periodo.</p>
+          <p class="text-sm font-bold text-amber-800">Periodo académico cerrado</p>
+          <p class="text-xs text-amber-700">SIGBA se encuentra en modo histórico hasta configurar un nuevo periodo.</p>
     </div>
   </div>
 </div>
@@ -139,12 +139,12 @@
               </select>
             </div>
             <div class="w-36">
-              <label class="label text-xs font-semibold pb-1">Dia subsidiado</label>
+              <label class="label text-xs font-semibold pb-1">Día subsidiado</label>
               <select class="select select-sm w-full" (change)="setAnalyticsDia(analyticsDiaSelect.value)" #analyticsDiaSelect>
                 <option value="" [selected]="!analyticsFiltroDia()">Seleccionar</option>
                 <option value="lunes" [selected]="analyticsFiltroDia() === 'lunes'">Lunes</option>
                 <option value="martes" [selected]="analyticsFiltroDia() === 'martes'">Martes</option>
-                <option value="miercoles" [selected]="analyticsFiltroDia() === 'miercoles'">Miercoles</option>
+                <option value="miercoles" [selected]="analyticsFiltroDia() === 'miercoles'">Miércoles</option>
                 <option value="jueves" [selected]="analyticsFiltroDia() === 'jueves'">Jueves</option>
                 <option value="viernes" [selected]="analyticsFiltroDia() === 'viernes'">Viernes</option>
               </select>
@@ -173,12 +173,12 @@
           <!-- KPI Principal: Inasistencia -->
           <section class="mt-4">
             <div class="border-base-300 rounded-box border bg-gradient-to-r from-red-50 to-white p-6">
-              <p class="text-sm font-semibold text-gray-600 uppercase tracking-wide">Indice general de inasistencia subsidiada</p>
+              <p class="text-sm font-semibold text-gray-600 uppercase tracking-wide">Índice general de inasistencia subsidiada</p>
               <div class="mt-2 flex items-end gap-4">
                 <p class="text-6xl font-extrabold" [class.text-green-600]="data.kpiPrincipal.indiceInasistencia <= 20" [class.text-yellow-600]="data.kpiPrincipal.indiceInasistencia > 20 && data.kpiPrincipal.indiceInasistencia <= 40" [class.text-red-600]="data.kpiPrincipal.indiceInasistencia > 40">{{ data.kpiPrincipal.indiceInasistencia }}%</p>
                 <p class="text-sm text-gray-500 pb-1">{{ data.kpiPrincipal.inasistencias }} inasistencias / {{ data.kpiPrincipal.asistenciasEsperadas }} esperadas</p>
               </div>
-              <p class="text-xs text-gray-400 mt-1">{{ data.filtros.diasEncontrados }} dias {{ data.filtros.dia }} en el rango ({{ data.filtros.festivosExcluidos }} festivos excluidos)</p>
+              <p class="text-xs text-gray-400 mt-1">{{ data.filtros.diasEncontrados }} días {{ data.filtros.dia }} en el rango ({{ data.filtros.festivosExcluidos }} festivos excluidos)</p>
             </div>
           </section>
 
@@ -190,9 +190,9 @@
               <p class="text-xs text-gray-400">estudiantes con subsidio {{ data.filtros.dia }}</p>
             </div>
             <div class="border-base-300 rounded-box border bg-white p-4">
-              <p class="text-xs font-semibold text-gray-500">Dias encontrados</p>
+              <p class="text-xs font-semibold text-gray-500">Días encontrados</p>
               <p class="text-2xl font-bold text-blue-600">{{ data.kpisSecundarios.diasEncontrados }}</p>
-              <p class="text-xs text-gray-400">dias {{ data.filtros.dia }} en el rango</p>
+              <p class="text-xs text-gray-400">días {{ data.filtros.dia }} en el rango</p>
             </div>
             <div class="border-base-300 rounded-box border bg-white p-4">
               <p class="text-xs font-semibold text-gray-500">Asistencias esperadas</p>
@@ -243,10 +243,10 @@
                 <table class="table table-xs">
                   <thead>
                     <tr>
-                      <th>Codigo</th>
+                      <th>Código</th>
                       <th>Nombre</th>
                       <th>Programa</th>
-                      <th>Dias Hab.</th>
+                      <th>Días Hab.</th>
                       <th>Recl.</th>
                       <th>Inasist.</th>
                       <th>% Asist.</th>
@@ -287,7 +287,7 @@
                   <table class="table table-xs">
                     <thead>
                       <tr>
-                        <th>Codigo</th>
+                        <th>Código</th>
                         <th>Nombre</th>
                         <th>Recl.</th>
                         <th>% Asist.</th>
@@ -310,7 +310,7 @@
           }
 
           <!-- Venta Libre (colapsable, secundaria) -->
-          <section class="mt-4">
+          <!-- legacy <section class="mt-4">
             <div class="border-base-300 rounded-box border bg-gray-50 p-4">
               <details [attr.open]="showVentaLibre() ? '' : null" (toggle)="showVentaLibre.set(!showVentaLibre())">
                 <summary class="cursor-pointer text-sm font-semibold text-gray-500 select-none">Venta libre</summary>
@@ -323,13 +323,13 @@
                 </div>
               </details>
             </div>
-          </section>
+          </section> -->
 
           <!-- Reutilizacion (colapsable, secundaria) -->
-          <section class="mt-4">
+          <!-- legacy <section class="mt-4">
             <div class="border-base-300 rounded-box border bg-gray-50 p-4">
               <details [attr.open]="showReutilizacion() ? '' : null" (toggle)="showReutilizacion.set(!showReutilizacion())">
-                <summary class="cursor-pointer text-sm font-semibold text-gray-500 select-none">Reutilizacion de cupos</summary>
+                <summary class="cursor-pointer text-sm font-semibold text-gray-500 select-none">Reutilización de cupos</summary>
                 <p class="text-xs text-gray-400 mt-1 mb-3">Cupos expirados y no utilizados que pueden liberarse.</p>
                 <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
                   <div><p class="text-xs text-gray-500">Total expirados</p><p class="text-xl font-bold">{{ data.reutilizacion.totalExpirados }}</p></div>
@@ -339,7 +339,7 @@
                 </div>
               </details>
             </div>
-          </section>
+          </section> -->
         } @else {
           <div class="mt-6 flex flex-col items-center gap-2 py-12">
             <p class="text-gray-400">Selecciona tipo de bono, dia y rango de fechas para ver las analiticas.</p>
@@ -350,7 +350,7 @@
       <!-- ==================== BONOS DEL DIA ==================== -->
       @if (selectedModule() === 'bonos') {
         <div class="flex items-center justify-between gap-3">
-          <h2 class="text-2xl font-bold">Bonos del dia</h2>
+          <h2 class="text-2xl font-bold">Bonos del día</h2>
           <button class="btn" (click)="refreshDisponibilidad()" [disabled]="loading()">Actualizar</button>
         </div>
         <div class="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
@@ -388,7 +388,7 @@
               </div>
               <div class="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-2">
                 <div class="rounded-box bg-gray-100 p-3">
-                  <h4 class="font-bold">Cantidad base del dia</h4>
+                  <h4 class="font-bold">Cantidad base del día</h4>
                   <p class="text-sm text-gray-600">Define el cupo oficial diario para este tipo de bono.</p>
                   <div class="mt-3 flex gap-2">
                     <input type="number" min="1" class="input w-full" placeholder="Cantidad"
@@ -402,7 +402,7 @@
                 </div>
                 <div class="rounded-box bg-gray-100 p-3">
                   <h4 class="font-bold">Carga extra</h4>
-                  <p class="text-sm text-gray-600">Aumenta el total autorizado del dia.</p>
+                  <p class="text-sm text-gray-600">Aumenta el total autorizado del día.</p>
                   <div class="mt-3 flex gap-2">
                     <input type="number" min="1" class="input w-full" placeholder="Cantidad"
                       (input)="setExtraCantidad(tipo, extraInput.value)" #extraInput />
@@ -435,7 +435,7 @@
         <div class="flex items-center justify-between gap-3">
           <div>
             <h2 class="text-2xl font-bold">Asignaciones administrativas</h2>
-            <p class="text-sm text-gray-500">Gestion institucional de bonos. Cada asignacion queda auditada.</p>
+            <p class="text-sm text-gray-500">Gestión institucional de bonos. Cada asignación queda auditada.</p>
           </div>
           <button class="btn" (click)="refreshBaseAdministrativa()" [disabled]="loading()">Actualizar</button>
         </div>
@@ -452,9 +452,9 @@
                 <span class="text-xs text-gray-400">disponibles</span>
               </div>
               <div class="mt-2 flex gap-3 text-xs text-gray-500">
-                <span>{{ baseAdministrativa()[tipo]?.expirados ?? 0 }} exp</span>
-                <span>{{ baseAdministrativa()[tipo]?.noUtilizados ?? 0 }} no ut</span>
-                <span class="text-indigo-600 font-semibold">{{ baseAdministrativa()[tipo]?.administrativos ?? 0 }} asig</span>
+                <span>{{ baseAdministrativa()[tipo]?.expirados ?? 0 }} expirados</span>
+                <span>{{ baseAdministrativa()[tipo]?.noUtilizados ?? 0 }} no utilizados</span>
+                <span class="text-indigo-600 font-semibold">{{ baseAdministrativa()[tipo]?.administrativos ?? 0 }} asignaciones</span>
               </div>
             </div>
           }
@@ -462,11 +462,11 @@
 
         <!-- Formulario -->
         <section class="mt-4 border-base-300 rounded-box border bg-white p-4">
-          <h3 class="text-lg font-bold mb-3">Registrar asignacion</h3>
+          <h3 class="text-lg font-bold mb-3">Registrar asignación</h3>
           <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <label class="form-control">
-              <span class="label-text">Codigo estudiante</span>
-              <input class="input input-bordered" type="text" placeholder="Buscar por codigo"
+              <span class="label-text">Código estudiante</span>
+              <input class="input input-bordered" type="text" placeholder="Buscar por código"
                 [value]="asignacionCodigo()"
                 [disabled]="asignacionSaving()"
                 (input)="buscarEstudianteAsignacion(asignacionCodigoInput.value)" #asignacionCodigoInput />
@@ -482,14 +482,14 @@
             </label>
             <label class="form-control">
               <span class="label-text">Código bono</span>
-              <input class="input input-bordered" type="number" min="1" placeholder="Numero del bono"
+              <input class="input input-bordered" type="number" min="1" placeholder="Número del bono"
                 [value]="asignacionCodigoBono()"
                 [disabled]="asignacionSaving()"
                 (input)="setAsignacionCodigoBono(asignacionCodigoBonoInput.value)" #asignacionCodigoBonoInput />
             </label>
             <label class="form-control">
               <span class="label-text">Motivo</span>
-              <input class="input input-bordered" type="text" placeholder="Justificacion de la asignacion"
+              <input class="input input-bordered" type="text" placeholder="Justificación de la asignación"
                 [value]="asignacionMotivo()"
                 [disabled]="asignacionSaving()"
                 (input)="setAsignacionMotivo(asignacionMotivoInput.value)" #asignacionMotivoInput />
@@ -513,7 +513,7 @@
                   <p class="text-sm text-gray-500">Estudiante no encontrado</p>
                 </div>
               } @else {
-                <p class="text-sm text-gray-400">Ingresa un codigo de estudiante</p>
+                <p class="text-sm text-gray-400">Ingresa un código de estudiante</p>
               }
             </div>
             <button class="btn bg-red-600 text-white hover:bg-red-700"
@@ -524,7 +524,7 @@
                 <span class="loading loading-spinner loading-sm"></span>
                 Asignando...
               } @else {
-                Registrar asignacion
+                Registrar asignación
               }
             </button>
           </div>
@@ -554,7 +554,7 @@
             <input type="date" class="input input-sm input-bordered w-36"
               [value]="asignacionesFiltroFechaHasta()"
               (input)="asignacionesFiltroFechaHasta.set(fechaHastaInput.value)" #fechaHastaInput />
-            <input type="text" class="input input-sm input-bordered w-28" placeholder="Codigo bono"
+            <input type="text" class="input input-sm input-bordered w-28" placeholder="Código bono"
               [value]="asignacionesFiltroCodigoBono()"
               (input)="asignacionesFiltroCodigoBono.set(codigoFiltroInput.value)" #codigoFiltroInput />
             <button class="btn btn-sm" (click)="applyAsignacionesFilters()">Filtrar</button>
@@ -570,7 +570,7 @@
               <div class="flex flex-col items-center gap-3 py-12 text-gray-400">
                 <svg class="w-12 h-12 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                 <p class="text-sm font-semibold">Sin asignaciones administrativas</p>
-                <p class="text-xs">Las asignaciones realizadas apareceran aqui con trazabilidad completa.</p>
+                <p class="text-xs">Las asignaciones realizadas aparecerán aquí con trazabilidad completa.</p>
               </div>
             } @else {
               <div class="overflow-x-auto">
@@ -635,8 +635,8 @@
       @if (selectedModule() === 'proveedor') {
         <div class="flex items-center justify-between gap-3">
           <div>
-            <h2 class="text-2xl font-bold">Operacion proveedor</h2>
-            <p class="text-sm text-gray-500">Conciliacion diaria entre SIGBA y el proveedor externo.</p>
+            <h2 class="text-2xl font-bold">Operación Proveedor</h2>
+            <p class="text-sm text-gray-500">Conciliación diaria entre SIGBA y el proveedor externo.</p>
           </div>
           <button class="btn" (click)="refreshProviderResumen()" [disabled]="providerLoading()">Actualizar</button>
         </div>
@@ -676,7 +676,7 @@
                   [class.border-red-300]="resumen[tipo].ultimaConciliacion?.estado === 'DIFERENCIA_CRITICA'"
                   [class.border-yellow-300]="resumen[tipo].ultimaConciliacion?.estado === 'DIFERENCIA_MENOR'"
                   [class.border-gray-300]="!resumen[tipo].ultimaConciliacion">
-                  <p class="text-xs font-semibold text-gray-500 mb-2">Ultima conciliacion</p>
+                  <p class="text-xs font-semibold text-gray-500 mb-2">Ultima conciliación</p>
                   @if (resumen[tipo].ultimaConciliacion; as conc) {
                     <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
                       <div><p class="text-xs text-gray-500">Proveedor</p><p class="text-base font-bold">{{ conc.cantidad_proveedor }}</p></div>
@@ -705,7 +705,7 @@
                   </label>
                   <label class="form-control sm:col-span-3">
                     <span class="label-text text-xs">Observaciones</span>
-                    <input type="text" class="input input-sm input-bordered" placeholder="Notas de conciliacion"
+                    <input type="text" class="input input-sm input-bordered" placeholder="Notas de conciliación"
                       [disabled]="providerSaving()"
                       (input)="providerObservaciones.set(obsInput.value)" #obsInput />
                   </label>
@@ -861,7 +861,7 @@
               <option value="reclamado">Reclamado</option>
               <option value="expirado">Expirado</option>
             </select>
-            <input type="text" class="input w-full" placeholder="Buscar codigo"
+            <input type="text" class="input w-full" placeholder="Buscar código"
               (input)="buscarCodigo(codigoInput.value)" #codigoInput />
             <button class="btn" (click)="limpiarFiltros()">Limpiar</button>
           </div>
@@ -869,8 +869,8 @@
             <table class="table table-sm">
               <thead>
                 <tr>
-                  <th>Codigo</th><th>Nombre</th><th>Beca</th><th>Tipo</th><!-- legacy <th>Franja</th>--><th>Modalidad</th><th>Estado</th>
-                  <th>Solicitud</th><th>Reclamo</th><th>Codigo bono</th><th>Accion</th>
+                  <th>Código</th><th>Nombre</th><th>Beca</th><th>Tipo</th><!-- legacy <th>Franja</th>--><th>Modalidad</th><th>Estado</th>
+                  <th>Solicitud</th><th>Reclamo</th><th>Código bono</th><th>Accion</th>
                 </tr>
               </thead>
               <tbody>
@@ -904,7 +904,7 @@
                     <td>{{ formatTime(row.hora_reclamo) }}</td>
                     <td>
                       @if (row.estado === 'reservado') {
-                        <input type="number" class="input input-sm w-24" placeholder="Codigo"
+                        <input type="number" class="input input-sm w-24" placeholder="Código"
                           [value]="codigosBonos()[row.id] || ''"
                           (input)="setCodigoBono(row.id, codigoBonoInput.value)" #codigoBonoInput />
                       } @else if (row.codigo_bono) {
@@ -940,14 +940,14 @@
       @if (selectedModule() === 'base_de_datos') {
         <div>
           <h2 class="text-2xl font-bold">Carga de estudiantes</h2>
-          <p class="text-sm text-gray-600">Usa las plantillas para normalizar la base enviada por secretaria academica antes de cargarla.</p>
+          <p class="text-sm text-gray-600">Usa las plantillas para normalizar la base enviada por secretaria académica antes de cargarla.</p>
         </div>
         <section class="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
           <div class="border-base-300 rounded-box border bg-white p-4">
             <h3 class="text-xl font-bold">Base general de estudiantes</h3>
-            <p class="mt-2 text-sm text-gray-600">Crea estudiantes nuevos o actualiza datos existentes por codigo. Los estudiantes quedan como no subsidiados hasta cargar la base de subsidios.</p>
+            <p class="mt-2 text-sm text-gray-600">Crea estudiantes nuevos o actualiza datos existentes por código. Los estudiantes quedan como no subsidiados hasta cargar la base de subsidios.</p>
             <div class="mt-4 flex flex-col gap-3">
-              <button class="btn" (click)="descargarPlantillaEstudiantes()">Descargar plantilla estudiantes</button>
+              <button class="btn" (click)="descargarPlantillaEstudiantes()">Descargar plantilla de estudiantes</button>
               <input type="file" class="file-input w-full" accept=".xlsx,.xls"
                 [disabled]="isHistoricalMode()"
                 (change)="setStudentsFile(studentsFileInput.files)" #studentsFileInput />
@@ -959,7 +959,7 @@
           </div>
           <div class="border-base-300 rounded-box border bg-white p-4">
             <h3 class="text-xl font-bold">Estudiantes subsidiados</h3>
-            <p class="mt-2 text-sm text-gray-600">Busca estudiantes existentes por codigo, los marca como subsidiados, asigna beca restaurante y reemplaza sus dias de subsidio.</p>
+            <p class="mt-2 text-sm text-gray-600">Busca estudiantes existentes por código, los marca como subsidiados, asigna beca restaurante y reemplaza sus días de subsidio.</p>
             <div class="mt-4 flex flex-col gap-3">
               <button class="btn" (click)="descargarPlantillaSubsidiados()">Descargar plantilla subsidiados</button>
               <input type="file" class="file-input w-full" accept=".xlsx,.xls"
@@ -1027,7 +1027,7 @@
               <option value="true">Activo</option>
               <option value="false">Inactivo</option>
             </select>
-            <input type="text" class="input w-full" placeholder="Buscar por codigo"
+            <input type="text" class="input w-full" placeholder="Buscar por código"
               (input)="buscarEstudianteCodigo(estFiltroCodigo.value)" #estFiltroCodigo />
             <button class="btn" (click)="limpiarFiltrosEstudiantes()">Limpiar</button>
           </div>
@@ -1035,7 +1035,7 @@
             <table class="table table-sm">
               <thead>
                 <tr>
-                  <th>Codigo</th><th>Nombre</th><th>Tipo</th><th>Dias</th><th>Beca</th>
+                  <th>Código</th><th>Nombre</th><th>Tipo</th><th>Días</th><th>Beca</th>
                   <th>Activo</th><th>Periodo</th><th>Acciones</th>
                 </tr>
               </thead>
@@ -1109,22 +1109,22 @@
         <div class="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
 
           <section class="border-base-300 rounded-box border bg-white p-4 xl:col-span-2">
-            <h3 class="text-xl font-bold">Configuracion del periodo</h3>
-            <p class="text-sm text-gray-600">Define el periodo academico activo, rango de fechas y dias habiles.</p>
+            <h3 class="text-xl font-bold">Configuración del periodo</h3>
+            <p class="text-sm text-gray-600">Define el periodo académico activo, rango de fechas y días habiles.</p>
 
             <div class="mt-3 alert alert-warning bg-amber-50 border border-amber-300 text-amber-800">
               <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
               <div>
-                <p class="text-xs font-bold">Los cambios aplicaran unicamente para operacion futura.</p>
-                <p class="text-xs">Los historicos y cierres previos no seran modificados.</p>
+                <p class="text-xs font-bold">Los cambios aplicaran únicamente para operación futura.</p>
+                <p class="text-xs">Los históricos y cierres previos no serán modificados.</p>
               </div>
             </div>
             @if (configPeriodoLoading()) {
-              <p class="text-sm text-gray-500 mt-4">Cargando configuracion...</p>
+              <p class="text-sm text-gray-500 mt-4">Cargando configuración...</p>
             } @else {
               <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
                 <div>
-                  <label class="label text-sm font-semibold">Periodo academico</label>
+                  <label class="label text-sm font-semibold">Periodo académico</label>
                   <select class="select w-full" (change)="configPeriodo.set(configPeriodoSelect.value)" #configPeriodoSelect>
                     <option value="" [selected]="!configPeriodo()">Seleccionar periodo</option>
                     @for (p of periodosDisponibles(); track p) {
@@ -1144,7 +1144,7 @@
                 </div>
               </div>
               <div class="mt-4">
-                <h4 class="font-bold text-sm mb-2">Dias habiles</h4>
+                <h4 class="font-bold text-sm mb-2">Días habiles</h4>
                 <div class="flex flex-wrap gap-2">
                   @for (d of workingDays(); track d.id) {
                     <label class="flex cursor-pointer items-center gap-1">
@@ -1155,7 +1155,7 @@
                 </div>
               </div>
               <div class="mt-4 border-t border-gray-200 pt-4">
-                <h4 class="font-bold text-sm mb-2">Festivos y dias no habiles</h4>
+                <h4 class="font-bold text-sm mb-2">Festivos y días no habiles</h4>
                 <div class="flex flex-wrap gap-2 mb-2">
                   @for (h of holidays(); track h.id) {
                     <span class="badge badge-error gap-1">
@@ -1172,8 +1172,8 @@
                       (input)="newHolidayFecha.set(newHolidayFechaInput.value)" #newHolidayFechaInput />
                   </div>
                   <div>
-                    <label class="label text-xs font-semibold">Descripcion</label>
-                    <input type="text" class="input input-sm w-48" placeholder="Ej: Dia del trabajo"
+                    <label class="label text-xs font-semibold">Descripción</label>
+                    <input type="text" class="input input-sm w-48" placeholder="Ej: Día del trabajo"
                       [value]="newHolidayDescripcion()"
                       (input)="newHolidayDescripcion.set(newHolidayDescInput.value)" #newHolidayDescInput />
                   </div>
@@ -1192,7 +1192,7 @@
               <!-- Card resumen de configuracion actual -->
               @if (configResumenVisible()) {
                 <div class="mt-6 border-t border-gray-200 pt-4">
-                  <h4 class="font-bold text-sm mb-3 text-green-700">Configuracion actual del sistema</h4>
+                  <h4 class="font-bold text-sm mb-3 text-green-700">Configuración actual del sistema</h4>
                   <div class="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
                     <div class="rounded-box bg-green-50 p-3">
                       <p class="text-xs font-semibold text-gray-500">Periodo activo</p>
@@ -1207,11 +1207,11 @@
                       <p class="text-lg font-bold">{{ systemSettings()?.fecha_fin || '-' }}</p>
                     </div>
                     <div class="rounded-box bg-green-50 p-3">
-                      <p class="text-xs font-semibold text-gray-500">Ultima actualizacion</p>
+                      <p class="text-xs font-semibold text-gray-500">Ultima actualización</p>
                       <p class="text-sm font-bold text-gray-600">{{ configLastUpdate() }}</p>
                     </div>
                     <div class="rounded-box bg-green-50 p-3 md:col-span-2">
-                      <p class="text-xs font-semibold text-gray-500">Dias habiles activos</p>
+                      <p class="text-xs font-semibold text-gray-500">Días habiles activos</p>
                       <div class="flex flex-wrap gap-1 mt-1">
                         @for (d of workingDays(); track d.id) {
                           @if (d.activo) {
@@ -1232,7 +1232,7 @@
                       </div>
                     </div>
                     <div class="rounded-box bg-green-50 p-3 md:col-span-2">
-                      <p class="text-xs font-semibold text-gray-500">Horarios de operacion</p>
+                      <p class="text-xs font-semibold text-gray-500">Horarios de operación</p>
                       <div class="grid grid-cols-1 gap-1 mt-1 text-xs md:grid-cols-2">
                         <div>
                           <p class="font-semibold">Almuerzo</p>
@@ -1259,8 +1259,8 @@
       @if (selectedModule() === 'cierre_diario') {
         <div class="flex items-center justify-between gap-3">
           <div>
-            <h2 class="text-2xl font-bold">Confirmacion de cierre diario</h2>
-            <p class="text-sm text-gray-500">Confirmacion institucional del cierre operacional diario.</p>
+            <h2 class="text-2xl font-bold">Confirmación de cierre diario</h2>
+            <p class="text-sm text-gray-500">Confirmación institucional del cierre operacional diario.</p>
           </div>
           <button class="btn" (click)="loadCierreResumen(); refreshCierreConfirmaciones()" [disabled]="cierreLoading()">Actualizar</button>
         </div>
@@ -1295,7 +1295,7 @@
                     [class.border-green-300]="conc.estado === 'CONCILIADO'"
                     [class.border-red-300]="conc.estado === 'DIFERENCIA_CRITICA'"
                     [class.border-yellow-300]="conc.estado === 'DIFERENCIA_MENOR'">
-                    <p class="text-xs font-semibold text-gray-500 mb-2">Conciliacion proveedor</p>
+                    <p class="text-xs font-semibold text-gray-500 mb-2">Conciliación proveedor</p>
                     <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
                       <div><p class="text-xs text-gray-500">Proveedor</p><p class="text-base font-bold">{{ conc.cantidad_proveedor }}</p></div>
                       <div><p class="text-xs text-gray-500">Diferencia</p><p class="text-base font-bold"
@@ -1317,7 +1317,7 @@
           <section class="mt-4 border-base-300 rounded-box border bg-white p-4">
             <div class="flex items-center justify-between gap-3 mb-3">
               <div>
-                <h3 class="text-lg font-bold">Confirmacion institucional</h3>
+                <h3 class="text-lg font-bold">Confirmación institucional</h3>
                 @if (resumen.confirmacion) {
                   <p class="text-xs mt-1">
                     Estado:
@@ -1336,7 +1336,7 @@
               <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <label class="form-control sm:col-span-2">
                   <span class="label-text text-xs">Observaciones (opcional)</span>
-                  <input type="text" class="input input-bordered input-sm" placeholder="Notas de confirmacion"
+                  <input type="text" class="input input-bordered input-sm" placeholder="Notas de confirmación"
                     [value]="cierreObservaciones()"
                     (input)="cierreObservaciones.set(obsCierreInput.value)" #obsCierreInput />
                 </label>
@@ -1386,7 +1386,7 @@
                       <th>Fecha</th>
                       <th>Estado</th>
                       <th>Confirmado por</th>
-                      <th>Fecha confirmacion</th>
+                      <th>Fecha confirmación</th>
                       <th>Observaciones</th>
                     </tr>
                   </thead>
@@ -1431,7 +1431,7 @@
     <h3 class="text-xl font-bold">Editar estudiante</h3>
     <div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
       <div>
-        <label class="label text-sm font-semibold">Codigo</label>
+        <label class="label text-sm font-semibold">Código</label>
         <input type="text" class="input w-full" [value]="editCodigo()"
           (input)="editCodigo.set(editCodigoInput.value)" #editCodigoInput />
       </div>
@@ -1444,7 +1444,7 @@
         </select>
       </div>
       <div>
-        <label class="label text-sm font-semibold">Numero de documento</label>
+        <label class="label text-sm font-semibold">Número de documento</label>
         <input type="text" class="input w-full" [value]="editNumeroDocumento()"
           (input)="editNumeroDocumento.set(editNumDocInput.value)" #editNumDocInput />
       </div>
@@ -1454,7 +1454,7 @@
           (input)="editNombre.set(editNombreInput.value)" #editNombreInput />
       </div>
       <div>
-        <label class="label text-sm font-semibold">Correo electronico</label>
+        <label class="label text-sm font-semibold">Correo electrónico</label>
         <input type="email" class="input w-full" [value]="editCorreo()"
           (input)="editCorreo.set(editCorreoInput.value)" #editCorreoInput />
       </div>
@@ -1475,7 +1475,7 @@
         </select>
       </div>
       <div>
-        <label class="label text-sm font-semibold">Periodo academico</label>
+        <label class="label text-sm font-semibold">Periodo académico</label>
         <select class="select w-full" (change)="editPeriodo.set(editPeriodoSelect.value)" #editPeriodoSelect>
           <option value="" [selected]="!editPeriodo()">Seleccionar periodo</option>
           @for (p of periodosDisponibles(); track p) {
@@ -1492,7 +1492,7 @@
           <span class="label-text text-sm font-semibold">Tiene beca restaurante</span>
         </label>
         <div class="mt-3">
-          <p class="label-text mb-2 text-sm font-semibold">Dias de subsidio</p>
+          <p class="label-text mb-2 text-sm font-semibold">Días de subsidio</p>
           <div class="flex flex-wrap gap-2">
             @for (dia of ['lunes','martes','miercoles','jueves','viernes','sabado']; track dia) {
               <label class="flex cursor-pointer items-center gap-1">
@@ -1524,7 +1524,7 @@
     <h3 class="text-xl font-bold">Crear estudiante</h3>
     <div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
       <div>
-        <label class="label text-sm font-semibold">Codigo *</label>
+        <label class="label text-sm font-semibold">Código *</label>
         <input type="text" class="input w-full" [value]="createCodigo()"
           (input)="createCodigo.set(createCodigoInput.value)" #createCodigoInput />
       </div>
@@ -1537,7 +1537,7 @@
         </select>
       </div>
       <div>
-        <label class="label text-sm font-semibold">Numero de documento *</label>
+        <label class="label text-sm font-semibold">Número de documento *</label>
         <input type="text" class="input w-full" [value]="createNumeroDocumento()"
           (input)="createNumeroDocumento.set(createNumDocInput.value)" #createNumDocInput />
       </div>
@@ -1547,7 +1547,7 @@
           (input)="createNombre.set(createNombreInput.value)" #createNombreInput />
       </div>
       <div>
-        <label class="label text-sm font-semibold">Correo electronico *</label>
+        <label class="label text-sm font-semibold">Correo electrónico *</label>
         <input type="email" class="input w-full" [value]="createCorreo()"
           (input)="createCorreo.set(createCorreoInput.value)" #createCorreoInput />
       </div>
@@ -1585,7 +1585,7 @@
           <span class="label-text text-sm font-semibold">Tiene beca restaurante</span>
         </label>
         <div class="mt-3">
-          <p class="label-text mb-2 text-sm font-semibold">Dias de subsidio</p>
+          <p class="label-text mb-2 text-sm font-semibold">Días de subsidio</p>
           <div class="flex flex-wrap gap-2">
             @for (dia of ['lunes','martes','miercoles','jueves','viernes','sabado']; track dia) {
               <label class="flex cursor-pointer items-center gap-1">
@@ -1612,11 +1612,11 @@
 @if (showChangePasswordModal()) {
 <div class="modal modal-open">
   <div class="modal-box max-w-md">
-    <h3 class="text-xl font-bold">Cambiar contrasena</h3>
-    <p class="text-sm text-gray-600 mt-1">Actualiza la contrasena de acceso del administrador.</p>
+    <h3 class="text-xl font-bold">Cambiar contraseña</h3>
+    <p class="text-sm text-gray-600 mt-1">Actualiza la contraseña de acceso del administrador.</p>
     <div class="mt-4 flex flex-col gap-3">
       <div>
-        <label class="label text-sm font-semibold">Contrasena actual</label>
+        <label class="label text-sm font-semibold">Contraseña actual</label>
         <div class="join w-full">
           <input [type]="showChangePass() ? 'text' : 'password'" class="input w-full join-item" placeholder="••••••"
             [value]="changePassCurrent()"
@@ -1627,9 +1627,9 @@
         </div>
       </div>
       <div>
-        <label class="label text-sm font-semibold">Nueva contrasena</label>
+        <label class="label text-sm font-semibold">Nueva contraseña</label>
         <div class="join w-full">
-          <input [type]="showChangePass() ? 'text' : 'password'" class="input w-full join-item" placeholder="Minimo 6 caracteres"
+          <input [type]="showChangePass() ? 'text' : 'password'" class="input w-full join-item" placeholder="Mínimo 6 caracteres"
             [value]="changePassNew()"
             (input)="changePassNew.set(changePassNewInput.value)" #changePassNewInput />
           <button class="btn join-item" (click)="showChangePass.set(!showChangePass())">
@@ -1638,9 +1638,9 @@
         </div>
       </div>
       <div>
-        <label class="label text-sm font-semibold">Confirmar nueva contrasena</label>
+        <label class="label text-sm font-semibold">Confirmar nueva contraseña</label>
         <div class="join w-full">
-          <input [type]="showChangePass() ? 'text' : 'password'" class="input w-full join-item" placeholder="Repite la nueva contrasena"
+          <input [type]="showChangePass() ? 'text' : 'password'" class="input w-full join-item" placeholder="Repite la nueva contraseña"
             [value]="changePassConfirm()" (input)="changePassConfirm.set(changePassConfInput.value)" #changePassConfInput />
           <button class="btn join-item" (click)="showChangePass.set(!showChangePass())">
             {{ showChangePass() ? 'Ocultar' : 'Ver' }}
@@ -1651,7 +1651,7 @@
     <div class="modal-action">
       <button class="btn" (click)="closeChangePasswordModal()" [disabled]="changePassSaving()">Cancelar</button>
       <button class="btn bg-red-600 text-white hover:bg-red-700" (click)="changeAdminPassword()" [disabled]="changePassSaving()">
-        @if (changePassSaving()) { Guardando... } @else { Cambiar contrasena }
+        @if (changePassSaving()) { Guardando... } @else { Cambiar contraseña }
       </button>
     </div>
   </div>

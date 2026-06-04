@@ -56,7 +56,7 @@
 
       <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
         <div>
-          <p class="font-bold">Codigo</p>
+          <p class="font-bold">Código</p>
           <p class="break-words">{{ student()?.codigo || '-' }}</p>
         </div>
 
@@ -78,7 +78,7 @@
 
         @if (student()?.tipo_estudiante === 'subsidiado') {
           <div>
-            <p class="font-bold">Dias de subsidio</p>
+            <p class="font-bold">Días de subsidio</p>
             <p>{{ student()?.dias?.join(', ') || '-' }}</p>
           </div>
 
@@ -145,7 +145,7 @@
           </table>
         </div>
 
-        <!-- <div class="overflow-x-auto">
+        <!-- legacy <div class="overflow-x-auto">
           <table class="table table-sm">
             <thead>
               <tr>
@@ -178,8 +178,8 @@
       </section>
 
       <div class="card-actions justify-end gap-2">
-        <button class="btn bg-gray-400 hover:bg-gray-500 hover:text-white" type="button" (click)="showChangePw.set(true)">
-          Cambiar contrasena
+        <button class="btn bg-red-600 hover:bg-red-800 text-white" type="button" (click)="showChangePw.set(true)">
+          Cambiar contraseña
         </button>
         <button class="btn bg-gray-400 hover:bg-gray-500 hover:text-white" type="button" (click)="logout()">
           Salir
@@ -193,14 +193,14 @@
 @if (showChangePw()) {
 <div class="modal modal-open">
   <div class="modal-box flex flex-col gap-4">
-    <h3 class="text-xl font-bold">Cambiar contrasena</h3>
+    <h3 class="text-xl font-bold">Cambiar contraseña</h3>
 
     <div>
-      <label class="label text-sm font-semibold">Contrasena actual</label>
+      <label class="label text-sm font-semibold">Contraseña actual</label>
       <input
         [type]="changePwShow() ? 'text' : 'password'"
         class="input w-full"
-        placeholder="Contrasena actual"
+        placeholder="Contraseña actual"
         [value]="changePwCurrent()"
         (input)="changePwCurrent.set(pwCur.value)"
         #pwCur
@@ -208,11 +208,11 @@
     </div>
 
     <div>
-      <label class="label text-sm font-semibold">Nueva contrasena</label>
+      <label class="label text-sm font-semibold">Nueva contraseña</label>
       <input
         [type]="changePwShow() ? 'text' : 'password'"
         class="input w-full"
-        placeholder="Minimo 6 caracteres"
+        placeholder="Mínimo 6 caracteres"
         [value]="changePwNew()"
         (input)="changePwNew.set(pwNew.value)"
         #pwNew
@@ -220,11 +220,11 @@
     </div>
 
     <div>
-      <label class="label text-sm font-semibold">Confirmar nueva contrasena</label>
+      <label class="label text-sm font-semibold">Confirmar nueva contraseña</label>
       <input
         [type]="changePwShow() ? 'text' : 'password'"
         class="input w-full"
-        placeholder="Repite la nueva contrasena"
+        placeholder="Repite la nueva contraseña"
         [value]="changePwConfirm()"
         (input)="changePwConfirm.set(pwConfirm.value)"
         #pwConfirm
@@ -233,7 +233,7 @@
 
     <label class="flex cursor-pointer items-center gap-2 text-sm">
       <input type="checkbox" class="checkbox checkbox-sm" [checked]="changePwShow()" (change)="changePwShow.set(!changePwShow())" />
-      Mostrar contrasenas
+      Mostrar contraseñas
     </label>
 
     @if (changePwError()) {
@@ -248,7 +248,7 @@
       <button class="btn bg-red-600 text-white hover:bg-red-700"
         [disabled]="changePwLoading()"
         (click)="submitChangePassword()">
-        @if (changePwLoading()) { Cambiando... } @else { Cambiar contrasena }
+        @if (changePwLoading()) { Cambiando... } @else { Cambiar contraseña }
       </button>
     </div>
   </div>

@@ -29,7 +29,7 @@
     />
     <button
       type="button"
-      class="btn join-item"
+      class="btn join-item bg-gray-400 hover:bg-gray-500 hover:text-white"
       [attr.aria-label]="showPassword() ? 'Ocultar contrasena' : 'Mostrar contrasena'"
       (click)="showPassword.set(!showPassword())"
     >
@@ -61,8 +61,8 @@
 
   <div class="divider">o</div>
   <label class="label mx-auto">Recuperar contraseña</label>
-  <button type="button" class="btn text-xl font-bold text-red-600" onclick="my_modal_2.showModal()">
-    aqui
+  <button type="button" class="btn text-xl font-bold text-red-600 " onclick="my_modal_2.showModal()">
+    👉 aquí 👈
   </button>
 
   <modal />

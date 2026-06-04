@@ -26,7 +26,7 @@ import QRCode from 'qrcode';
       } @else {
         <div class="flex flex-col items-center gap-2 py-4 text-gray-400">
           <p class="text-sm">Sin bono activo para hoy</p>
-          <p class="text-xs">Solicita un bono cuando este disponible</p>
+          <p class="text-xs">Solicita un bono cuando esté disponible</p>
         </div>
       }
 

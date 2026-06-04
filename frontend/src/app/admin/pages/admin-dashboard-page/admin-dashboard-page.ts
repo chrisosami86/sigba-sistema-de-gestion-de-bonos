@@ -567,7 +567,7 @@ export class AdminDashboardPage implements OnInit {
     }
 
     if (!codigoBono) {
-      this.setError('Debe ingresar el codigo del bono');
+      this.setError('Debe ingresar el código del bono');
       return;
     }
 
@@ -600,7 +600,7 @@ export class AdminDashboardPage implements OnInit {
           this.refreshAsignaciones(1);
         },
         error: (err) => {
-          this.setError(err.error?.message || 'No se pudo registrar la asignacion administrativa');
+          this.setError(err.error?.message || 'No se pudo registrar la asignación administrativa');
           this.asignacionSaving.set(false);
         },
       });
@@ -690,7 +690,7 @@ export class AdminDashboardPage implements OnInit {
           this.refreshProviderConciliaciones(1);
         },
         error: (err) => {
-          this.setError(err.error?.message || 'No se pudo registrar la conciliacion');
+          this.setError(err.error?.message || 'No se pudo registrar la conciliación');
           this.providerSaving.set(false);
         },
       });
@@ -771,7 +771,7 @@ export class AdminDashboardPage implements OnInit {
     const codigo = this.codigosBonos()[redencionId];
 
     if (!codigo || codigo.trim() === '') {
-      this.setError('Debe ingresar el codigo del bono');
+      this.setError('Debe ingresar el código del bono');
       return;
     }
 
@@ -820,7 +820,7 @@ export class AdminDashboardPage implements OnInit {
 
           pdf.setFontSize(10);
           pdf.setTextColor(100, 100, 100);
-          pdf.text('Sistema de Gestion de Bonos Alimentarios', margin, cursorY);
+          pdf.text('Sistema de Gestión de Bonos Alimentarios', margin, cursorY);
           cursorY += 10;
 
           pdf.setFontSize(13);
@@ -842,7 +842,7 @@ export class AdminDashboardPage implements OnInit {
 
           const headStyle = { fillColor: [185, 28, 28], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 };
           const bodyStyle = { fontSize: 7, cellPadding: 2 };
-          const columns = ['Codigo', 'Nombre', 'Beca', 'Programa', 'Franja', 'Modalidad', 'Estado', 'Hora sol.', 'Hora rec.', 'Cod. bono'];
+          const columns = ['Código', 'Nombre', 'Beca', 'Programa', 'Franja', 'Modalidad', 'Estado', 'Hora sol.', 'Hora rec.', 'Cod. bono'];
 
           for (const section of sections) {
             const rows = resumen.rows
@@ -938,7 +938,7 @@ export class AdminDashboardPage implements OnInit {
         setTimeout(() => this.renderChart(), 100);
       },
       error: (err) => {
-        this.setError(err.error?.message || 'No se pudieron cargar las analiticas');
+        this.setError(err.error?.message || 'No se pudieron cargar las analíticas');
         this.analyticsLoading.set(false);
       },
     });
@@ -1046,12 +1046,12 @@ export class AdminDashboardPage implements OnInit {
     const wb = XLSX.utils.book_new();
 
     const resumen = [
-      ['Indice de Inasistencia', `${data.kpiPrincipal.indiceInasistencia}%`],
+      ['Índice de Inasistencia', `${data.kpiPrincipal.indiceInasistencia}%`],
       ['Asistencias Esperadas', data.kpiPrincipal.asistenciasEsperadas],
       ['Reclamados Reales', data.kpiPrincipal.reclamadosReales],
       ['Inasistencias', data.kpiPrincipal.inasistencias],
       ['Base Subsidiada', data.kpisSecundarios.baseSubsidiada],
-      ['Dias Encontrados', data.kpisSecundarios.diasEncontrados],
+      ['Días Encontrados', data.kpisSecundarios.diasEncontrados],
       ['% Asistencia', `${data.kpisSecundarios.porcentajeAsistencia}%`],
       ['% Inasistencia', `${data.kpisSecundarios.porcentajeInasistencia}%`],
       [],
@@ -1060,10 +1060,10 @@ export class AdminDashboardPage implements OnInit {
 
     const inasistencia = [
       [
-        'Codigo',
+        'Código',
         'Nombre',
         'Programa',
-        'Dias Hab.',
+        'Días Hab.',
         'Reclamados',
         'Inasistencias',
         '% Asistencia',
@@ -1095,7 +1095,7 @@ export class AdminDashboardPage implements OnInit {
     doc.text(titulo, 14, 20);
 
     doc.setFontSize(10);
-    doc.text(`Indice de Inasistencia: ${data.kpiPrincipal.indiceInasistencia}%`, 14, 32);
+    doc.text(`Índice de Inasistencia: ${data.kpiPrincipal.indiceInasistencia}%`, 14, 32);
     doc.text(
       `Asistencias Esperadas: ${data.kpiPrincipal.asistenciasEsperadas} | Reclamados: ${data.kpiPrincipal.reclamadosReales} | Inasistencias: ${data.kpiPrincipal.inasistencias}`,
       14,
@@ -1107,10 +1107,10 @@ export class AdminDashboardPage implements OnInit {
       startY: 58,
       head: [
         [
-          'Codigo',
+          'Código',
           'Nombre',
           'Programa',
-          'Dias Hab.',
+          'Días Hab.',
           'Reclamados',
           'Inasistencias',
           '% Inasistencia',
@@ -1307,7 +1307,7 @@ export class AdminDashboardPage implements OnInit {
     }
 
     if (!periodoActual) {
-      this.setError('Debe seleccionar un periodo academico');
+      this.setError('Debe seleccionar un periodo académico');
       return;
     }
 
@@ -1532,7 +1532,7 @@ export class AdminDashboardPage implements OnInit {
     const fechaFin = this.configFechaFin().trim();
 
     if (!periodo) {
-      this.setError('Selecciona un periodo academico');
+      this.setError('Selecciona un periodo académico');
       return;
     }
 
@@ -1556,17 +1556,17 @@ export class AdminDashboardPage implements OnInit {
               this.configLastUpdate.set(
                 new Date().toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' }),
               );
-              this.setMessage('Configuracion del periodo guardada correctamente');
+              this.setMessage('Configuración del periodo guardada correctamente');
               this.configPeriodoSaving.set(false);
             },
             error: (err) => {
-              this.setError(err.error?.message || 'Error al guardar dias habiles');
+              this.setError(err.error?.message || 'Error al guardar días hábiles');
               this.configPeriodoSaving.set(false);
             },
           });
         },
         error: (err) => {
-          this.setError(err.error?.message || 'Error al guardar configuracion');
+          this.setError(err.error?.message || 'Error al guardar configuración');
           this.configPeriodoSaving.set(false);
         },
       });
@@ -1671,12 +1671,12 @@ export class AdminDashboardPage implements OnInit {
     }
 
     if (newPass.length < 6) {
-      this.setError('La nueva contrasena debe tener al menos 6 caracteres');
+      this.setError('La nueva contraseña debe tener al menos 6 caracteres');
       return;
     }
 
     if (newPass !== confirm) {
-      this.setError('Las contrasenas no coinciden');
+      this.setError('Las contraseñas no coinciden');
       return;
     }
 
@@ -1685,12 +1685,12 @@ export class AdminDashboardPage implements OnInit {
 
     this.authService.changePassword(current, newPass).subscribe({
       next: () => {
-        this.setMessage('Contrasena actualizada correctamente');
+        this.setMessage('Contraseña actualizada correctamente');
         this.changePassSaving.set(false);
         this.showChangePasswordModal.set(false);
       },
       error: (err) => {
-        this.setError(err.error?.message || 'Error al cambiar contrasena');
+        this.setError(err.error?.message || 'Error al cambiar contraseña');
         this.changePassSaving.set(false);
       },
     });
@@ -1734,7 +1734,7 @@ export class AdminDashboardPage implements OnInit {
         this.refreshStats();
       },
       error: (err) => {
-        this.setError(err.error?.message || 'No se pudo completar la operacion');
+        this.setError(err.error?.message || 'No se pudo completar la operación');
         this.loading.set(false);
       },
     });

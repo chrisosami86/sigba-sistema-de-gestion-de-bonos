@@ -59,15 +59,15 @@ export class DetailsStudentsPage implements OnDestroy {
       return;
     }
     if (newPw.length < 6) {
-      this.changePwError.set('La contrasena debe tener al menos 6 caracteres');
+      this.changePwError.set('La contraseña debe tener al menos 6 caracteres');
       return;
     }
     if (newPw !== confirmPw) {
-      this.changePwError.set('Las contrasenas no coinciden');
+      this.changePwError.set('Las contraseñas no coinciden');
       return;
     }
     if (current === newPw) {
-      this.changePwError.set('La nueva contrasena no puede ser igual a la actual');
+      this.changePwError.set('La nueva contraseña no puede ser igual a la actual');
       return;
     }
 
@@ -88,7 +88,7 @@ export class DetailsStudentsPage implements OnDestroy {
         }, 2000);
       },
       error: (err) => {
-        this.changePwError.set(err.error?.message || 'No se pudo cambiar la contrasena');
+        this.changePwError.set(err.error?.message || 'No se pudo cambiar la contraseña');
         this.changePwLoading.set(false);
       },
     });

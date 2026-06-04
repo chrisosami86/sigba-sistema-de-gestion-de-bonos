@@ -35,7 +35,7 @@ export class AdminLoginPage {
 
   login() {
     if (!this.correo() || !this.password()) {
-      this.errorMessage.set('Ingresa correo y contrasena');
+      this.errorMessage.set('Ingresa correo y contraseña');
       return;
     }
 
@@ -72,17 +72,17 @@ export class AdminLoginPage {
     }
 
     if (newPw.length < 6) {
-      this.forceError.set('La contrasena debe tener al menos 6 caracteres');
+      this.forceError.set('La contraseña debe tener al menos 6 caracteres');
       return;
     }
 
     if (newPw !== confirmPw) {
-      this.forceError.set('Las contrasenas no coinciden');
+      this.forceError.set('Las contraseñas no coinciden');
       return;
     }
 
     if (currentPw === newPw) {
-      this.forceError.set('La nueva contrasena no puede ser igual a la actual');
+      this.forceError.set('La nueva contraseña no puede ser igual a la actual');
       return;
     }
 
@@ -101,7 +101,7 @@ export class AdminLoginPage {
         }, 2000);
       },
       error: (err) => {
-        this.forceError.set(err.error?.message || 'No se pudo cambiar la contrasena');
+        this.forceError.set(err.error?.message || 'No se pudo cambiar la contraseña');
         this.forceLoading.set(false);
       },
     });
@@ -125,7 +125,7 @@ export class AdminLoginPage {
         this.recoveryLoading.set(false);
       },
       error: (err) => {
-        this.recoveryError.set(err.error?.message || 'No se pudo recuperar la contrasena');
+        this.recoveryError.set(err.error?.message || 'No se pudo recuperar la contraseña');
         this.recoveryLoading.set(false);
       },
     });

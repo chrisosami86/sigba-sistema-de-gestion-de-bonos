@@ -17,23 +17,23 @@ const HORARIOS = {
   almuerzo: {
     subsidiado: {
       inicio: 8 * 60,
-      fin: 10 * 60 + 15,
+      fin: 10 * 60 + 20,
       expiracion: { hours: 11, minutes: 0 },
     },
     ventaLibre: {
       inicio: 11 * 60 + 30,
-      fin: 12 * 60 + 5,
-      expiracion: { hours: 12, minutes: 5 },
+      fin: 12 * 60 + 15,
+      expiracion: { hours: 12, minutes: 15 },
     },
   },
   refrigerio: {
     subsidiado: {
       inicio: 17 * 60,
-      fin: 18 * 60 + 29,
+      fin: 17 * 60 + 29,
       expiracion: { hours: 21, minutes: 30 },
     },
     ventaLibre: {
-      inicio: 18 * 60 + 30,
+      inicio: 17 * 60 + 30,
       fin: 22 * 60,
       expiracion: { hours: 22, minutes: 0 },
     },

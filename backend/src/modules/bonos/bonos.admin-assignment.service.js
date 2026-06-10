@@ -1,6 +1,6 @@
 const pool = require("../../config/db");
 const { isWorkingDay } = require("../../shared/helpers/workingDay.helper");
-const { log } = require("../../shared/helpers/logger.helper");
+const { info, log } = require("../../shared/helpers/logger.helper");
 const { BOGOTA } = require("../../shared/helpers/sql-timezone.helper");
 
 const TIPO_ASIGNACION_ADMINISTRATIVA = "ADMINISTRATIVA";
@@ -9,6 +9,10 @@ let redencionesAssignmentColumnsReady = null;
 
 const logAdminAssignment = (event, data = {}) => {
   log("[bonos.admin-assignment]", { event, ...data });
+};
+
+const trace = (tag, data = {}) => {
+  info(`[${tag}]`, data);
 };
 
 /**
@@ -66,6 +70,7 @@ const asignarAdministrativamente = async ({
   }
 
   const client = await pool.connect();
+  let traceBonoDiarioId = null;
 
   try {
     await client.query("BEGIN");
@@ -73,6 +78,12 @@ const asignarAdministrativamente = async ({
     logAdminAssignment("validacion_ok", { step: "schema" });
 
     const bonoDiario = await getLockedBonoDiario(client, normalizedTipo);
+    traceBonoDiarioId = bonoDiario.id;
+    trace("TRACE_ADMIN_ASSIGNMENT_START", {
+      studentId,
+      bonoDiarioId: traceBonoDiarioId,
+    });
+
     logAdminAssignment("lock_obtenido", {
       bonoDiarioId: bonoDiario.id,
       tipo: normalizedTipo,
@@ -139,6 +150,13 @@ const asignarAdministrativamente = async ({
     };
   } catch (error) {
     await client.query("ROLLBACK");
+    if (error.constraint === "unique_student_bono_diario") {
+      trace("TRACE_ADMIN_ASSIGNMENT_DUPLICATE", {
+        studentId,
+        bonoDiarioId: traceBonoDiarioId,
+        constraint: "unique_student_bono_diario",
+      });
+    }
     logAdminAssignment("rollback", { message: error.message });
     throw error;
   } finally {

@@ -13,6 +13,10 @@ const { BOGOTA } = require("../../shared/helpers/sql-timezone.helper");
 
 const VALID_BONO_TYPES = ["almuerzo", "refrigerio"];
 
+const trace = (tag, data = {}) => {
+  info(`[${tag}]`, data);
+};
+
 const HORARIOS = {
   almuerzo: {
     subsidiado: {
@@ -68,12 +72,28 @@ const requestBono = async (studentId, tipo) => {
 
   const workingDayCheck = await isWorkingDay();
   if (!workingDayCheck.isWorking) {
+    trace("TRACE_REQUEST_BONO_ERROR", {
+      studentId,
+      error: workingDayCheck.reason,
+    });
     throw new Error(workingDayCheck.reason);
   }
 
   const estadoSistema = await getEstadoSistema(tipo);
+  const traceCodigo = await getTraceStudentCodigo(studentId);
+
+  trace("TRACE_REQUEST_BONO_START", {
+    studentId,
+    codigo: traceCodigo,
+    modalidad: estadoSistema.estado,
+    operationalDate: getBogotaDate(),
+  });
 
   if (estadoSistema.estado === "bloqueado" || estadoSistema.estado === "cerrado") {
+    trace("TRACE_REQUEST_BONO_ERROR", {
+      studentId,
+      error: estadoSistema.mensaje,
+    });
     throw new Error(estadoSistema.mensaje);
   }
 
@@ -141,9 +161,17 @@ const requestBono = async (studentId, tipo) => {
     ]);
 
     await client.query("COMMIT");
+    const redencion = insertResult.rows[0];
+
+    trace("TRACE_REQUEST_BONO_SUCCESS", {
+      studentId,
+      redencionId: redencion.id,
+      bonoDiarioId: redencion.bono_diario_id,
+      estado: redencion.estado,
+    });
 
     return {
-      ...insertResult.rows[0],
+      ...redencion,
       tipo,
       modalidad: estadoSistema.estado,
       disponibilidad: {
@@ -153,6 +181,10 @@ const requestBono = async (studentId, tipo) => {
     };
   } catch (error) {
     await client.query("ROLLBACK");
+    trace("TRACE_REQUEST_BONO_ERROR", {
+      studentId,
+      error: error.message,
+    });
     throw error;
   } finally {
     client.release();
@@ -439,6 +471,16 @@ const getResumenDiario = async (filters = {}) => {
   ]);
 
   const total = Number(countResult.rows[0].total);
+  const ids = dataResult.rows.map((row) => row.id);
+
+  trace("TRACE_DAILY_SUMMARY", {
+    operationalDate: getBogotaDate(),
+    totalRegistros: total,
+  });
+
+  trace("TRACE_DAILY_SUMMARY_IDS", {
+    ids,
+  });
 
   return {
     page,
@@ -864,6 +906,7 @@ const expireBonos = async () => {
 
     await client.query("BEGIN");
     await client.query("SET TRANSACTION ISOLATION LEVEL READ COMMITTED");
+    await traceExpirableRows(client);
 
     const expireResult = await client.query(`
       UPDATE redenciones
@@ -880,6 +923,13 @@ const expireBonos = async () => {
         expired: expireResult.rows.length,
         ids: expireResult.rows.map((r) => r.id),
       });
+
+      for (const row of expireResult.rows) {
+        trace("TRACE_EXPIRE_SUCCESS", {
+          redencionId: row.id,
+          nuevoEstado: row.estado,
+        });
+      }
     }
 
     await calcularNoUtilizada(client);
@@ -1058,6 +1108,44 @@ const normalizeDia = (dia) => {
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "");
+};
+
+const getTraceStudentCodigo = async (studentId) => {
+  try {
+    const result = await pool.query("SELECT codigo FROM students WHERE id = $1", [studentId]);
+    return result.rows[0]?.codigo || null;
+  } catch (error) {
+    trace("TRACE_REQUEST_BONO_ERROR", {
+      studentId,
+      error: `trace_codigo_lookup_failed: ${error.message}`,
+    });
+    return null;
+  }
+};
+
+const traceExpirableRows = async (client) => {
+  const modalidadExpression = getModalidadExpression();
+  const query = `
+    SELECT
+      r.id AS "redencionId",
+      r.student_id AS "studentId",
+      r.bono_diario_id AS "bonoDiarioId",
+      r.estado AS "estadoActual",
+      ${modalidadExpression} AS modalidad
+    FROM redenciones r
+    JOIN bonos_diarios bd
+      ON bd.id = r.bono_diario_id
+    JOIN config_bonos cb
+      ON cb.id = bd.config_bono_id
+    WHERE r.estado = 'reservado'
+      AND r.expiracion_at < ${BOGOTA.timestamp}
+  `;
+
+  const result = await client.query(query);
+
+  for (const row of result.rows) {
+    trace("TRACE_EXPIRE_START", row);
+  }
 };
 
 module.exports = {

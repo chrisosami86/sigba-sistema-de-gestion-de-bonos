@@ -489,10 +489,16 @@
             </label>
             <label class="form-control">
               <span class="label-text">Motivo</span>
-              <input class="input input-bordered" type="text" placeholder="Justificación de la asignación"
+              <select class="select select-bordered"
                 [value]="asignacionMotivo()"
                 [disabled]="asignacionSaving()"
-                (input)="setAsignacionMotivo(asignacionMotivoInput.value)" #asignacionMotivoInput />
+                (change)="setAsignacionMotivo(asignacionMotivoSelect.value)" #asignacionMotivoSelect>
+                <option value="">Seleccionar motivo</option>
+                <option value="Salud">Salud</option>
+                <option value="Familiar">Familiar</option>
+                <option value="Logístico">Logístico</option>
+                <option value="Académico">Académico</option>
+              </select>
             </label>
           </div>
           <div class="mt-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">

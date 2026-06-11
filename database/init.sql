@@ -99,7 +99,6 @@ CREATE TABLE redenciones (
 
 CREATE INDEX idx_redenciones_student ON redenciones (student_id);
 CREATE INDEX idx_redenciones_estado ON redenciones (estado);
-ALTER TABLE redenciones ADD CONSTRAINT unique_student_bono_diario UNIQUE (student_id, bono_diario_id);
 
 -- 7. Administradores
 CREATE TABLE admins (

@@ -1,6 +1,7 @@
 const pool = require("../../config/db");
 const { isWorkingDay } = require("../../shared/helpers/workingDay.helper");
 const adminAssignmentService = require("../bonos/bonos.admin-assignment.service");
+const { sincronizarRedencionGoogle } = require("../bonos/bonos-google-sync.service");
 const { info, error } = require("../../shared/helpers/logger.helper");
 
 const VALID_BONO_TYPES = ["almuerzo", "refrigerio"];
@@ -52,6 +53,8 @@ const asignarBono = async ({ tipo, studentId, codigoBono, motivo, adminId, admin
     motivo,
     adminId,
   });
+
+  await sincronizarRedencionGoogle(result.redencion);
 
   info("[admin.asignarBono]", {
     adminId,

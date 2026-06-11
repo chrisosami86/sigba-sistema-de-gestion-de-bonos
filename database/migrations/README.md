@@ -40,6 +40,12 @@ Cambios historicos que YA estan reflejados en `init.sql`:
 - No modifica datos existentes, tipos de columnas ni contratos API
 - Refuerza que `hora_solicitud`, `created_at` y `updated_at` no dependan de timezone de sesion
 
+### 006_drop_unique_student_bono_diario.sql
+
+- Remueve de forma idempotente la restriccion/indice legacy `unique_student_bono_diario`
+- No modifica datos existentes ni crea restricciones nuevas
+- Permite conservar historial operativo expirado y asignacion administrativa reclamada para el mismo estudiante/bono diario
+
 ## Como aplicar sobre BD existente
 
 Si la BD ya fue creada con una version anterior de `init.sql`, ejecutar unicamente las migraciones
@@ -49,6 +55,7 @@ pendientes en orden numerico:
 psql -U sigba_user -d sigba_db -f database/migrations/002_provider_conciliations.sql
 psql -U sigba_user -d sigba_db -f database/migrations/003_daily_closure_confirmations.sql
 psql -U sigba_user -d sigba_db -f database/migrations/004_normalize_bogota_timestamp_defaults.sql
+psql -U sigba_user -d sigba_db -f database/migrations/006_drop_unique_student_bono_diario.sql
 ```
 
 Usar `CREATE TABLE IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS` garantiza idempotencia.

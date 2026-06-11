@@ -48,8 +48,8 @@ const resolveSheetIdBySchedule = () => {
   // ------------------------------------------------------------
 
   const isSubsidizedRange =
-    (totalMinutes >= 480 && totalMinutes <= 616) ||
-    (totalMinutes >= 1020 && totalMinutes <= 1109);
+    (totalMinutes >= 480 && totalMinutes <= 640) ||
+    (totalMinutes >= 1020 && totalMinutes <= 1050);
 
   return isSubsidizedRange
     ? process.env.SHEET_ID_SUBSIDIADOS

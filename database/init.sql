@@ -138,6 +138,46 @@ CREATE TABLE holidays (
   descripcion VARCHAR(255)
 );
 
+-- 10B. Periodos academicos administrables
+CREATE TABLE academic_periods (
+  id            SERIAL PRIMARY KEY,
+  periodo       VARCHAR(20) NOT NULL,
+  fecha_inicio  DATE NOT NULL,
+  fecha_fin     DATE NOT NULL,
+  activo        BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at    TIMESTAMP NOT NULL DEFAULT (NOW() AT TIME ZONE 'America/Bogota'),
+  updated_at    TIMESTAMP NOT NULL DEFAULT (NOW() AT TIME ZONE 'America/Bogota'),
+  created_by    INTEGER NULL REFERENCES admins(id),
+  updated_by    INTEGER NULL REFERENCES admins(id)
+);
+
+CREATE UNIQUE INDEX unique_academic_period_periodo
+  ON academic_periods (periodo);
+
+CREATE UNIQUE INDEX unique_academic_period_active
+  ON academic_periods (activo)
+  WHERE activo = true;
+
+CREATE TABLE academic_period_working_days (
+  id                  SERIAL PRIMARY KEY,
+  academic_period_id  INTEGER NOT NULL REFERENCES academic_periods(id) ON DELETE CASCADE,
+  dia                 VARCHAR(20) NOT NULL,
+  activo              BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at          TIMESTAMP NOT NULL DEFAULT (NOW() AT TIME ZONE 'America/Bogota'),
+  updated_at          TIMESTAMP NOT NULL DEFAULT (NOW() AT TIME ZONE 'America/Bogota'),
+  CONSTRAINT unique_academic_period_working_day UNIQUE (academic_period_id, dia)
+);
+
+CREATE TABLE academic_period_holidays (
+  id                  SERIAL PRIMARY KEY,
+  academic_period_id  INTEGER NOT NULL REFERENCES academic_periods(id) ON DELETE CASCADE,
+  fecha               DATE NOT NULL,
+  descripcion         VARCHAR(255),
+  created_at          TIMESTAMP NOT NULL DEFAULT (NOW() AT TIME ZONE 'America/Bogota'),
+  updated_at          TIMESTAMP NOT NULL DEFAULT (NOW() AT TIME ZONE 'America/Bogota'),
+  CONSTRAINT unique_academic_period_holiday UNIQUE (academic_period_id, fecha)
+);
+
 -- 11. Conciliaciones proveedor (Fase 2)
 CREATE TABLE conciliaciones_proveedor (
   id                  SERIAL PRIMARY KEY,

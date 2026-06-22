@@ -40,6 +40,9 @@ import {
   type SystemSettings,
   type WorkingDay,
   type Holiday,
+  type AcademicPeriod,
+  type AcademicPeriodDetail,
+  type AcademicPeriodPayload,
   type OperationalStatus,
   type DailyClosureResumen,
   type DailyClosureConfirmacionesResponse,
@@ -310,6 +313,13 @@ export class AdminDashboardPage implements OnInit {
   configPeriodoLoading = signal(false);
   configResumenVisible = signal(false);
   configLastUpdate = signal('');
+  academicPeriods = signal<AcademicPeriod[]>([]);
+  selectedAcademicPeriod = signal<AcademicPeriodDetail | null>(null);
+  periodModalMode = signal<'create' | 'edit' | 'view' | null>(null);
+  periodFormSourceId = signal<number | null>(null);
+  editHolidayId = signal<number | null>(null);
+  editHolidayFecha = signal('');
+  editHolidayDescripcion = signal('');
 
   // ── Estado operacional ──
 
@@ -1451,61 +1461,137 @@ export class AdminDashboardPage implements OnInit {
   loadSystemConfig() {
     this.configPeriodoLoading.set(true);
 
-    this.systemService.getSettings().subscribe({
-      next: (settings) => {
+    forkJoin({
+      settings: this.systemService.getSettings(),
+      periods: this.systemService.getAcademicPeriods(),
+      workingDays: this.systemService.getWorkingDays(),
+      holidays: this.systemService.getHolidays(),
+    }).subscribe({
+      next: ({ settings, periods, workingDays, holidays }) => {
         this.systemSettings.set(settings);
+        this.academicPeriods.set(periods);
+        this.workingDays.set(workingDays);
+        this.holidays.set(holidays);
         this.configPeriodo.set(settings.periodo_actual);
         this.configFechaInicio.set(settings.fecha_inicio || '');
         this.configFechaFin.set(settings.fecha_fin || '');
-        if (settings.updated_at) {
-          this.configLastUpdate.set(
-            new Date(settings.updated_at).toLocaleString('es-CO', {
-              dateStyle: 'medium',
-              timeStyle: 'short',
-            }),
-          );
-        }
-        this.configPeriodoLoading.set(false);
+        this.updateConfigLastUpdate(settings.updated_at);
         this.configResumenVisible.set(true);
-      },
-      error: () => {
         this.configPeriodoLoading.set(false);
       },
-    });
-
-    this.systemService.getWorkingDays().subscribe({
-      next: (days) => {
-        this.workingDays.set(days);
-      },
-    });
-
-    this.systemService.getHolidays().subscribe({
-      next: (holidays) => {
-        this.holidays.set(holidays);
+      error: (err) => {
+        this.configPeriodoLoading.set(false);
+        this.setError(err.error?.message || 'Error cargando configuracion');
       },
     });
   }
 
   toggleWorkingDay(dia: string) {
+    if (this.periodModalMode() === 'view') {
+      return;
+    }
+
     this.workingDays.update((days) =>
       days.map((d) => (d.dia === dia ? { ...d, activo: !d.activo } : d)),
     );
+  }
+
+  openCreatePeriodModal() {
+    const settings = this.systemSettings();
+    this.periodModalMode.set('create');
+    this.periodFormSourceId.set(null);
+    this.selectedAcademicPeriod.set(null);
+    this.configPeriodo.set('');
+    this.configFechaInicio.set(settings?.fecha_inicio || '');
+    this.configFechaFin.set(settings?.fecha_fin || '');
+    this.systemService.getWorkingDays().subscribe({
+      next: (days) => this.workingDays.set(days),
+    });
+    this.holidays.set([]);
+    this.clearHolidayInputs();
+  }
+
+  viewAcademicPeriod(period: AcademicPeriod) {
+    this.loadAcademicPeriodIntoForm(period.id, 'view');
+  }
+
+  editAcademicPeriod(period: AcademicPeriod) {
+    this.loadAcademicPeriodIntoForm(period.id, 'edit');
+  }
+
+  duplicateAcademicPeriod(period: AcademicPeriod) {
+    this.systemService.getAcademicPeriod(period.id).subscribe({
+      next: (detail) => {
+        this.periodModalMode.set('create');
+        this.periodFormSourceId.set(period.id);
+        this.selectedAcademicPeriod.set(null);
+        this.configPeriodo.set('');
+        this.configFechaInicio.set('');
+        this.configFechaFin.set('');
+        this.workingDays.set(detail.workingDays);
+        this.holidays.set(detail.holidays.map((h, index) => ({ ...h, id: -index - 1 })));
+        this.clearHolidayInputs();
+      },
+      error: (err) => this.setError(err.error?.message || 'No se pudo duplicar el periodo'),
+    });
+  }
+
+  closePeriodModal() {
+    this.periodModalMode.set(null);
+    this.periodFormSourceId.set(null);
+    this.selectedAcademicPeriod.set(null);
+    this.clearHolidayInputs();
+    this.loadSystemConfig();
+  }
+
+  loadAcademicPeriodIntoForm(id: number, mode: 'view' | 'edit') {
+    this.configPeriodoLoading.set(true);
+    this.systemService.getAcademicPeriod(id).subscribe({
+      next: (detail) => {
+        this.selectedAcademicPeriod.set(detail);
+        this.periodModalMode.set(mode);
+        this.periodFormSourceId.set(id);
+        this.configPeriodo.set(detail.periodo);
+        this.configFechaInicio.set(detail.fecha_inicio);
+        this.configFechaFin.set(detail.fecha_fin);
+        this.workingDays.set(detail.workingDays);
+        this.holidays.set(detail.holidays);
+        this.clearHolidayInputs();
+        this.configPeriodoLoading.set(false);
+      },
+      error: (err) => {
+        this.configPeriodoLoading.set(false);
+        this.setError(err.error?.message || 'No se pudo cargar el periodo');
+      },
+    });
   }
 
   addHoliday() {
     const fecha = this.newHolidayFecha().trim();
     const descripcion = this.newHolidayDescripcion().trim();
 
+    if (this.periodModalMode() === 'view') {
+      return;
+    }
+
     if (!fecha) {
       this.setError('Selecciona una fecha para el festivo');
+      return;
+    }
+
+    if (this.periodModalMode()) {
+      this.holidays.update((list) => [
+        ...list.filter((h) => h.fecha.slice(0, 10) !== fecha),
+        { id: -Date.now(), fecha, descripcion: descripcion || null },
+      ]);
+      this.clearHolidayInputs();
       return;
     }
 
     this.systemService.createHoliday(fecha, descripcion).subscribe({
       next: (holiday) => {
         this.holidays.update((list) => [...list, holiday]);
-        this.newHolidayFecha.set('');
-        this.newHolidayDescripcion.set('');
+        this.clearHolidayInputs();
         this.setMessage('Festivo agregado correctamente');
       },
       error: (err) => {
@@ -1515,6 +1601,11 @@ export class AdminDashboardPage implements OnInit {
   }
 
   removeHoliday(id: number) {
+    if (this.periodModalMode()) {
+      this.holidays.update((list) => list.filter((h) => h.id !== id));
+      return;
+    }
+
     this.systemService.deleteHoliday(id).subscribe({
       next: () => {
         this.holidays.update((list) => list.filter((h) => h.id !== id));
@@ -1526,50 +1617,179 @@ export class AdminDashboardPage implements OnInit {
     });
   }
 
-  savePeriodConfig() {
-    const periodo = this.configPeriodo().trim();
-    const fechaInicio = this.configFechaInicio().trim();
-    const fechaFin = this.configFechaFin().trim();
-
-    if (!periodo) {
-      this.setError('Selecciona un periodo académico');
+  removeHolidayByIndex(index: number) {
+    if (this.periodModalMode() === 'view') {
       return;
     }
+
+    this.holidays.update((list) => list.filter((_, i) => i !== index));
+  }
+
+  startEditHoliday(holiday: Holiday) {
+    if (this.periodModalMode() === 'view') {
+      return;
+    }
+
+    this.editHolidayId.set(holiday.id);
+    this.editHolidayFecha.set(holiday.fecha.slice(0, 10));
+    this.editHolidayDescripcion.set(holiday.descripcion || '');
+  }
+
+  saveHolidayEdit(index?: number) {
+    const fecha = this.editHolidayFecha().trim();
+    const descripcion = this.editHolidayDescripcion().trim();
+
+    if (!fecha) {
+      this.setError('Selecciona una fecha para el festivo');
+      return;
+    }
+
+    if (this.periodModalMode()) {
+      this.holidays.update((list) =>
+        list.map((holiday, i) =>
+          i === index ? { ...holiday, fecha, descripcion: descripcion || null } : holiday,
+        ),
+      );
+      this.clearHolidayEdit();
+      return;
+    }
+
+    const id = this.editHolidayId();
+    if (!id) {
+      return;
+    }
+
+    this.systemService.updateHoliday(id, fecha, descripcion).subscribe({
+      next: (holiday) => {
+        this.holidays.update((list) => list.map((h) => (h.id === id ? holiday : h)));
+        this.clearHolidayEdit();
+        this.setMessage('Festivo actualizado correctamente');
+      },
+      error: (err) => this.setError(err.error?.message || 'No se pudo actualizar el festivo'),
+    });
+  }
+
+  clearHolidayInputs() {
+    this.newHolidayFecha.set('');
+    this.newHolidayDescripcion.set('');
+    this.clearHolidayEdit();
+  }
+
+  clearHolidayEdit() {
+    this.editHolidayId.set(null);
+    this.editHolidayFecha.set('');
+    this.editHolidayDescripcion.set('');
+  }
+
+  savePeriodConfig() {
+    const mode = this.periodModalMode();
+
+    if (!mode || mode === 'view') {
+      return;
+    }
+
+    const payload = this.buildAcademicPeriodPayload();
+    if (!payload) {
+      return;
+    }
+
+    const request =
+      mode === 'edit' && this.periodFormSourceId()
+        ? this.systemService.updateAcademicPeriod(this.periodFormSourceId()!, payload)
+        : this.systemService.createAcademicPeriod(payload);
 
     this.configPeriodoSaving.set(true);
     this.setMessage('');
     this.setError('');
 
-    this.systemService
-      .updateSettings({
-        periodo_actual: periodo,
-        fecha_inicio: fechaInicio || null,
-        fecha_fin: fechaFin || null,
-      })
-      .subscribe({
-        next: (settings) => {
-          this.systemSettings.set(settings);
+    request.subscribe({
+      next: (period) => {
+        this.setMessage('Periodo academico guardado correctamente');
+        this.configPeriodoSaving.set(false);
+        this.closePeriodModal();
+        if (period.activo) {
+          this.checkOperationalStatus();
+        }
+      },
+      error: (err) => {
+        this.setError(err.error?.message || 'Error al guardar periodo academico');
+        this.configPeriodoSaving.set(false);
+      },
+    });
+  }
 
-          this.systemService.updateWorkingDays(this.workingDays()).subscribe({
-            next: () => {
-              this.configResumenVisible.set(true);
-              this.configLastUpdate.set(
-                new Date().toLocaleString('es-CO', { dateStyle: 'medium', timeStyle: 'short' }),
-              );
-              this.setMessage('Configuración del periodo guardada correctamente');
-              this.configPeriodoSaving.set(false);
-            },
-            error: (err) => {
-              this.setError(err.error?.message || 'Error al guardar días hábiles');
-              this.configPeriodoSaving.set(false);
-            },
-          });
-        },
-        error: (err) => {
-          this.setError(err.error?.message || 'Error al guardar configuración');
-          this.configPeriodoSaving.set(false);
-        },
-      });
+  activateAcademicPeriod(period: AcademicPeriod) {
+    if (period.activo) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      'Al activar este periodo se desactivara automaticamente el periodo actualmente activo. ¿Desea continuar?',
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    this.configPeriodoSaving.set(true);
+    this.systemService.activateAcademicPeriod(period.id).subscribe({
+      next: () => {
+        this.setMessage('Periodo academico activado correctamente');
+        this.configPeriodoSaving.set(false);
+        this.loadSystemConfig();
+        this.checkOperationalStatus();
+      },
+      error: (err) => {
+        this.setError(err.error?.message || 'No se pudo activar el periodo');
+        this.configPeriodoSaving.set(false);
+      },
+    });
+  }
+
+  buildAcademicPeriodPayload(): AcademicPeriodPayload | null {
+    const periodo = this.configPeriodo().trim();
+    const fechaInicio = this.configFechaInicio().trim();
+    const fechaFin = this.configFechaFin().trim();
+
+    if (!periodo) {
+      this.setError('Selecciona un periodo academico');
+      return null;
+    }
+
+    if (!fechaInicio || !fechaFin) {
+      this.setError('Selecciona fecha de inicio y fecha de fin');
+      return null;
+    }
+
+    if (fechaInicio > fechaFin) {
+      this.setError('La fecha de inicio no puede ser posterior a la fecha de fin');
+      return null;
+    }
+
+    return {
+      periodo,
+      fecha_inicio: fechaInicio,
+      fecha_fin: fechaFin,
+      workingDays: this.workingDays().map(({ dia, activo }) => ({ dia, activo })),
+      holidays: this.holidays().map(({ fecha, descripcion }) => ({
+        fecha: fecha.slice(0, 10),
+        descripcion: descripcion || null,
+      })),
+    };
+  }
+
+  updateConfigLastUpdate(updatedAt?: string) {
+    if (!updatedAt) {
+      this.configLastUpdate.set('');
+      return;
+    }
+
+    this.configLastUpdate.set(
+      new Date(updatedAt).toLocaleString('es-CO', {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+      }),
+    );
   }
 
   // ============================================================

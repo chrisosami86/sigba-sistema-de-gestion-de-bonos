@@ -102,6 +102,22 @@ const createHoliday = async (req, res) => {
   }
 };
 
+const updateHoliday = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const holiday = await systemService.updateHoliday(id, req.body);
+
+    if (!holiday) {
+      return res.status(404).json({ message: "Festivo no encontrado" });
+    }
+
+    res.json(holiday);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error actualizando festivo" });
+  }
+};
+
 const deleteHoliday = async (req, res) => {
   try {
     const { id } = req.params;
@@ -116,6 +132,92 @@ const deleteHoliday = async (req, res) => {
     console.error(error);
     res.status(500).json({ message: "Error eliminando festivo" });
   }
+};
+
+const getAcademicPeriods = async (_req, res) => {
+  try {
+    const periods = await systemService.getAcademicPeriods();
+    res.json(periods);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error obteniendo periodos academicos" });
+  }
+};
+
+const getAcademicPeriodById = async (req, res) => {
+  try {
+    const period = await systemService.getAcademicPeriodById(req.params.id);
+
+    if (!period) {
+      return res.status(404).json({ message: "Periodo academico no encontrado" });
+    }
+
+    res.json(period);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error obteniendo periodo academico" });
+  }
+};
+
+const createAcademicPeriod = async (req, res) => {
+  try {
+    const period = await systemService.createAcademicPeriod(req.body, req.admin?.id || null);
+    res.status(201).json(period);
+  } catch (error) {
+    console.error(error);
+    res.status(getAcademicPeriodStatusCode(error)).json({ message: error.message });
+  }
+};
+
+const updateAcademicPeriod = async (req, res) => {
+  try {
+    const period = await systemService.updateAcademicPeriod(
+      req.params.id,
+      req.body,
+      req.admin?.id || null,
+    );
+
+    if (!period) {
+      return res.status(404).json({ message: "Periodo academico no encontrado" });
+    }
+
+    res.json(period);
+  } catch (error) {
+    console.error(error);
+    res.status(getAcademicPeriodStatusCode(error)).json({ message: error.message });
+  }
+};
+
+const activateAcademicPeriod = async (req, res) => {
+  try {
+    const period = await systemService.activateAcademicPeriod(req.params.id, req.admin?.id || null);
+
+    if (!period) {
+      return res.status(404).json({ message: "Periodo academico no encontrado" });
+    }
+
+    res.json(period);
+  } catch (error) {
+    console.error(error);
+    res.status(getAcademicPeriodStatusCode(error)).json({ message: error.message });
+  }
+};
+
+const getAcademicPeriodStatusCode = (error) => {
+  if (error.code === "23505") {
+    return 409;
+  }
+
+  const message = error.message || "";
+  if (
+    message.includes("obligatorio") ||
+    message.includes("fecha") ||
+    message.includes("periodo")
+  ) {
+    return 400;
+  }
+
+  return 500;
 };
 
 const getOperationalStatus = async (_req, res) => {
@@ -144,6 +246,12 @@ module.exports = {
   updateWorkingDays,
   getHolidays,
   createHoliday,
+  updateHoliday,
   deleteHoliday,
+  getAcademicPeriods,
+  getAcademicPeriodById,
+  createAcademicPeriod,
+  updateAcademicPeriod,
+  activateAcademicPeriod,
   getOperationalStatus,
 };

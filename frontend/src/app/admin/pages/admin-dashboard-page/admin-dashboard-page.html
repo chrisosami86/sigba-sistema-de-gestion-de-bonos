@@ -1113,132 +1113,107 @@
       <!-- ==================== CONFIGURACIÓN ==================== -->
       @if (selectedModule() === 'configuracion') {
 
-        <div class="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <div class="mt-4 grid grid-cols-1 gap-4">
 
-          <section class="border-base-300 rounded-box border bg-white p-4 xl:col-span-2">
-            <h3 class="text-xl font-bold">Configuración del periodo</h3>
-            <p class="text-sm text-gray-600">Define el periodo académico activo, rango de fechas y días habiles.</p>
-
-            <div class="mt-3 alert alert-warning bg-amber-50 border border-amber-300 text-amber-800">
-              <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
+          <section class="border-base-300 rounded-box border bg-white p-4">
+            <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
-                <p class="text-xs font-bold">Los cambios aplicaran únicamente para operación futura.</p>
-                <p class="text-xs">Los históricos y cierres previos no serán modificados.</p>
+                <h3 class="text-xl font-bold">Periodos académicos</h3>
+                <p class="text-sm text-gray-600">Administra periodos sin cambiar la fuente operacional system_settings.</p>
               </div>
+              <button class="btn bg-red-600 text-white hover:bg-red-700" (click)="openCreatePeriodModal()">Añadir periodo</button>
             </div>
+
             @if (configPeriodoLoading()) {
               <p class="text-sm text-gray-500 mt-4">Cargando configuración...</p>
             } @else {
-              <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
-                <div>
-                  <label class="label text-sm font-semibold">Periodo académico</label>
-                  <select class="select w-full" (change)="configPeriodo.set(configPeriodoSelect.value)" #configPeriodoSelect>
-                    <option value="" [selected]="!configPeriodo()">Seleccionar periodo</option>
-                    @for (p of periodosDisponibles(); track p) {
-                      <option [value]="p" [selected]="configPeriodo() === p">{{ p }}</option>
+              <div class="mt-4 overflow-x-auto">
+                <table class="table table-sm">
+                  <thead>
+                    <tr>
+                      <th>Periodo</th>
+                      <th>Fecha inicio</th>
+                      <th>Fecha fin</th>
+                      <th>Estado</th>
+                      <th>Creación</th>
+                      <th>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (period of academicPeriods(); track period.id) {
+                      <tr>
+                        <td class="font-semibold">{{ period.periodo }}</td>
+                        <td>{{ period.fecha_inicio }}</td>
+                        <td>{{ period.fecha_fin }}</td>
+                        <td>
+                          <span class="badge badge-sm" [class.badge-success]="period.activo" [class.badge-ghost]="!period.activo">
+                            {{ period.activo ? 'Activo' : 'Inactivo' }}
+                          </span>
+                        </td>
+                        <td class="text-xs">{{ period.created_at ? period.created_at.slice(0, 16).replace('T', ' ') : '-' }}</td>
+                        <td>
+                          <div class="flex flex-wrap gap-1">
+                            <button class="btn btn-xs hover:bg-red-600 hover:text-white" (click)="viewAcademicPeriod(period)">Ver</button>
+                            <button class="btn btn-xs hover:bg-red-600 hover:text-white" (click)="editAcademicPeriod(period)">Editar</button>
+                            <button class="btn btn-xs hover:bg-red-600 hover:text-white" (click)="duplicateAcademicPeriod(period)">Duplicar</button>
+                            <button class="btn btn-xs bg-gray-800 text-white hover:bg-red-600"
+                              [disabled]="period.activo || configPeriodoSaving()"
+                              (click)="activateAcademicPeriod(period)">Activar</button>
+                          </div>
+                        </td>
+                      </tr>
                     }
-                  </select>
-                </div>
-                <div>
-                  <label class="label text-sm font-semibold">Fecha de inicio</label>
-                  <input type="date" class="input w-full" [value]="configFechaInicio()"
-                    (input)="configFechaInicio.set(configFechaInicioInput.value)" #configFechaInicioInput />
-                </div>
-                <div>
-                  <label class="label text-sm font-semibold">Fecha de fin</label>
-                  <input type="date" class="input w-full" [value]="configFechaFin()"
-                    (input)="configFechaFin.set(configFechaFinInput.value)" #configFechaFinInput />
-                </div>
+                    @empty {
+                      <tr><td colspan="6" class="text-center text-gray-400 py-4">No hay periodos registrados</td></tr>
+                    }
+                  </tbody>
+                </table>
               </div>
-              <div class="mt-4">
-                <h4 class="font-bold text-sm mb-2">Días habiles</h4>
-                <div class="flex flex-wrap gap-2">
-                  @for (d of workingDays(); track d.id) {
-                    <label class="flex cursor-pointer items-center gap-1">
-                      <input type="checkbox" class="checkbox checkbox-sm" [checked]="d.activo" (change)="toggleWorkingDay(d.dia)" />
-                      <span class="text-sm capitalize">{{ d.dia }}</span>
-                    </label>
-                  }
-                </div>
-              </div>
-              <div class="mt-4 border-t border-gray-200 pt-4">
-                <h4 class="font-bold text-sm mb-2">Festivos y días no habiles</h4>
-                <div class="flex flex-wrap gap-2 mb-2">
-                  @for (h of holidays(); track h.id) {
-                    <span class="badge badge-error gap-1">
-                      {{ h.fecha.slice(0, 10) }}
-                      @if (h.descripcion) { - {{ h.descripcion }} }
-                      <button class="ml-1 font-bold" (click)="removeHoliday(h.id)">x</button>
-                    </span>
-                  }
-                </div>
-                <div class="flex flex-col sm:flex-row flex-wrap gap-2 items-start sm:items-end">
-                  <div>
-                    <label class="label text-xs font-semibold">Fecha</label>
-                    <input type="date" class="input input-sm w-36" [value]="newHolidayFecha()"
-                      (input)="newHolidayFecha.set(newHolidayFechaInput.value)" #newHolidayFechaInput />
-                  </div>
-                  <div>
-                    <label class="label text-xs font-semibold">Descripción</label>
-                    <input type="text" class="input input-sm w-48" placeholder="Ej: Día del trabajo"
-                      [value]="newHolidayDescripcion()"
-                      (input)="newHolidayDescripcion.set(newHolidayDescInput.value)" #newHolidayDescInput />
-                  </div>
-                  <button class="btn btn-sm bg-gray-800 text-white hover:bg-gray-900" (click)="addHoliday()">Agregar</button>
-                </div>
-              </div>
-              <div class="mt-4">
-                <button class="btn bg-red-600 text-white hover:bg-red-700"
-                  (click)="savePeriodConfig()"
-                  [disabled]="configPeriodoSaving() || isHistoricalMode()"
-                  [title]="isHistoricalMode() ? 'Operacion deshabilitada fuera de periodo academico' : ''">
-                  @if (configPeriodoSaving()) { Guardando... } @else { Guardar periodo }
-                </button>
-              </div>
+            }
+          </section>
 
-              <!-- Card resumen de configuracion actual -->
-              @if (configResumenVisible()) {
-                <div class="mt-6 border-t border-gray-200 pt-4">
-                  <h4 class="font-bold text-sm mb-3 text-green-700">Configuración actual del sistema</h4>
-                  <div class="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
-                    <div class="rounded-box bg-green-50 p-3">
-                      <p class="text-xs font-semibold text-gray-500">Periodo activo</p>
-                      <p class="text-lg font-bold">{{ systemSettings()?.periodo_actual || '-' }}</p>
-                    </div>
-                    <div class="rounded-box bg-green-50 p-3">
-                      <p class="text-xs font-semibold text-gray-500">Fecha inicio</p>
-                      <p class="text-lg font-bold">{{ systemSettings()?.fecha_inicio || '-' }}</p>
-                    </div>
-                    <div class="rounded-box bg-green-50 p-3">
-                      <p class="text-xs font-semibold text-gray-500">Fecha fin</p>
-                      <p class="text-lg font-bold">{{ systemSettings()?.fecha_fin || '-' }}</p>
-                    </div>
-                    <div class="rounded-box bg-green-50 p-3">
-                      <p class="text-xs font-semibold text-gray-500">Ultima actualización</p>
-                      <p class="text-sm font-bold text-gray-600">{{ configLastUpdate() }}</p>
-                    </div>
-                    <div class="rounded-box bg-green-50 p-3 md:col-span-2">
-                      <p class="text-xs font-semibold text-gray-500">Días habiles activos</p>
-                      <div class="flex flex-wrap gap-1 mt-1">
-                        @for (d of workingDays(); track d.id) {
-                          @if (d.activo) {
-                            <span class="badge badge-success badge-sm">{{ d.dia }}</span>
-                          }
-                        }
-                      </div>
-                    </div>
-                    <div class="rounded-box bg-green-50 p-3 md:col-span-2">
-                      <p class="text-xs font-semibold text-gray-500">Festivos configurados</p>
-                      <div class="flex flex-wrap gap-1 mt-1">
-                        @for (h of holidays(); track h.id) {
-                          <span class="badge badge-warning badge-sm">{{ h.fecha.slice(0, 10) }}{{ h.descripcion ? ' - ' + h.descripcion : '' }}</span>
-                        }
-                        @empty {
-                          <span class="text-xs text-gray-400">No hay festivos registrados</span>
-                        }
-                      </div>
-                    </div>
-                    <div class="rounded-box bg-green-50 p-3 md:col-span-2">
+          @if (configResumenVisible()) {
+            <section class="border-base-300 rounded-box border bg-white p-4">
+              <h4 class="font-bold text-sm mb-3 text-green-700">Configuración actual del sistema</h4>
+              <div class="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
+                <div class="rounded-box bg-green-50 p-3">
+                  <p class="text-xs font-semibold text-gray-500">Periodo activo</p>
+                  <p class="text-lg font-bold">{{ systemSettings()?.periodo_actual || '-' }}</p>
+                </div>
+                <div class="rounded-box bg-green-50 p-3">
+                  <p class="text-xs font-semibold text-gray-500">Fecha inicio</p>
+                  <p class="text-lg font-bold">{{ systemSettings()?.fecha_inicio || '-' }}</p>
+                </div>
+                <div class="rounded-box bg-green-50 p-3">
+                  <p class="text-xs font-semibold text-gray-500">Fecha fin</p>
+                  <p class="text-lg font-bold">{{ systemSettings()?.fecha_fin || '-' }}</p>
+                </div>
+                <div class="rounded-box bg-green-50 p-3">
+                  <p class="text-xs font-semibold text-gray-500">Ultima actualización</p>
+                  <p class="text-sm font-bold text-gray-600">{{ configLastUpdate() }}</p>
+                </div>
+                <div class="rounded-box bg-green-50 p-3 md:col-span-2">
+                  <p class="text-xs font-semibold text-gray-500">Días habiles activos</p>
+                  <div class="flex flex-wrap gap-1 mt-1">
+                    @for (d of workingDays(); track d.dia) {
+                      @if (d.activo) {
+                        <span class="badge badge-success badge-sm">{{ d.dia }}</span>
+                      }
+                    }
+                  </div>
+                </div>
+                <div class="rounded-box bg-green-50 p-3 md:col-span-2">
+                  <p class="text-xs font-semibold text-gray-500">Festivos configurados</p>
+                  <div class="flex flex-wrap gap-1 mt-1">
+                    @for (h of holidays(); track h.id) {
+                      <span class="badge badge-warning badge-sm">{{ h.fecha.slice(0, 10) }}{{ h.descripcion ? ' - ' + h.descripcion : '' }}</span>
+                    }
+                    @empty {
+                      <span class="text-xs text-gray-400">No hay festivos registrados</span>
+                    }
+                  </div>
+                </div>
+                <div class="rounded-box bg-green-50 p-3 md:col-span-2">
                       <p class="text-xs font-semibold text-gray-500">Horarios de operación</p>
                       <div class="grid grid-cols-1 gap-1 mt-1 text-xs md:grid-cols-2">
                         <div>
@@ -1254,12 +1229,138 @@
                       </div>
                     </div>
                   </div>
-                </div>
+                </section>
               }
-            }
-          </section>
 
         </div>
+
+        @if (periodModalMode()) {
+          <div class="modal modal-open">
+            <div class="modal-box max-w-5xl">
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <h3 class="text-xl font-bold">
+                    @if (periodModalMode() === 'view') { Consultar periodo }
+                    @else if (periodModalMode() === 'edit') { Editar periodo }
+                    @else if (periodFormSourceId()) { Duplicar periodo }
+                    @else { Añadir periodo }
+                  </h3>
+                </div>
+                <button class="btn btn-sm" (click)="closePeriodModal()">Cerrar</button>
+              </div>
+
+              <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+                <div>
+                  <label class="label text-sm font-semibold">Periodo académico</label>
+                  <input class="input w-full" type="text" [value]="configPeriodo()"
+                    [disabled]="periodModalMode() === 'view'"
+                    (input)="configPeriodo.set(configPeriodoInput.value)" #configPeriodoInput />
+                </div>
+                <div>
+                  <label class="label text-sm font-semibold">Fecha de inicio</label>
+                  <input type="date" class="input w-full" [value]="configFechaInicio()"
+                    [disabled]="periodModalMode() === 'view'"
+                    (input)="configFechaInicio.set(configFechaInicioInput.value)" #configFechaInicioInput />
+                </div>
+                <div>
+                  <label class="label text-sm font-semibold">Fecha de fin</label>
+                  <input type="date" class="input w-full" [value]="configFechaFin()"
+                    [disabled]="periodModalMode() === 'view'"
+                    (input)="configFechaFin.set(configFechaFinInput.value)" #configFechaFinInput />
+                </div>
+              </div>
+
+              <div class="mt-4">
+                <h4 class="font-bold text-sm mb-2">Días habiles</h4>
+                <div class="flex flex-wrap gap-2">
+                  @for (d of workingDays(); track d.dia) {
+                    <label class="flex cursor-pointer items-center gap-1">
+                      <input type="checkbox" class="checkbox checkbox-sm" [checked]="d.activo"
+                        [disabled]="periodModalMode() === 'view'"
+                        (change)="toggleWorkingDay(d.dia)" />
+                      <span class="text-sm capitalize">{{ d.dia }}</span>
+                    </label>
+                  }
+                </div>
+              </div>
+
+              <div class="mt-4 border-t border-gray-200 pt-4">
+                <h4 class="font-bold text-sm mb-2">Festivos y días no habiles</h4>
+                <div class="overflow-x-auto">
+                  <table class="table table-xs">
+                    <thead>
+                      <tr><th>Fecha</th><th>Descripción</th><th>Acciones</th></tr>
+                    </thead>
+                    <tbody>
+                      @for (h of holidays(); track $index; let i = $index) {
+                        <tr>
+                          <td>
+                            @if (editHolidayId() === h.id && periodModalMode() !== 'view') {
+                              <input type="date" class="input input-xs" [value]="editHolidayFecha()"
+                                (input)="editHolidayFecha.set(editHolidayFechaInput.value)" #editHolidayFechaInput />
+                            } @else {
+                              {{ h.fecha.slice(0, 10) }}
+                            }
+                          </td>
+                          <td>
+                            @if (editHolidayId() === h.id && periodModalMode() !== 'view') {
+                              <input type="text" class="input input-xs w-full" [value]="editHolidayDescripcion()"
+                                (input)="editHolidayDescripcion.set(editHolidayDescripcionInput.value)" #editHolidayDescripcionInput />
+                            } @else {
+                              {{ h.descripcion || '-' }}
+                            }
+                          </td>
+                          <td>
+                            @if (periodModalMode() !== 'view') {
+                              @if (editHolidayId() === h.id) {
+                                <button class="btn btn-xs" (click)="saveHolidayEdit(i)">Guardar</button>
+                                <button class="btn btn-xs" (click)="clearHolidayEdit()">Cancelar</button>
+                              } @else {
+                                <button class="btn btn-xs" (click)="startEditHoliday(h)">Editar</button>
+                                <button class="btn btn-xs" (click)="removeHolidayByIndex(i)">Eliminar</button>
+                              }
+                            }
+                          </td>
+                        </tr>
+                      }
+                      @empty {
+                        <tr><td colspan="3" class="text-center text-gray-400">No hay festivos registrados</td></tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+
+                @if (periodModalMode() !== 'view') {
+                  <div class="mt-3 flex flex-col sm:flex-row flex-wrap gap-2 items-start sm:items-end">
+                    <div>
+                      <label class="label text-xs font-semibold">Fecha</label>
+                      <input type="date" class="input input-sm w-36" [value]="newHolidayFecha()"
+                        (input)="newHolidayFecha.set(newHolidayFechaInput.value)" #newHolidayFechaInput />
+                    </div>
+                    <div>
+                      <label class="label text-xs font-semibold">Descripción</label>
+                      <input type="text" class="input input-sm w-48" placeholder="Ej: Día del trabajo"
+                        [value]="newHolidayDescripcion()"
+                        (input)="newHolidayDescripcion.set(newHolidayDescInput.value)" #newHolidayDescInput />
+                    </div>
+                    <button class="btn btn-sm bg-gray-800 text-white hover:bg-gray-900" (click)="addHoliday()">Agregar</button>
+                  </div>
+                }
+              </div>
+
+              <div class="modal-action">
+                <button class="btn" (click)="closePeriodModal()" [disabled]="configPeriodoSaving()">Cancelar</button>
+                @if (periodModalMode() !== 'view') {
+                  <button class="btn bg-red-600 text-white hover:bg-red-700"
+                    (click)="savePeriodConfig()"
+                    [disabled]="configPeriodoSaving()">
+                    @if (configPeriodoSaving()) { Guardando... } @else { Guardar periodo }
+                  </button>
+                }
+              </div>
+            </div>
+          </div>
+        }
       }
 
       <!-- ==================== CIERRE DIARIO ==================== -->

@@ -46,6 +46,13 @@ Cambios historicos que YA estan reflejados en `init.sql`:
 - No modifica datos existentes ni crea restricciones nuevas
 - Permite conservar historial operativo expirado y asignacion administrativa reclamada para el mismo estudiante/bono diario
 
+### 007_academic_periods.sql
+
+- Crea la capa administrativa `academic_periods`
+- Crea configuracion de dias habiles y festivos por periodo academico
+- Migra automaticamente el periodo actual desde `system_settings`
+- Mantiene `system_settings`, `working_days` y `holidays` como fuente operacional vigente
+
 ## Como aplicar sobre BD existente
 
 Si la BD ya fue creada con una version anterior de `init.sql`, ejecutar unicamente las migraciones
@@ -56,6 +63,7 @@ psql -U sigba_user -d sigba_db -f database/migrations/002_provider_conciliations
 psql -U sigba_user -d sigba_db -f database/migrations/003_daily_closure_confirmations.sql
 psql -U sigba_user -d sigba_db -f database/migrations/004_normalize_bogota_timestamp_defaults.sql
 psql -U sigba_user -d sigba_db -f database/migrations/006_drop_unique_student_bono_diario.sql
+psql -U sigba_user -d sigba_db -f database/migrations/007_academic_periods.sql
 ```
 
 Usar `CREATE TABLE IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS` garantiza idempotencia.

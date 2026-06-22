@@ -22,6 +22,31 @@ export interface Holiday {
   descripcion: string | null;
 }
 
+export interface AcademicPeriod {
+  id: number;
+  periodo: string;
+  fecha_inicio: string;
+  fecha_fin: string;
+  activo: boolean;
+  created_at: string;
+  updated_at: string;
+  working_days_count?: number;
+  holidays_count?: number;
+}
+
+export interface AcademicPeriodDetail extends AcademicPeriod {
+  workingDays: WorkingDay[];
+  holidays: Holiday[];
+}
+
+export interface AcademicPeriodPayload {
+  periodo: string;
+  fecha_inicio: string;
+  fecha_fin: string;
+  workingDays: Array<Pick<WorkingDay, 'dia' | 'activo'>>;
+  holidays: Array<Pick<Holiday, 'fecha' | 'descripcion'>>;
+}
+
 export interface OperationalStatus {
   canOperate: boolean;
   reason: string | null;
@@ -102,8 +127,35 @@ export class SystemService {
     return this.http.post<Holiday>(`${this.apiUrl}/api/system/holidays`, { fecha, descripcion });
   }
 
+  updateHoliday(id: number, fecha: string, descripcion: string) {
+    return this.http.put<Holiday>(`${this.apiUrl}/api/system/holidays/${id}`, { fecha, descripcion });
+  }
+
   deleteHoliday(id: number) {
     return this.http.delete<{ message: string }>(`${this.apiUrl}/api/system/holidays/${id}`);
+  }
+
+  getAcademicPeriods() {
+    return this.http.get<AcademicPeriod[]>(`${this.apiUrl}/api/system/academic-periods`);
+  }
+
+  getAcademicPeriod(id: number) {
+    return this.http.get<AcademicPeriodDetail>(`${this.apiUrl}/api/system/academic-periods/${id}`);
+  }
+
+  createAcademicPeriod(data: AcademicPeriodPayload) {
+    return this.http.post<AcademicPeriodDetail>(`${this.apiUrl}/api/system/academic-periods`, data);
+  }
+
+  updateAcademicPeriod(id: number, data: AcademicPeriodPayload) {
+    return this.http.put<AcademicPeriodDetail>(`${this.apiUrl}/api/system/academic-periods/${id}`, data);
+  }
+
+  activateAcademicPeriod(id: number) {
+    return this.http.post<AcademicPeriodDetail>(
+      `${this.apiUrl}/api/system/academic-periods/${id}/activate`,
+      {},
+    );
   }
 
   getOperationalStatus() {
